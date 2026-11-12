@@ -14,6 +14,39 @@ enum AESCBCError: LocalizedError {
 }
 
 enum AESCBC {
+    static func encrypt(plain: Data, key: Data, iv: Data) throws -> Data {
+        let keyLength = key.count
+        guard keyLength == kCCKeySizeAES128 || keyLength == kCCKeySizeAES192 || keyLength == kCCKeySizeAES256,
+              iv.count == kCCBlockSizeAES128
+        else {
+            throw AESCBCError.invalidKeyIV
+        }
+        let dataLength = plain.count
+        let bufferSize = dataLength + kCCBlockSizeAES128
+        var buffer = Data(count: bufferSize)
+        var numBytesEncrypted: size_t = 0
+        let status = buffer.withUnsafeMutableBytes { bufferBytes in
+            plain.withUnsafeBytes { plainBytes in
+                key.withUnsafeBytes { keyBytes in
+                    iv.withUnsafeBytes { ivBytes in
+                        CCCrypt(
+                            CCOperation(kCCEncrypt),
+                            CCAlgorithm(kCCAlgorithmAES),
+                            CCOptions(kCCOptionPKCS7Padding),
+                            keyBytes.baseAddress, keyLength,
+                            ivBytes.baseAddress,
+                            plainBytes.baseAddress, dataLength,
+                            bufferBytes.baseAddress, bufferSize,
+                            &numBytesEncrypted
+                        )
+                    }
+                }
+            }
+        }
+        guard status == kCCSuccess else { throw AESCBCError.failed(status) }
+        return buffer.prefix(numBytesEncrypted)
+    }
+
     static func decrypt(cipher: Data, key: Data, iv: Data) throws -> Data {
         let keyLength = key.count
         guard keyLength == kCCKeySizeAES128 || keyLength == kCCKeySizeAES192 || keyLength == kCCKeySizeAES256,
