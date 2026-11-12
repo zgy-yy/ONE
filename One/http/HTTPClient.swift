@@ -136,6 +136,21 @@ enum HTTPClient {
         return (response.response?.statusCode, response.error)
     }
 
+    /// POST 探测状态码（如 ONE `domain/check`）
+    static func postStatusCode(
+        from url: URL,
+        timeout: TimeInterval? = nil
+    ) async -> (statusCode: Int?, error: Error?) {
+        let response = await session.request(url, method: .post, requestModifier: { request in
+            if let timeout {
+                request.timeoutInterval = timeout
+            }
+        })
+        .serializingData()
+        .response
+        return (response.response?.statusCode, response.error)
+    }
+
     private static func mergeHeaders(headerFields: [String: String], headers: HTTPHeaders) -> HTTPHeaders {
         if headers.isEmpty { return HTTPHeaders(headerFields) }
         return headers
