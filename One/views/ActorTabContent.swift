@@ -1,12 +1,12 @@
 import SwiftUI
 
-struct FilmTabContent: View {
+struct ActorTabContent: View {
     var body: some View {
-        Text("影视")
+        Text("演员")
             .padding()
     }
 }
 
 #Preview {
-    FilmTabContent()
+    ActorTabContent()
 }

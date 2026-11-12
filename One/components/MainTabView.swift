@@ -6,11 +6,17 @@ struct MainTabView: View {
             Tab("首页", systemImage: "house.fill") {
                 HomeTabContent()
             }
-            Tab("影视", systemImage: "film.fill") {
-                FilmTabContent()
+            Tab("发现", systemImage: "safari.fill") {
+                DiscoverTabContent()
             }
             Tab("点播", systemImage: "play.rectangle.fill") {
                 OnDemandTabContent()
+            }
+            Tab("演员", systemImage: "person.2.fill") {
+                ActorTabContent()
+            }
+            Tab("我的", systemImage: "person.circle.fill") {
+                MineTabContent()
             }
         }
     }
