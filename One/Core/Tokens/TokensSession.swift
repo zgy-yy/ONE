@@ -1,6 +1,9 @@
 import Foundation
 import Observation
 
+/// 壳配置会话：内存里保存 JWT、壳基址、封面/点播 CDN 基址。
+///
+/// 启动时由 `EntryView` 调用 `prepare()`；各业务 Session 通过 `shared` 读取 token。
 @MainActor
 @Observable
 final class TokensSession {
@@ -9,6 +12,8 @@ final class TokensSession {
     private(set) var tokenOne: String?
     private(set) var tokenOneVisitor: String?
     private(set) var baseURL: URL?
+    private(set) var oneImgCDN: String?
+    private(set) var oneVideoCDN: String?
     private(set) var isLoading = false
     private(set) var lastError: String?
     private(set) var lastUpdated: Date?
@@ -38,10 +43,13 @@ final class TokensSession {
         baseURL = result.baseURL
         tokenOne = result.tokens.token(named: "token_one")
         tokenOneVisitor = result.tokens.token(named: "token_one_visitor")
+        let cdns = TokensCDN.extract(from: result.envelope.data)
+        oneImgCDN = cdns.oneImg.isEmpty ? nil : cdns.oneImg
+        oneVideoCDN = cdns.oneVideo.isEmpty ? nil : cdns.oneVideo
         lastUpdated = Date()
     }
 
-    /// 与 one-web `pickOneToken` 一致
+    /// 按接口路径挑选 JWT：`article/detail` 优先登录 token，其余优先游客 token。
     func oneToken(forPath path: String) -> String? {
         if path.contains("article/detail"),
            let tokenOne, !tokenOne.isEmpty

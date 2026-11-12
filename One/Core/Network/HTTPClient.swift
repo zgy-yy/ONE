@@ -1,6 +1,12 @@
 import Alamofire
 import Foundation
 
+/// 项目统一的 HTTP 封装（基于 [Alamofire](https://github.com/Alamofire/Alamofire)）。
+///
+/// 学习要点：
+/// - 泛型 `get<T: Decodable>`：把 JSON 直接解码成 Swift 结构体/类。
+/// - `async throws`：异步且可能失败，调用方用 `try await`。
+/// - `responseDecoder`：壳 / ONE 接口常先解密再 JSON，与明文接口共用同一套方法。
 enum HTTPClient {
     private static let session: Session = {
         let configuration = URLSessionConfiguration.default

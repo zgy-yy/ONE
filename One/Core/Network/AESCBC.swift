@@ -1,6 +1,9 @@
 import CommonCrypto
 import Foundation
 
+/// AES-CBC 加解密（通过 Apple CommonCrypto 的 `CCCrypt`）。
+///
+/// 密钥长度需 16/24/32 字节（AES-128/192/256）；IV 固定 16 字节。
 enum AESCBCError: LocalizedError {
     case invalidKeyIV
     case failed(Int32)

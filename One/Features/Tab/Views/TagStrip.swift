@@ -1,6 +1,10 @@
 import SwiftUI
 
-/// 顶部胶囊分段；使用与系统 Tab 相同的 Liquid Glass（需自定义视图显式加 `glassEffect`）
+/// 顶部分类胶囊条（分段控件样式）。
+///
+/// - `@Binding`：选中项由父视图 `Tab` 持有，子组件读写同一份状态。
+/// - `@Namespace` + `matchedGeometryEffect`：选中高亮块滑动时的连贯动画。
+/// - `glassEffect`：iOS 26+ 液态玻璃材质（自定义 View 需手动添加，底部系统 Tab 会自动有）。
 struct TagStrip: View {
     let tags: [DemandTag]
     @Binding var selectedTagID: Int?

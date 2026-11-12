@@ -1,5 +1,6 @@
 import Foundation
 
+/// splash 接口对应的 `Codable` 模型（`Codable` = 可编码/解码 JSON）。
 struct TokenEntry: Codable, Sendable, Equatable {
     let id: Int?
     let name: String
@@ -24,7 +25,7 @@ struct TokensResult: Sendable {
     var tokens: [TokenEntry] { envelope.data?.token ?? [] }
 }
 
-/// 宽松 JSON，用于 `host` / `splash` 等未定型字段
+/// 结构不固定的 JSON 用递归枚举表示，便于遍历查找 CDN 等字段。
 enum JSONValue: Codable, Sendable {
     case string(String)
     case number(Double)

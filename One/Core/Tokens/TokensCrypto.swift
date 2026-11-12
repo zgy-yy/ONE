@@ -2,6 +2,7 @@ import CryptoKit
 import Foundation
 import zlib
 
+/// 壳接口：请求头签名 + 响应 AES/gzip 解压（与 `OneCrypto` 独立）。
 enum TokensCryptoError: LocalizedError {
     case invalidBase64
     case aes(Int32)

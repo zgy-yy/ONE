@@ -1,5 +1,6 @@
 import Foundation
 
+/// 壳（Box）网络：先 ping 选线路，再拉 `splash` 配置。
 enum TokensClient {
     private static let pingTimeout: TimeInterval = 12
 

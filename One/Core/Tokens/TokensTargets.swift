@@ -1,7 +1,7 @@
 import Foundation
 
+/// 壳服务 IP 列表（多线路容灾）。
 enum TokensTargets {
-    /// 与 one-web `proxy.targets.ts` 中 `BOX_TARGETS` 一致
     static let bases: [String] = [
         "http://202.95.22.200:6868",
         "http://202.95.22.201:6868",
@@ -11,6 +11,7 @@ enum TokensTargets {
     ]
 }
 
+/// 把「基址 + 相对 path」拼成合法 `URL`（壳与 ONE 共用）。
 enum TokensAPIPath {
     static func join(base: String, path: String) -> URL {
         let trimmedPath = path.hasPrefix("/") ? String(path.dropFirst()) : path

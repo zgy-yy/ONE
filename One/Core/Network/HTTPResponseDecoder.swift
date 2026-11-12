@@ -1,6 +1,8 @@
 import Foundation
 
-/// 将 HTTP 原始响应体转为可 `JSONDecoder` 的 JSON 数据（可插拔）
+/// 响应解密策略（策略模式）：不同后端用不同实现。
+///
+/// `HTTPResponseDecoders.tokens` → 壳 splash；`HTTPResponseDecoders.one` → 业务 API。
 protocol HTTPResponseDecoder: Sendable {
     func decodeResponseBody(_ raw: String) throws -> Data
 }

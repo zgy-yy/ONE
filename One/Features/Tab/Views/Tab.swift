@@ -1,5 +1,11 @@
 import SwiftUI
 
+/// 点播 Tab 根页面：顶部分类 + 左右滑动切换列表。
+///
+/// - `NavigationStack`：导航栏 + 子页面栈（iOS 16+）。
+/// - `@State private var selectedTagID`：当前选中的分类，驱动 `TabView` 与 `TagStrip`。
+/// - `safeAreaInset(edge: .top)`：把分类条叠在内容上方，不挤占全屏列表高度。
+/// - 内层 `TabView` + `.page`：与底部 Tab 无关，这里用于分类之间的横向翻页。
 struct Tab: View {
     @Bindable private var session = TabSession.shared
     @State private var selectedTagID: Int?
@@ -35,6 +41,9 @@ struct Tab: View {
             .navigationBarTitleDisplayMode(.inline)
             .refreshable {
                 await session.refresh()
+                if let selectedTagID {
+                    await session.loadArticles(for: selectedTagID, force: true)
+                }
             }
             .task {
                 await session.loadIfNeeded()
@@ -60,6 +69,7 @@ struct Tab: View {
         .tabViewStyle(.page(indexDisplayMode: .never))
     }
 
+    /// 分类列表刷新后，保证选中项仍有效，否则选第一项。
     private func syncSelection(with tags: [DemandTag]) {
         if let selectedTagID, tags.contains(where: { $0.id == selectedTagID }) {
             return

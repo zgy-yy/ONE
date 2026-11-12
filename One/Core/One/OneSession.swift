@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 
+/// 业务 API 线路会话：保存选中的 `…/v2.5/` 基址（由 `OneClient.pickBaseURL` 写入）。
 @MainActor
 @Observable
 final class OneSession {

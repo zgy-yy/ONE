@@ -2,6 +2,9 @@ import CommonCrypto
 import CryptoKit
 import Foundation
 
+/// 业务 API 的签名头、请求体 AES 加密、响应解密。
+///
+/// 请求：Header 里带 `sign`；POST body 为 `key=value&…` 的 AES 密文 Base64。
 enum OneCryptoError: LocalizedError {
     case invalidBase64
     case aes(Int32)
@@ -25,7 +28,7 @@ enum OneCrypto {
     private static let aesKey = Data("l*bv%Ziq000Biaog".utf8)
     private static let aesIV = Data("8597506002939249".utf8)
 
-    /// 与 `one_client.ts` `makeOneHeaders` 一致
+    /// 构造每次 POST 必需的 Header（含 MD5 签名与 JWT）。
     static func makeRequestHeaders(token: String, timestampSec: Int? = nil) -> [String: String] {
         let ts = timestampSec ?? Int(Date().timeIntervalSince1970)
         return [

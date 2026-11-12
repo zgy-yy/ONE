@@ -1,9 +1,10 @@
 import Foundation
 
+/// 业务 API 客户端：选线、签名 POST、具体接口方法。
 enum OneClient {
     private static let probeTimeout: TimeInterval = 20
 
-    /// 与 one-web `pickOneBaseUrl`：POST `domain/check`，首个 HTTP 非 5xx 的线路
+    /// 依次 POST `domain/check`，选第一条可用线路，返回带 `/v2.5` 的基址。
     static func pickBaseURL() async throws -> URL {
         for host in OneTargets.hostBases {
             let url = TokensAPIPath.join(base: host, path: "domain/check")
@@ -60,6 +61,25 @@ enum OneClient {
             throw OneClientError.apiRejected(detail)
         }
         return envelope.data ?? []
+    }
+
+    static func articleDiscovery(
+        base: URL,
+        token: String,
+        request: DiscoveryRequest
+    ) async throws -> [ArticleSummary] {
+        let envelope = try await post(
+            OneApiEnvelope<DiscoveryListPayload>.self,
+            base: base,
+            path: OneAPI.discoveryPath,
+            token: token,
+            data: request.formBody()
+        )
+        guard OneAPI.isSuccess(code: envelope.code) else {
+            let detail = envelope.message ?? "code \(envelope.code.map(String.init) ?? "nil")"
+            throw OneClientError.apiRejected(detail)
+        }
+        return envelope.data?.articles ?? []
     }
 }
 
