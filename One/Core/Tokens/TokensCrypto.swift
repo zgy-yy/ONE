@@ -33,7 +33,9 @@ enum TokensCrypto {
     private static let aesKey: Data = deobfuscateLatin1(obfAESKey)
     private static let aesIV: Data = deobfuscateLatin1(obfAESIV)
 
-    static func makeRequestHeaders(path: String, timeMs: Int64 = Int64(Date().timeIntervalSince1970 * 1000)) -> [String: String] {
+    static func makeRequestHeaders(
+        path: String, timeMs: Int64 = Int64(Date().timeIntervalSince1970 * 1000)
+    ) -> [String: String] {
         let plain = ["/", path, String(timeMs), signSalt].joined()
         return [
             "time": String(timeMs),
@@ -72,7 +74,7 @@ enum TokensCrypto {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard t.hasPrefix("\"") else { return t }
         guard let data = t.data(using: .utf8),
-              let parsed = try? JSONDecoder().decode(String.self, from: data)
+            let parsed = try? JSONDecoder().decode(String.self, from: data)
         else { return t }
         return parsed
     }
@@ -110,7 +112,8 @@ enum TokensCrypto {
             var stream = z_stream()
             stream.next_in = UnsafeMutablePointer(mutating: base)
             stream.avail_in = uInt(data.count)
-            var status = inflateInit2_(&stream, MAX_WBITS + 32, ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size))
+            var status = inflateInit2_(
+                &stream, MAX_WBITS + 32, ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size))
             guard status == Z_OK else { throw TokensCryptoError.gzip(status) }
             defer { inflateEnd(&stream) }
 

@@ -1,13 +1,6 @@
 import SwiftUI
 import UIKit
 
-/// 异步加载列表封面。
-///
-/// 流程：splash 里的 `one_img` 基址 + 接口返回的 `thumb` 相对路径 → 下载
-/// → 若是 JPEG/PNG 魔数则直接显示，否则 AES 解密后再 `UIImage` 展示。
-///
-/// - `@State uiImage`：加载完成后触发界面更新。
-/// - `URLSession.shared.data(from:)`：系统提供的简单 GET 下载（与 Alamofire 并存无妨）。
 struct OneCoverImage: View {
     let path: String?
 

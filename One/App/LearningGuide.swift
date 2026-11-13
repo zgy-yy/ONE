@@ -14,7 +14,7 @@
 
  【数据怎么流动】
  1. EntryView 启动 → TokensSession 拉 token，OneSession 选 API 线路
- 2. 进入 MainTabView → 点播 Tab 用 TabSession 拉分类与列表
+ 2. 进入 MainTabView → 点播用 OnDemandSession 拉分类与列表
  3. View 用 @Bindable / @State 订阅 Session，数据变了界面自动刷新（Observation）
 
  【异步 async/await】
@@ -22,7 +22,7 @@
 
  【建议阅读顺序】
  MyApp → ContentView → EntryView → TokensSession / OneSession
- → MainTabView → Tab / TabSession → HTTPClient → OneClient
+ → MainTabView → OnDemandView / OnDemandSession → HTTPClient → OneClient
 
  =============================================================================
  */

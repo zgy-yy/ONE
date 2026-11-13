@@ -20,6 +20,11 @@ struct OneApiEnvelope<T: Decodable>: Decodable {
 struct DemandTag: Decodable, Identifiable, Hashable {
     let id: Int
     let title: String?
+
+    var displayTitle: String {
+        if let title, !title.isEmpty { return title }
+        return "标签 \(id)"
+    }
 }
 
 /// 列表项摘要；`Identifiable` 供 SwiftUI `List` 使用。
@@ -27,6 +32,11 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
     let id: Int
     let title: String?
     let thumb: String?
+
+    var displayTitle: String {
+        if let title, !title.isEmpty { return title }
+        return "ID \(id)"
+    }
     let author: String?
     /// 接口多为 `"2026-11-05 03:23:00"` 字符串。
     let publishedAt: String?

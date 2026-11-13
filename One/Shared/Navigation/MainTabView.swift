@@ -1,9 +1,6 @@
 import SwiftUI
 
-/// 主界面：底部五个 Tab（iOS 18+ 的 `Tab` + `TabView` API）。
-///
-/// - 这里写 `SwiftUI.Tab` 是因为点播页自定义了名叫 `Tab` 的 View，避免名字冲突。
-/// - 每个 Tab 里放一个子页面（`HomeTabContent`、`Tab` 等）。
+/// 主界面底部五个 Tab（iOS 18+ `Tab` + `TabView`）。
 struct MainTabView: View {
     var body: some View {
         TabView {
@@ -14,7 +11,7 @@ struct MainTabView: View {
                 DiscoverTabContent()
             }
             SwiftUI.Tab("点播", systemImage: "play.rectangle.fill") {
-                Tab()
+                OnDemandView()
             }
             SwiftUI.Tab("演员", systemImage: "person.2.fill") {
                 ActorTabContent()
