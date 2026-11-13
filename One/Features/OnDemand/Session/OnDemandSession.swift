@@ -14,8 +14,26 @@ final class OnDemandSession {
     private(set) var articlesLoading: Set<Int> = []
     private(set) var articlesLoadingMore: Set<Int> = []
 
-    private var articlesByTagID: [Int: PerTagArticles] = [:]
+    var listPublishedAt: String = MonthYear.now.apiString {
+        didSet {
+            guard oldValue != listPublishedAt else { return }
+            tagsArticles = [:]
+        }
+    }
 
+    var listSort: VodArticleSort = .likeNumber {
+        didSet {
+            guard oldValue != listSort else { return }
+            tagsArticles = [:]
+        }
+    }
+
+    /// 列表请求维度（分类、筛选、排序），供 `task(id:)` 触发重载。
+    var articleFetchKey: String {
+        "\(listPublishedAt)-\(listSort.rawValue)"
+    }
+
+    private var tagsArticles: [Int: TagsArticles] = [:]
     private let articlePageSize = 20
 
     private init() {}
@@ -39,7 +57,7 @@ final class OnDemandSession {
 
         do {
             tags = try await OneClient.getDemandTagList(base: base, token: token)
-            articlesByTagID = [:]
+            tagsArticles = [:]
         } catch {
             lastError = error.localizedDescription
         }
@@ -48,47 +66,37 @@ final class OnDemandSession {
     // MARK: - 文章列表
 
     func articles(for tagID: Int) -> [ArticleSummary] {
-        articlesByTagID[tagID]?.items ?? []
+        tagsArticles[tagID]?.items ?? []
     }
 
     func articleError(for tagID: Int) -> String? {
-        articlesByTagID[tagID]?.error
+        tagsArticles[tagID]?.error
     }
 
-    func isLoadingArticles(tagID: Int) -> Bool {
-        articlesLoading.contains(tagID)
-    }
-
-    func isLoadingMoreArticles(tagID: Int) -> Bool {
-        articlesLoadingMore.contains(tagID)
-    }
-
-    func hasMoreArticles(tagID: Int) -> Bool {
-        articlesByTagID[tagID]?.hasMore == true
-    }
+    func isLoadingArticles(tagID: Int) -> Bool { articlesLoading.contains(tagID) }
+    func isLoadingMoreArticles(tagID: Int) -> Bool { articlesLoadingMore.contains(tagID) }
+    func hasMoreArticles(tagID: Int) -> Bool { tagsArticles[tagID]?.hasMore == true }
 
     func showsArticlesEndFooter(tagID: Int) -> Bool {
-        guard let state = articlesByTagID[tagID], state.loaded else { return false }
+        guard let state = tagsArticles[tagID], state.loaded else { return false }
         return !state.hasMore
     }
 
     func loadArticles(for tagID: Int, force: Bool = false) async {
-        if force { articlesByTagID[tagID] = nil }
-        guard !articlesLoading.contains(tagID), articlesByTagID[tagID]?.loaded != true else { return }
+        if force { tagsArticles[tagID] = nil }
+        guard !articlesLoading.contains(tagID), tagsArticles[tagID]?.loaded != true else { return }
 
         articlesLoading.insert(tagID)
         defer { articlesLoading.remove(tagID) }
-
         await fetchArticlePage(tagID: tagID, page: 1, append: false)
     }
 
     func loadMoreArticles(for tagID: Int) async {
-        guard let state = articlesByTagID[tagID], state.loaded, state.hasMore else { return }
+        guard let state = tagsArticles[tagID], state.loaded, state.hasMore else { return }
         guard !articlesLoading.contains(tagID), !articlesLoadingMore.contains(tagID) else { return }
 
         articlesLoadingMore.insert(tagID)
         defer { articlesLoadingMore.remove(tagID) }
-
         await fetchArticlePage(tagID: tagID, page: state.nextPage, append: true)
     }
 
@@ -96,28 +104,38 @@ final class OnDemandSession {
 
     private func fetchArticlePage(tagID: Int, page: Int, append: Bool) async {
         guard let (base, token) = oneCredentials(tokenPath: OneAPI.discoveryPath) else {
-            if !append {
-                var state = articlesByTagID[tagID, default: PerTagArticles()]
-                state.recordError(credentialErrorMessage(tokenPath: OneAPI.discoveryPath))
-                articlesByTagID[tagID] = state
-            }
+            if !append { setError(credentialErrorMessage(tokenPath: OneAPI.discoveryPath), for: tagID) }
             return
         }
 
-        let request = DiscoveryRequest.vodList(demandTagID: tagID, page: page, size: articlePageSize)
+        let request = DiscoveryRequest.vodList(
+            demandTagID: tagID,
+            publishedAt: listPublishedAt,
+            sort: listSort.rawValue,
+            page: page,
+            size: articlePageSize
+        )
 
         do {
             let list = try await OneClient.articleDiscovery(base: base, token: token, request: request)
-            var state = articlesByTagID[tagID, default: PerTagArticles()]
-            state.mergePage(list, page: page, pageSize: articlePageSize, append: append)
-            articlesByTagID[tagID] = state
+            merge(list, tagID: tagID, page: page, append: append)
         } catch where !append {
-            var state = articlesByTagID[tagID, default: PerTagArticles()]
-            state.recordError(error.localizedDescription)
-            articlesByTagID[tagID] = state
+            setError(error.localizedDescription, for: tagID)
         } catch {
-            // 加载更多失败时保留已有列表，静默忽略。
+            // 加载更多失败：保留已有列表。
         }
+    }
+
+    private func merge(_ list: [ArticleSummary], tagID: Int, page: Int, append: Bool) {
+        var state = tagsArticles[tagID, default: TagsArticles()]
+        state.mergePage(list, page: page, pageSize: articlePageSize, append: append)
+        tagsArticles[tagID] = state
+    }
+
+    private func setError(_ message: String, for tagID: Int) {
+        var state = tagsArticles[tagID, default: TagsArticles()]
+        state.recordError(message)
+        tagsArticles[tagID] = state
     }
 
     private func oneCredentials(tokenPath: String) -> (URL, String)? {
@@ -130,36 +148,6 @@ final class OnDemandSession {
         if OneSession.shared.baseURL == nil {
             return OneClientError.baseNotReady.localizedDescription
         }
-        if TokensSession.shared.oneToken(forPath: tokenPath) == nil {
-            return OneClientError.missingToken.localizedDescription
-        }
         return OneClientError.missingToken.localizedDescription
-    }
-}
-
-private struct PerTagArticles {
-    var items: [ArticleSummary] = []
-    var error: String?
-    var nextPage = 2
-    var hasMore = true
-    var loaded = false
-
-    mutating func recordError(_ message: String) {
-        error = message
-        loaded = false
-    }
-
-    mutating func mergePage(_ list: [ArticleSummary], page: Int, pageSize: Int, append: Bool) {
-        error = nil
-        loaded = true
-        hasMore = list.count >= pageSize
-        nextPage = page + 1
-
-        if append {
-            let seen = Set(items.map(\.id))
-            items.append(contentsOf: list.filter { !seen.contains($0.id) })
-        } else {
-            items = list
-        }
     }
 }

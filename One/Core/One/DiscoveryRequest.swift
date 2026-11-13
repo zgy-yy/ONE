@@ -23,15 +23,21 @@ struct DiscoveryRequest: Sendable {
     /// 付费类型筛选，不传则不带该字段。
     var buyType: String?
 
-    /// 点播列表默认请求。
-    static func vodList(demandTagID: Int, page: Int = 1, size: Int = 20) -> DiscoveryRequest {
+    /// 点播列表请求（`publishedAt` 为 `YYYY-MM`；`sort` 如 `like_number` / `published_at`）。
+    static func vodList(
+        demandTagID: Int,
+        publishedAt: String,
+        sort: String,
+        page: Int = 1,
+        size: Int = 20
+    ) -> DiscoveryRequest {
         DiscoveryRequest(
-            publishedAt: "2026-11",
+            publishedAt: publishedAt,
             modelID: "6",
             demandTagID: demandTagID,
             size: size,
             page: page,
-            sort: "like_number",
+            sort: sort,
             buyType: nil
         )
     }

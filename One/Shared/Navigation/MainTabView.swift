@@ -20,6 +20,7 @@ struct MainTabView: View {
                 MineTabContent()
             }
         }
+        .tabBarMinimizeBehavior(.onScrollDown)
     }
 }
 

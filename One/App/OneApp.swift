@@ -6,7 +6,7 @@ import SwiftUI
 /// - `App` 协议：描述应用有哪些窗口/场景；`body` 返回 `Scene`。
 /// - `WindowGroup`：iOS 上通常就一个全屏窗口，根视图是 `ContentView`。
 @main
-struct MyApp: App {
+struct OneApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()

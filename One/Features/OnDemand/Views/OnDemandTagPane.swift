@@ -8,6 +8,10 @@ struct OnDemandTagPane: View {
     private var tagID: Int { tag.id }
     private var articles: [ArticleSummary] { session.articles(for: tagID) }
 
+    private var listLoadToken: String {
+        "\(tagID)-\(session.articleFetchKey)"
+    }
+
     var body: some View {
         Group {
             if session.isLoadingArticles(tagID: tagID), articles.isEmpty {
@@ -23,7 +27,7 @@ struct OnDemandTagPane: View {
             }
         }
         .onDemandPage()
-        .task(id: tagID) { await session.loadArticles(for: tagID) }
+        .task(id: listLoadToken) { await session.loadArticles(for: tagID) }
         .refreshable { await session.loadArticles(for: tagID, force: true) }
     }
 
@@ -48,7 +52,6 @@ struct OnDemandTagPane: View {
     private var listFooter: some View {
         if session.isLoadingMoreArticles(tagID: tagID) {
             ProgressView()
-                .tint(.white)
                 .onDemandListFooterRow()
         } else if session.showsArticlesEndFooter(tagID: tagID) {
             Text("没有更多了")
@@ -64,7 +67,7 @@ struct OnDemandTagPane: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(article.displayTitle)
                     .font(.body.weight(.medium))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
                     .lineLimit(2)
                 if let author = article.author, !author.isEmpty {
                     Text(author)

@@ -1,9 +1,11 @@
 import SwiftUI
 
-/// 点播顶部分类胶囊条。
+/// 点播顶部分类胶囊条（液态玻璃风格，与系统底部 `TabView` Tab 栏一致）。
 struct TagStrip: View {
     let tags: [DemandTag]
     @Binding var selectedTagID: Int?
+
+    @Namespace private var glassNamespace
 
     private var useFixedLayout: Bool { tags.count <= 5 }
 
@@ -15,8 +17,8 @@ struct TagStrip: View {
                 scrollableSegmentBar
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
     }
 
     private func segmentBar(expands: Bool) -> some View {
@@ -25,11 +27,12 @@ struct TagStrip: View {
                 ForEach(tags) { tag in
                     segmentButton(for: tag, expands: expands)
                         .id(tag.id)
+                        .glassEffectID(tag.id, in: glassNamespace)
                 }
             }
-            .padding(4)
+            .padding(6)
         }
-        .glassEffect(.regular, in: .capsule)
+        .glassEffect(.regular.interactive(), in: .capsule)
     }
 
     private var scrollableSegmentBar: some View {
@@ -50,7 +53,9 @@ struct TagStrip: View {
         let isSelected = selectedTagID == tag.id
 
         return Button {
-            selectedTagID = tag.id
+            withAnimation(.snappy(duration: 0.28)) {
+                selectedTagID = tag.id
+            }
         } label: {
             Text(tag.displayTitle)
                 .font(.subheadline.weight(isSelected ? .semibold : .regular))
@@ -64,6 +69,8 @@ struct TagStrip: View {
                     if isSelected {
                         Capsule(style: .continuous)
                             .glassEffect(.regular.interactive(), in: .capsule)
+                            .glassEffectID(tag.id, in: glassNamespace)
+                            .glassEffectTransition(.matchedGeometry)
                     }
                 }
                 .contentShape(Capsule())

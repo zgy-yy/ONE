@@ -21,16 +21,16 @@ struct OneCoverImage: View {
                     .scaledToFill()
             } else {
                 ZStack {
-                    Color(white: 0.12)
+                    Color(.secondarySystemFill)
                     Image(systemName: "photo")
-                        .foregroundStyle(Color(white: 0.35))
+                        .foregroundStyle(.tertiary)
                 }
             }
         }
         .frame(width: size.width, height: size.height)
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .task(id: path) {
-            await load()
+            // await load()
         }
     }
 

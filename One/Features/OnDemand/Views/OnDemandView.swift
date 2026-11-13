@@ -20,7 +20,6 @@ struct OnDemandView: View {
                     syncSelection(with: tags)
                 }
         }
-        .preferredColorScheme(.dark)
     }
 
     @ViewBuilder
@@ -36,14 +35,19 @@ struct OnDemandView: View {
         } else {
             tagPages
                 .safeAreaInset(edge: .top, spacing: 0) {
-                    TagStrip(tags: session.tags, selectedTagID: $selectedTagID)
+                    OnDemandTopBar(
+                        tags: session.tags,
+                        selectedTagID: $selectedTagID,
+                        session: session
+                    )
                 }
         }
     }
 
     private var tagPages: some View {
         TabView(selection: pageSelection) {
-            ForEach(Array(session.tags.enumerated()), id: \.element.id) { index, tag in
+            ForEach(Array(session.tags.enumerated()), id: \.element.id) {
+                index, tag in
                 OnDemandTagPane(tag: tag)
                     .tag(index)
             }
@@ -56,7 +60,8 @@ struct OnDemandView: View {
         Binding(
             get: {
                 guard let selectedTagID,
-                      let index = session.tags.firstIndex(where: { $0.id == selectedTagID }) else { return 0 }
+                    let index = session.tags.firstIndex(where: { $0.id == selectedTagID })
+                else { return 0 }
                 return index
             },
             set: { index in

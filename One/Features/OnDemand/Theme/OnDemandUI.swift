@@ -1,14 +1,12 @@
 import SwiftUI
 
 enum OnDemandUI {
-    static let pageBackground = Color.black
-    static let listRowBackground = Color(white: 0.08)
-    static let listRowSeparator = Color(white: 0.15)
-    private static let emptyMuted = Color(white: 0.35)
+    static let pageBackground = Color(.systemBackground)
+    static let listRowBackground = Color(.secondarySystemGroupedBackground)
+    static let listRowSeparator = Color(.separator)
 
     static func loading(_ message: String) -> some View {
         ProgressView(message)
-            .tint(.white)
     }
 
     @ViewBuilder
@@ -26,10 +24,10 @@ enum OnDemandUI {
         VStack(spacing: 16) {
             Image(systemName: icon)
                 .font(.system(size: 56, weight: .light))
-                .foregroundStyle(emptyMuted)
+                .foregroundStyle(.tertiary)
             Text(title)
                 .font(.title3)
-                .foregroundStyle(emptyMuted)
+                .foregroundStyle(.secondary)
         }
     }
 }
