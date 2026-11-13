@@ -1,10 +1,7 @@
 import SwiftUI
 
-enum OnDemandUI {
-    static let pageBackground = Color(.systemBackground)
-    static let listRowBackground = Color(.secondarySystemGroupedBackground)
-    static let listRowSeparator = Color(.separator)
-
+/// 全 App 共用的页面布局与状态占位（颜色一律用语义色，不按功能模块单独配色）。
+enum AppUI {
     static func loading(_ message: String) -> some View {
         ProgressView(message)
     }
@@ -33,15 +30,23 @@ enum OnDemandUI {
 }
 
 extension View {
-    func onDemandPage() -> some View {
+    /// 铺满可用区域，并使用系统页面背景色。
+    func fillPage() -> some View {
         frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(OnDemandUI.pageBackground)
+            .background(Color(.systemBackground))
     }
 
-    func onDemandListFooterRow() -> some View {
+    /// `List` 底部状态行（加载更多、没有更多了等）。
+    func listFooterRow() -> some View {
         frame(maxWidth: .infinity)
             .padding(.vertical, 8)
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
+    }
+
+    /// 普通 `List` 数据行的背景与分隔线。
+    func styledListRow() -> some View {
+        listRowBackground(Color(.secondarySystemGroupedBackground))
+            .listRowSeparatorTint(Color(.separator))
     }
 }

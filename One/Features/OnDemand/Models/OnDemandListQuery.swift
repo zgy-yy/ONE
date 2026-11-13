@@ -17,6 +17,9 @@ enum VodArticleSort: String, CaseIterable, Identifiable, Hashable {
 
 /// 列表筛选月份 `YYYY-MM`。
 struct MonthYear: Equatable {
+    /// 接口允许的最早月份。
+    static let earliest = MonthYear(year: 2019, month: 11)
+
     var year: Int
     var month: Int
 
@@ -49,23 +52,41 @@ struct MonthYear: Equatable {
         let now = Date()
         let currentYear = calendar.component(.year, from: now)
         let currentMonth = calendar.component(.month, from: now)
-        var y = min(max(year, currentYear - 5), currentYear)
+
+        var y = min(max(year, MonthYear.earliest.year), currentYear)
         var m = month
-        let months = MonthYear(year: y, month: 1).selectableMonths
-        if !months.contains(m), let last = months.last { m = last }
-        if y == currentYear { m = min(m, currentMonth) }
+
+        if y == MonthYear.earliest.year {
+            m = max(m, MonthYear.earliest.month)
+        }
+        if y == currentYear {
+            m = min(m, currentMonth)
+        }
+
+        let months = MonthYear(year: y, month: m).selectableMonths
+        if !months.contains(m), let nearest = months.min(by: { abs($0 - m) < abs($1 - m) }) {
+            m = nearest
+        }
+
         return MonthYear(year: y, month: m)
     }
 
     static var selectableYears: [Int] {
         let currentYear = Calendar.current.component(.year, from: Date())
-        return Array((currentYear - 5)...currentYear).reversed()
+        return Array(MonthYear.earliest.year...currentYear).reversed()
     }
 
     var selectableMonths: [Int] {
         let calendar = Calendar.current
         let currentYear = calendar.component(.year, from: Date())
         let currentMonth = calendar.component(.month, from: Date())
+
+        if year == MonthYear.earliest.year {
+            if year == currentYear {
+                return Array(MonthYear.earliest.month...currentMonth)
+            }
+            return Array(MonthYear.earliest.month...12)
+        }
         if year < currentYear { return Array(1...12) }
         if year == currentYear { return Array(1...currentMonth) }
         return []

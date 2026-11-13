@@ -7,7 +7,7 @@ enum OneClient {
     /// 依次 POST `domain/check`，选第一条可用线路，返回带 `/v2.5` 的基址。
     static func pickBaseURL() async throws -> URL {
         for host in OneTargets.hostBases {
-            let url = TokensAPIPath.join(base: host, path: "domain/check")
+            let url = APIURL.join(base: host, path: "domain/check")
             let (statusCode, _) = await HTTPClient.postStatusCode(from: url, timeout: probeTimeout)
             if let statusCode, statusCode < 500 {
                 let root = host.hasSuffix("/") ? String(host.dropLast()) : host
@@ -35,7 +35,7 @@ enum OneClient {
         token: String,
         data: [String: String]? = nil
     ) async throws -> T {
-        let url = TokensAPIPath.join(base: base.absoluteString, path: path)
+        let url = APIURL.join(base: base.absoluteString, path: path)
         let headers = OneCrypto.makeRequestHeaders(token: token)
         let body = try data.map { try OneCrypto.encryptMapBody($0) }
         return try await HTTPClient.postText(

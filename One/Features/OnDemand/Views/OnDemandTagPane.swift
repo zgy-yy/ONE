@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 单个点播分类下的文章列表（横向 `TabView` 一页）。
+/// 单个点播分类下的文章列表。
 struct OnDemandTagPane: View {
     let tag: DemandTag
     @Bindable private var session = OnDemandSession.shared
@@ -15,18 +15,18 @@ struct OnDemandTagPane: View {
     var body: some View {
         Group {
             if session.isLoadingArticles(tagID: tagID), articles.isEmpty {
-                OnDemandUI.loading("加载列表…")
+                AppUI.loading("加载列表…")
             } else if let error = session.articleError(for: tagID), articles.isEmpty {
-                OnDemandUI.loadFailure(message: error) {
+                AppUI.loadFailure(message: error) {
                     Task { await session.loadArticles(for: tagID, force: true) }
                 }
             } else if articles.isEmpty {
-                OnDemandUI.emptyState(icon: "circle.slash", title: "无内容")
+                AppUI.emptyState(icon: "circle.slash", title: "无内容")
             } else {
                 articleList
             }
         }
-        .onDemandPage()
+        .fillPage()
         .task(id: listLoadToken) { await session.loadArticles(for: tagID) }
         .refreshable { await session.loadArticles(for: tagID, force: true) }
     }
@@ -35,8 +35,7 @@ struct OnDemandTagPane: View {
         List {
             ForEach(articles) { article in
                 articleRow(article)
-                    .listRowBackground(OnDemandUI.listRowBackground)
-                    .listRowSeparatorTint(OnDemandUI.listRowSeparator)
+                    .styledListRow()
                     .onAppear {
                         guard article.id == articles.last?.id, session.hasMoreArticles(tagID: tagID) else { return }
                         Task { await session.loadMoreArticles(for: tagID) }
@@ -52,12 +51,12 @@ struct OnDemandTagPane: View {
     private var listFooter: some View {
         if session.isLoadingMoreArticles(tagID: tagID) {
             ProgressView()
-                .onDemandListFooterRow()
+                .listFooterRow()
         } else if session.showsArticlesEndFooter(tagID: tagID) {
             Text("没有更多了")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
-                .onDemandListFooterRow()
+                .listFooterRow()
         }
     }
 

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 点播根页面：顶部分类 + 左右滑动切换列表。
+/// 点播根页面：顶部分类胶囊切换列表（内容区不横向滑页）。
 struct OnDemandView: View {
     @Bindable private var session = OnDemandSession.shared
     @State private var selectedTagID: Int?
@@ -8,7 +8,7 @@ struct OnDemandView: View {
     var body: some View {
         NavigationStack {
             content
-                .onDemandPage()
+                .fillPage()
                 .refreshable {
                     await session.refresh()
                     if let selectedTagID {
@@ -25,15 +25,15 @@ struct OnDemandView: View {
     @ViewBuilder
     private var content: some View {
         if session.isLoading, session.tags.isEmpty {
-            OnDemandUI.loading("加载点播分类…")
+            AppUI.loading("加载点播分类…")
         } else if let lastError = session.lastError, session.tags.isEmpty {
-            OnDemandUI.loadFailure(message: lastError) {
+            AppUI.loadFailure(message: lastError) {
                 Task { await session.refresh() }
             }
         } else if session.tags.isEmpty {
             ContentUnavailableView("暂无分类", systemImage: "tag")
         } else {
-            tagPages
+            tagContent
                 .safeAreaInset(edge: .top, spacing: 0) {
                     OnDemandTopBar(
                         tags: session.tags,
@@ -44,31 +44,15 @@ struct OnDemandView: View {
         }
     }
 
-    private var tagPages: some View {
-        TabView(selection: pageSelection) {
-            ForEach(Array(session.tags.enumerated()), id: \.element.id) {
-                index, tag in
-                OnDemandTagPane(tag: tag)
-                    .tag(index)
-            }
+    @ViewBuilder
+    private var tagContent: some View {
+        if let selectedTagID,
+           let tag = session.tags.first(where: { $0.id == selectedTagID }) {
+            OnDemandTagPane(tag: tag)
+                .id(selectedTagID)
+        } else {
+            Color.clear
         }
-        .tabViewStyle(.page(indexDisplayMode: .never))
-    }
-
-    /// `TabView` 用连续下标；`selectedTagID` 用接口 id，避免点 A 亮 B。
-    private var pageSelection: Binding<Int> {
-        Binding(
-            get: {
-                guard let selectedTagID,
-                    let index = session.tags.firstIndex(where: { $0.id == selectedTagID })
-                else { return 0 }
-                return index
-            },
-            set: { index in
-                guard session.tags.indices.contains(index) else { return }
-                selectedTagID = session.tags[index].id
-            }
-        )
     }
 
     private func syncSelection(with tags: [DemandTag]) {

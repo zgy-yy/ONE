@@ -43,8 +43,7 @@ struct EntryView: View {
             }
             Spacer()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemBackground))
+        .fillPage()
         .task {
             await bootstrap(force: false)
         }

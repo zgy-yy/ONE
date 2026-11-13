@@ -1,22 +1,5 @@
 import Foundation
 
-/// 接口路径常量、通用响应壳 `OneApiEnvelope`、列表/分类模型。
-enum OneAPI {
-    /// 相对 `OneTargets.bases`（已含 `v2.5`）
-    static let demandTagListPath = "navigation/getDemandTagList"
-    static let discoveryPath = "article/discovery"
-
-    static func isSuccess(code: Int?) -> Bool {
-        code == 200 || code == 400
-    }
-}
-
-struct OneApiEnvelope<T: Decodable>: Decodable {
-    let code: Int?
-    let message: String?
-    let data: T?
-}
-
 struct DemandTag: Decodable, Identifiable, Hashable {
     let id: Int
     let title: String?
@@ -38,7 +21,6 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
         return "ID \(id)"
     }
     let author: String?
-    /// 接口多为 `"2026-11-05 03:23:00"` 字符串。
     let publishedAt: String?
     let modelID: Int?
     let summary: String?

@@ -1,11 +1,9 @@
 import SwiftUI
 
-/// 点播顶部分类胶囊条（液态玻璃风格，与系统底部 `TabView` Tab 栏一致）。
+/// 点播顶部分类胶囊条（点击切换）。
 struct TagStrip: View {
     let tags: [DemandTag]
     @Binding var selectedTagID: Int?
-
-    @Namespace private var glassNamespace
 
     private var useFixedLayout: Bool { tags.count <= 5 }
 
@@ -14,7 +12,9 @@ struct TagStrip: View {
             if useFixedLayout {
                 segmentBar(expands: true)
             } else {
-                scrollableSegmentBar
+                ScrollView(.horizontal, showsIndicators: false) {
+                    segmentBar(expands: false)
+                }
             }
         }
         .padding(.horizontal, 16)
@@ -26,8 +26,6 @@ struct TagStrip: View {
             HStack(spacing: 4) {
                 ForEach(tags) { tag in
                     segmentButton(for: tag, expands: expands)
-                        .id(tag.id)
-                        .glassEffectID(tag.id, in: glassNamespace)
                 }
             }
             .padding(6)
@@ -35,27 +33,11 @@ struct TagStrip: View {
         .glassEffect(.regular.interactive(), in: .capsule)
     }
 
-    private var scrollableSegmentBar: some View {
-        ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                segmentBar(expands: false)
-            }
-            .onChange(of: selectedTagID) { _, newID in
-                guard let newID else { return }
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    proxy.scrollTo(newID, anchor: .center)
-                }
-            }
-        }
-    }
-
     private func segmentButton(for tag: DemandTag, expands: Bool) -> some View {
         let isSelected = selectedTagID == tag.id
 
         return Button {
-            withAnimation(.snappy(duration: 0.28)) {
-                selectedTagID = tag.id
-            }
+            selectedTagID = tag.id
         } label: {
             Text(tag.displayTitle)
                 .font(.subheadline.weight(isSelected ? .semibold : .regular))
@@ -68,12 +50,9 @@ struct TagStrip: View {
                 .background {
                     if isSelected {
                         Capsule(style: .continuous)
-                            .glassEffect(.regular.interactive(), in: .capsule)
-                            .glassEffectID(tag.id, in: glassNamespace)
-                            .glassEffectTransition(.matchedGeometry)
+                            .fill(.quaternary)
                     }
                 }
-                .contentShape(Capsule())
         }
         .buttonStyle(.plain)
     }

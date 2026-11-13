@@ -22,7 +22,7 @@ enum TokensClient {
     static func pickBaseURL() async throws -> URL {
         var probes: [LineProbe] = []
         for base in TokensTargets.bases {
-            let url = TokensAPIPath.join(base: base, path: "box/api/ping")
+            let url = APIURL.join(base: base, path: TokensAPI.pingPath)
             let (statusCode, error) = await HTTPClient.getStatusCode(from: url, timeout: pingTimeout)
             probes.append(
                 LineProbe(
@@ -42,12 +42,11 @@ enum TokensClient {
     /// `GET box/api/splash` → token 列表等配置
     static func fetch() async throws -> TokensResult {
         let root = try await pickBaseURL()
-        let path = "box/api/splash"
-        let url = TokensAPIPath.join(base: root.absoluteString, path: path)
+        let url = APIURL.join(base: root.absoluteString, path: TokensAPI.splashPath)
         let envelope = try await HTTPClient.get(
             SplashEnvelope.self,
             from: url,
-            headerFields: TokensCrypto.makeRequestHeaders(path: path),
+            headerFields: TokensCrypto.makeRequestHeaders(path: TokensAPI.splashPath),
             responseDecoder: HTTPResponseDecoders.tokens
         )
         return TokensResult(baseURL: root, envelope: envelope)
