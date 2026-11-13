@@ -1,14 +1,17 @@
 import SwiftUI
 
 /// 点播根页面：顶部分类胶囊切换列表（内容区不横向滑页）。
-struct OnDemandView: View {
-    @Bindable private var session = OnDemandSession.shared
+struct VodTabContent: View {
+    @Bindable private var session = VodSession.shared
     @State private var selectedTagID: Int?
 
     var body: some View {
         NavigationStack {
             content
                 .fillPage()
+                .navigationDestination(for: ArticleSummary.self) { article in
+                    ArticleDetailView(article: article)
+                }
                 .refreshable {
                     await session.refresh()
                     if let selectedTagID {
@@ -35,7 +38,7 @@ struct OnDemandView: View {
         } else {
             tagContent
                 .safeAreaInset(edge: .top, spacing: 0) {
-                    OnDemandTopBar(
+                    TopBar(
                         tags: session.tags,
                         selectedTagID: $selectedTagID,
                         session: session
@@ -48,7 +51,7 @@ struct OnDemandView: View {
     private var tagContent: some View {
         if let selectedTagID,
            let tag = session.tags.first(where: { $0.id == selectedTagID }) {
-            OnDemandTagPane(tag: tag)
+            TagPane(tag: tag)
                 .id(selectedTagID)
         } else {
             Color.clear
@@ -62,5 +65,5 @@ struct OnDemandView: View {
 }
 
 #Preview {
-    OnDemandView()
+    VodTabContent()
 }

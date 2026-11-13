@@ -56,11 +56,7 @@ enum OneClient {
             token: token,
             data: nil
         )
-        guard OneAPI.isSuccess(code: envelope.code) else {
-            let detail = envelope.message ?? "code \(envelope.code.map(String.init) ?? "nil")"
-            throw OneClientError.apiRejected(detail)
-        }
-        return envelope.data ?? []
+        return try unwrap(envelope) ?? []
     }
 
     static func articleDiscovery(
@@ -75,11 +71,29 @@ enum OneClient {
             token: token,
             data: request.formBody()
         )
+        return try unwrap(envelope)?.articles ?? []
+    }
+
+    static func articleDetail(base: URL, token: String, articleID: Int) async throws -> ArticleDetail {
+        let envelope = try await post(
+            OneApiEnvelope<ArticleDetail>.self,
+            base: base,
+            path: OneAPI.detailPath,
+            token: token,
+            data: ["id": String(articleID)]
+        )
+        guard let article = try unwrap(envelope) else {
+            throw OneClientError.apiRejected("详情为空")
+        }
+        return article
+    }
+
+    private static func unwrap<T>(_ envelope: OneApiEnvelope<T>) throws -> T? {
         guard OneAPI.isSuccess(code: envelope.code) else {
             let detail = envelope.message ?? "code \(envelope.code.map(String.init) ?? "nil")"
             throw OneClientError.apiRejected(detail)
         }
-        return envelope.data?.articles ?? []
+        return envelope.data
     }
 }
 

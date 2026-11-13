@@ -96,6 +96,11 @@ struct MonthYear: Equatable {
         "\(year)年\(month)月"
     }
 
+    /// 列表分区头：把接口月份 `YYYY-MM` 格式化为展示文案。
+    static func sectionTitle(forAPIString apiMonth: String) -> String {
+        MonthYear(apiString: apiMonth)?.displayTitle ?? apiMonth
+    }
+
     var selectableMonths: [Int] {
         let calendar = Calendar.current
         let currentYear = calendar.component(.year, from: Date())

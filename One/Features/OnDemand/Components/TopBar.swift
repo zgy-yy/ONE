@@ -1,14 +1,14 @@
 import SwiftUI
 
 /// 点播页顶栏：筛选 + 分类胶囊。
-struct OnDemandTopBar: View {
+struct TopBar: View {
     let tags: [DemandTag]
     @Binding var selectedTagID: Int?
-    @Bindable var session: OnDemandSession
+    @Bindable var session: VodSession
 
     var body: some View {
         VStack(spacing: 0) {
-            OnDemandFilterBar(session: session)
+            FilterBar(session: session)
             TagStrip(tags: tags, selectedTagID: $selectedTagID)
         }
     }

@@ -1,9 +1,9 @@
 import SwiftUI
 
 /// 单个点播分类下的文章列表。
-struct OnDemandTagPane: View {
+struct TagPane: View {
     let tag: DemandTag
-    @Bindable private var session = OnDemandSession.shared
+    @Bindable private var session = VodSession.shared
 
     private var tagID: Int { tag.id }
     private var sections: [ArticleMonthSection] { session.articleSections(for: tagID) }
@@ -41,15 +41,17 @@ struct OnDemandTagPane: View {
                 ForEach(sections) { section in
                     Section {
                         ForEach(section.articles) { article in
-                            articleRow(article)
-                                .styledListRow()
-                                .onAppear {
-                                    guard isListEnd(article, in: section) else { return }
-                                    Task { await session.loadMoreArticles(for: tagID) }
-                                }
+                            NavigationLink(value: article) {
+                                articleRow(article)
+                            }
+                            .styledListRow()
+                            .onAppear {
+                                guard isListEnd(article, in: section) else { return }
+                                Task { await session.loadMoreArticles(for: tagID) }
+                            }
                         }
                     } header: {
-                        Text(MonthYear(apiString: section.month)?.displayTitle ?? section.month)
+                        Text(MonthYear.sectionTitle(forAPIString: section.month))
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.secondary)
                             .textCase(nil)
@@ -105,22 +107,7 @@ struct OnDemandTagPane: View {
     private func articleRow(_ article: ArticleSummary) -> some View {
         HStack(alignment: .top, spacing: 12) {
             OneCoverImage(path: article.thumb)
-            VStack(alignment: .leading, spacing: 6) {
-                Text(article.displayTitle)
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(.primary)
-                    .lineLimit(2)
-                if let author = article.author, !author.isEmpty {
-                    Text(author)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                if let publishedAt = article.publishedAt, !publishedAt.isEmpty {
-                    Text(publishedAt)
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-            }
+            article.rowMeta
         }
     }
 }

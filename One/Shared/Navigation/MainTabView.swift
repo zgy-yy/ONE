@@ -11,7 +11,7 @@ struct MainTabView: View {
                 DiscoverTabContent()
             }
             SwiftUI.Tab("点播", systemImage: "play.rectangle.fill") {
-                OnDemandView()
+                VodTabContent()
             }
             SwiftUI.Tab("演员", systemImage: "person.2.fill") {
                 ActorTabContent()

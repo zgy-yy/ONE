@@ -33,7 +33,53 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
     }
 }
 
-/// `data` 为文章数组，或 `{ "info": [...] }`。
+/// `article/detail` 完整稿件（含播放路径；与 one-web `resolvePlayUrls` 字段一致）。
+struct ArticleDetail: Decodable, Identifiable {
+    let id: Int
+    let title: String?
+    let thumb: String?
+    let author: String?
+    let publishedAt: String?
+    let summary: String?
+    let content: String?
+    let videoFile: String?
+    let videoHls: String?
+    let video: String?
+    let previewVideo: String?
+    let videos: [ArticleVideoItem]?
+
+    var displayTitle: String {
+        if let title, !title.isEmpty { return title }
+        return "ID \(id)"
+    }
+
+    var displayBody: String? {
+        if let content, !content.isEmpty { return content }
+        if let summary, !summary.isEmpty { return summary }
+        return nil
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, thumb, author, content, video, videos
+        case publishedAt = "published_at"
+        case summary = "description"
+        case videoFile = "video_file"
+        case videoHls = "video_hls"
+        case previewVideo = "preview_video"
+    }
+}
+
+struct ArticleVideoItem: Decodable {
+    let title: String?
+    let videoFile: String?
+
+    enum CodingKeys: String, CodingKey {
+        case title
+        case videoFile = "video_file"
+    }
+}
+
+/// `article/discovery` 的 `data`：文章数组，或 `{ "info": [...] }`。
 struct DiscoveryListPayload: Decodable {
     let articles: [ArticleSummary]
 

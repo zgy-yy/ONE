@@ -4,8 +4,8 @@ import Observation
 /// 点播（On-demand）模块状态。
 @MainActor
 @Observable
-final class OnDemandSession {
-    static let shared = OnDemandSession()
+final class VodSession {
+    static let shared = VodSession()
 
     private(set) var tags: [DemandTag] = []
     private(set) var isLoading = false
@@ -45,13 +45,13 @@ final class OnDemandSession {
         lastError = nil
         defer { isLoading = false }
 
-        guard let (base, token) = oneCredentials(tokenPath: OneAPI.demandTagListPath) else {
-            lastError = credentialErrorMessage()
+        guard let creds = OneCredentials.pair(tokenPath: OneAPI.demandTagListPath) else {
+            lastError = OneCredentials.readinessError
             return
         }
 
         do {
-            tags = try await OneClient.getDemandTagList(base: base, token: token)
+            tags = try await OneClient.getDemandTagList(base: creds.base, token: creds.token)
             tagsArticles = [:]
         } catch {
             lastError = error.localizedDescription
@@ -144,8 +144,8 @@ final class OnDemandSession {
     // MARK: - 网络
 
     private func fetchArticlePage(tagID: Int, month: String, page: Int, newSection: Bool) async {
-        guard let (base, token) = oneCredentials(tokenPath: OneAPI.discoveryPath) else {
-            if page == 1, newSection { setError(credentialErrorMessage(), for: tagID) }
+        guard let creds = OneCredentials.pair(tokenPath: OneAPI.discoveryPath) else {
+            if page == 1, newSection { setError(OneCredentials.readinessError, for: tagID) }
             return
         }
 
@@ -158,7 +158,7 @@ final class OnDemandSession {
         )
 
         do {
-            let list = try await OneClient.articleDiscovery(base: base, token: token, request: request)
+            let list = try await OneClient.articleDiscovery(base: creds.base, token: creds.token, request: request)
             var state = tagsArticles[tagID, default: TagsArticles()]
             state.mergePage(month: month, list: list, page: page, pageSize: articlePageSize, newSection: newSection)
             tagsArticles[tagID] = state
@@ -173,16 +173,4 @@ final class OnDemandSession {
         tagsArticles[tagID] = state
     }
 
-    private func oneCredentials(tokenPath: String) -> (URL, String)? {
-        guard let base = OneSession.shared.baseURL,
-              let token = TokensSession.shared.oneToken(forPath: tokenPath) else { return nil }
-        return (base, token)
-    }
-
-    private func credentialErrorMessage() -> String {
-        if OneSession.shared.baseURL == nil {
-            return OneClientError.baseNotReady.localizedDescription
-        }
-        return OneClientError.missingToken.localizedDescription
-    }
 }

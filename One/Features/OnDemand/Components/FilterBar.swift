@@ -1,14 +1,17 @@
 import SwiftUI
 
-struct OnDemandFilterBar: View {
-    @Bindable var session: OnDemandSession
+struct FilterBar: View {
+    @Bindable var session: VodSession
     @State private var showMonthPicker = false
     var body: some View {
         HStack(spacing: 12) {
             Button {
                 showMonthPicker = true
             } label: {
-                Label(session.listPublishedAt, systemImage: "calendar")
+                Label(
+                    MonthYear.sectionTitle(forAPIString: session.listPublishedAt),
+                    systemImage: "calendar"
+                )
                     .font(.subheadline.monospacedDigit())
                     .foregroundStyle(.primary)
             }
