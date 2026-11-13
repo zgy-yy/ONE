@@ -76,6 +76,26 @@ struct MonthYear: Equatable {
         return Array(MonthYear.earliest.year...currentYear).reversed()
     }
 
+    /// 上一月；不早于 `earliest` 时返回 `nil`。
+    var previous: MonthYear? {
+        var calendar = Calendar.current
+        calendar.timeZone = .current
+        guard let start = calendar.date(from: DateComponents(year: year, month: month, day: 1)),
+              let prev = calendar.date(byAdding: .month, value: -1, to: start) else { return nil }
+        let candidate = MonthYear(
+            year: calendar.component(.year, from: prev),
+            month: calendar.component(.month, from: prev)
+        )
+        let min = MonthYear.earliest
+        if candidate.year < min.year { return nil }
+        if candidate.year == min.year, candidate.month < min.month { return nil }
+        return candidate
+    }
+
+    var displayTitle: String {
+        "\(year)年\(month)月"
+    }
+
     var selectableMonths: [Int] {
         let calendar = Calendar.current
         let currentYear = calendar.component(.year, from: Date())

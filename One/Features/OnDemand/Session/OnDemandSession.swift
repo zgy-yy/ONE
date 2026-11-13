@@ -14,12 +14,8 @@ final class OnDemandSession {
     private(set) var articlesLoading: Set<Int> = []
     private(set) var articlesLoadingMore: Set<Int> = []
 
-    var listPublishedAt: String = MonthYear.now.apiString {
-        didSet {
-            guard oldValue != listPublishedAt else { return }
-            tagsArticles = [:]
-        }
-    }
+    /// 顶栏锚定/跳转月份；已有分区时由列表滚动，否则重载。
+    var listPublishedAt: String = MonthYear.now.apiString
 
     var listSort: VodArticleSort = .likeNumber {
         didSet {
@@ -28,7 +24,6 @@ final class OnDemandSession {
         }
     }
 
-    /// 列表请求维度（分类、筛选、排序），供 `task(id:)` 触发重载。
     var articleFetchKey: String {
         "\(listPublishedAt)-\(listSort.rawValue)"
     }
@@ -51,7 +46,7 @@ final class OnDemandSession {
         defer { isLoading = false }
 
         guard let (base, token) = oneCredentials(tokenPath: OneAPI.demandTagListPath) else {
-            lastError = credentialErrorMessage(tokenPath: OneAPI.demandTagListPath)
+            lastError = credentialErrorMessage()
             return
         }
 
@@ -65,8 +60,8 @@ final class OnDemandSession {
 
     // MARK: - 文章列表
 
-    func articles(for tagID: Int) -> [ArticleSummary] {
-        tagsArticles[tagID]?.items ?? []
+    func articleSections(for tagID: Int) -> [ArticleMonthSection] {
+        tagsArticles[tagID]?.sections ?? []
     }
 
     func articleError(for tagID: Int) -> String? {
@@ -75,11 +70,10 @@ final class OnDemandSession {
 
     func isLoadingArticles(tagID: Int) -> Bool { articlesLoading.contains(tagID) }
     func isLoadingMoreArticles(tagID: Int) -> Bool { articlesLoadingMore.contains(tagID) }
-    func hasMoreArticles(tagID: Int) -> Bool { tagsArticles[tagID]?.hasMore == true }
 
     func showsArticlesEndFooter(tagID: Int) -> Bool {
         guard let state = tagsArticles[tagID], state.loaded else { return false }
-        return !state.hasMore
+        return state.fullyExhausted
     }
 
     func loadArticles(for tagID: Int, force: Bool = false) async {
@@ -88,29 +82,76 @@ final class OnDemandSession {
 
         articlesLoading.insert(tagID)
         defer { articlesLoading.remove(tagID) }
-        await fetchArticlePage(tagID: tagID, page: 1, append: false)
+
+        var state = TagsArticles()
+        state.reset()
+        tagsArticles[tagID] = state
+
+        await fetchArticlePage(tagID: tagID, month: listPublishedAt, page: 1, newSection: true)
+        await advancePastEmptyMonths(tagID: tagID)
+        markFullyExhaustedIfNeeded(tagID: tagID)
     }
 
     func loadMoreArticles(for tagID: Int) async {
-        guard let state = tagsArticles[tagID], state.loaded, state.hasMore else { return }
+        guard let state = tagsArticles[tagID], state.loaded, state.canLoadMore else { return }
         guard !articlesLoading.contains(tagID), !articlesLoadingMore.contains(tagID) else { return }
+        guard let next = nextPageRequest(for: state) else {
+            markFullyExhaustedIfNeeded(tagID: tagID)
+            return
+        }
 
         articlesLoadingMore.insert(tagID)
         defer { articlesLoadingMore.remove(tagID) }
-        await fetchArticlePage(tagID: tagID, page: state.nextPage, append: true)
+
+        await fetchArticlePage(tagID: tagID, month: next.month, page: next.page, newSection: next.newSection)
+        markFullyExhaustedIfNeeded(tagID: tagID)
+    }
+
+    // MARK: - 分页
+
+    private struct PageRequest {
+        let month: String
+        let page: Int
+        let newSection: Bool
+    }
+
+    private func nextPageRequest(for state: TagsArticles) -> PageRequest? {
+        guard let tail = state.sections.last else { return nil }
+        if !tail.monthExhausted {
+            return PageRequest(month: tail.month, page: tail.nextPage, newSection: false)
+        }
+        guard let month = MonthYear(apiString: tail.month)?.previous else { return nil }
+        return PageRequest(month: month.apiString, page: 1, newSection: true)
+    }
+
+    /// 锚定月无文章时继续拉更早月份，直到有数据或无法继续。
+    private func advancePastEmptyMonths(tagID: Int) async {
+        while tagsArticles[tagID]?.canLoadMore == true {
+            guard let tail = tagsArticles[tagID]?.sections.last, tail.monthExhausted, tail.articles.isEmpty else { break }
+            await loadMoreArticles(for: tagID)
+        }
+    }
+
+    private func markFullyExhaustedIfNeeded(tagID: Int) {
+        guard var state = tagsArticles[tagID],
+              let tail = state.sections.last,
+              tail.monthExhausted,
+              MonthYear(apiString: tail.month)?.previous == nil else { return }
+        state.fullyExhausted = true
+        tagsArticles[tagID] = state
     }
 
     // MARK: - 网络
 
-    private func fetchArticlePage(tagID: Int, page: Int, append: Bool) async {
+    private func fetchArticlePage(tagID: Int, month: String, page: Int, newSection: Bool) async {
         guard let (base, token) = oneCredentials(tokenPath: OneAPI.discoveryPath) else {
-            if !append { setError(credentialErrorMessage(tokenPath: OneAPI.discoveryPath), for: tagID) }
+            if page == 1, newSection { setError(credentialErrorMessage(), for: tagID) }
             return
         }
 
         let request = DiscoveryRequest.vodList(
             demandTagID: tagID,
-            publishedAt: listPublishedAt,
+            publishedAt: month,
             sort: listSort.rawValue,
             page: page,
             size: articlePageSize
@@ -118,18 +159,12 @@ final class OnDemandSession {
 
         do {
             let list = try await OneClient.articleDiscovery(base: base, token: token, request: request)
-            merge(list, tagID: tagID, page: page, append: append)
-        } catch where !append {
-            setError(error.localizedDescription, for: tagID)
+            var state = tagsArticles[tagID, default: TagsArticles()]
+            state.mergePage(month: month, list: list, page: page, pageSize: articlePageSize, newSection: newSection)
+            tagsArticles[tagID] = state
         } catch {
-            // 加载更多失败：保留已有列表。
+            if page == 1, newSection { setError(error.localizedDescription, for: tagID) }
         }
-    }
-
-    private func merge(_ list: [ArticleSummary], tagID: Int, page: Int, append: Bool) {
-        var state = tagsArticles[tagID, default: TagsArticles()]
-        state.mergePage(list, page: page, pageSize: articlePageSize, append: append)
-        tagsArticles[tagID] = state
     }
 
     private func setError(_ message: String, for tagID: Int) {
@@ -144,7 +179,7 @@ final class OnDemandSession {
         return (base, token)
     }
 
-    private func credentialErrorMessage(tokenPath: String) -> String {
+    private func credentialErrorMessage() -> String {
         if OneSession.shared.baseURL == nil {
             return OneClientError.baseNotReady.localizedDescription
         }

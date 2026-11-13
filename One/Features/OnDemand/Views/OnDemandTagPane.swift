@@ -6,21 +6,25 @@ struct OnDemandTagPane: View {
     @Bindable private var session = OnDemandSession.shared
 
     private var tagID: Int { tag.id }
-    private var articles: [ArticleSummary] { session.articles(for: tagID) }
+    private var sections: [ArticleMonthSection] { session.articleSections(for: tagID) }
 
     private var listLoadToken: String {
         "\(tagID)-\(session.articleFetchKey)"
     }
 
+    private var hasNoArticles: Bool {
+        sections.isEmpty || sections.allSatisfy(\.articles.isEmpty)
+    }
+
     var body: some View {
         Group {
-            if session.isLoadingArticles(tagID: tagID), articles.isEmpty {
+            if session.isLoadingArticles(tagID: tagID), sections.isEmpty {
                 AppUI.loading("加载列表…")
-            } else if let error = session.articleError(for: tagID), articles.isEmpty {
+            } else if let error = session.articleError(for: tagID), sections.isEmpty {
                 AppUI.loadFailure(message: error) {
                     Task { await session.loadArticles(for: tagID, force: true) }
                 }
-            } else if articles.isEmpty {
+            } else if hasNoArticles {
                 AppUI.emptyState(icon: "circle.slash", title: "无内容")
             } else {
                 articleList
@@ -32,19 +36,57 @@ struct OnDemandTagPane: View {
     }
 
     private var articleList: some View {
-        List {
-            ForEach(articles) { article in
-                articleRow(article)
-                    .styledListRow()
-                    .onAppear {
-                        guard article.id == articles.last?.id, session.hasMoreArticles(tagID: tagID) else { return }
-                        Task { await session.loadMoreArticles(for: tagID) }
+        ScrollViewReader { proxy in
+            List {
+                ForEach(sections) { section in
+                    Section {
+                        ForEach(section.articles) { article in
+                            articleRow(article)
+                                .styledListRow()
+                                .onAppear {
+                                    guard isListEnd(article, in: section) else { return }
+                                    Task { await session.loadMoreArticles(for: tagID) }
+                                }
+                        }
+                    } header: {
+                        Text(MonthYear(apiString: section.month)?.displayTitle ?? section.month)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .textCase(nil)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 4)
+                            .id(section.month)
                     }
+                }
+                listFooter
             }
-            listFooter
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .onChange(of: session.listPublishedAt) { _, month in
+                if sections.contains(where: { $0.month == month }) {
+                    scrollToMonth(month, proxy: proxy)
+                } else {
+                    Task { await session.loadArticles(for: tagID, force: true) }
+                }
+            }
+            .onChange(of: sections.map(\.month)) { _, _ in
+                scrollToMonth(session.listPublishedAt, proxy: proxy)
+            }
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
+    }
+
+    private func scrollToMonth(_ month: String, proxy: ScrollViewProxy) {
+        guard sections.contains(where: { $0.month == month }) else { return }
+        Task { @MainActor in
+            withAnimation(.easeInOut(duration: 0.25)) {
+                proxy.scrollTo(month, anchor: .top)
+            }
+        }
+    }
+
+    private func isListEnd(_ article: ArticleSummary, in section: ArticleMonthSection) -> Bool {
+        guard let tail = sections.last, tail.month == section.month else { return false }
+        return tail.articles.last?.id == article.id
     }
 
     @ViewBuilder
