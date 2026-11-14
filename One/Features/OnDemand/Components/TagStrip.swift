@@ -1,39 +1,34 @@
 import SwiftUI
 
-/// 点播顶部分类胶囊条（点击切换）。
+/// 点播顶部分类：底部横线 Tab；未超宽均分，超出宽度仅横向滑动。
 struct TagStrip: View {
     let tags: [DemandTag]
     @Binding var selectedTagID: Int?
 
-    private var useFixedLayout: Bool { tags.count <= 5 }
-
     var body: some View {
-        Group {
-            if useFixedLayout {
-                segmentBar(expands: true)
-            } else {
+        VStack(spacing: 0) {
+            ViewThatFits(in: .horizontal) {
+                tagsRow(equalWidth: true)
                 ScrollView(.horizontal, showsIndicators: false) {
-                    segmentBar(expands: false)
+                    tagsRow(equalWidth: false)
                 }
+                .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
             }
+            Divider()
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 8)
     }
 
-    private func segmentBar(expands: Bool) -> some View {
-        GlassEffectContainer(spacing: 4) {
-            HStack(spacing: 4) {
-                ForEach(tags) { tag in
-                    segmentButton(for: tag, expands: expands)
-                }
+    private func tagsRow(equalWidth: Bool) -> some View {
+        HStack(spacing: equalWidth ? 0 : 20) {
+            ForEach(tags) { tag in
+                tabItem(for: tag, equalWidth: equalWidth)
             }
-            .padding(6)
         }
-        .glassEffect(.regular.interactive(), in: .capsule)
+        .frame(maxWidth: equalWidth ? .infinity : nil, alignment: .leading)
     }
 
-    private func segmentButton(for tag: DemandTag, expands: Bool) -> some View {
+    private func tabItem(for tag: DemandTag, equalWidth: Bool) -> some View {
         let isSelected = selectedTagID == tag.id
 
         return Button {
@@ -41,19 +36,20 @@ struct TagStrip: View {
         } label: {
             Text(tag.displayTitle)
                 .font(.subheadline.weight(isSelected ? .semibold : .regular))
-                .foregroundStyle(isSelected ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+                .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.75)
-                .padding(.horizontal, expands ? 4 : 14)
-                .padding(.vertical, 9)
-                .frame(maxWidth: expands ? .infinity : nil)
-                .background {
-                    if isSelected {
-                        Capsule(style: .continuous)
-                            .fill(.quaternary)
-                    }
+                .minimumScaleFactor(0.85)
+                .padding(.horizontal, equalWidth ? 4 : 2)
+                .padding(.top, 10)
+                .padding(.bottom, 8)
+                .frame(maxWidth: equalWidth ? .infinity : nil)
+                .overlay(alignment: .bottom) {
+                    Rectangle()
+                        .fill(isSelected ? Color.accentColor : .clear)
+                        .frame(height: 2)
                 }
         }
         .buttonStyle(.plain)
+        .animation(.easeInOut(duration: 0.2), value: isSelected)
     }
 }

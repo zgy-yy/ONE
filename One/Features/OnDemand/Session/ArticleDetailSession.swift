@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-/// 单篇稿件详情：拉 `article/detail` 并解析播放地址。
+/// 负责拉取一篇稿件的详情，并算出可播放 URL。
 @MainActor
 @Observable
 final class ArticleDetailSession {

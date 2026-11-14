@@ -1,6 +1,6 @@
 import SwiftUI
-import UIKit
 
+/// 列表/卡片封面（固定尺寸，`one_img` 经 `OneRemoteImage` 加载）。
 struct OneCoverImage: View {
     let path: String?
 
@@ -30,29 +30,9 @@ struct OneCoverImage: View {
         .frame(width: size.width, height: size.height)
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .task(id: path) {
-            // await load()
-        }
-    }
-
-    @MainActor
-    private func load() async {
-        uiImage = nil
-        guard let path, !path.isEmpty else { return }
-        guard let base = TokensSession.shared.oneImgCDN, !base.isEmpty else { return }
-        let urlString = OneCDN.join(base: base, path: path)
-        guard let url = URL(string: urlString) else { return }
-
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            let imageData: Data
-            if OneImageCrypto.isPlainImage(data) {
-                imageData = data
-            } else {
-                imageData = try OneImageCrypto.decrypt(cipher: data)
-            }
-            uiImage = UIImage(data: imageData)
-        } catch {
             uiImage = nil
+            guard let path, !path.isEmpty else { return }
+            uiImage = await OneRemoteImage.load(path: path)
         }
     }
 }

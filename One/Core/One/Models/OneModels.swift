@@ -37,8 +37,14 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
 struct ArticleDetail: Decodable, Identifiable {
     let id: Int
     let title: String?
+    /// 点播长标题（播放器下方优先展示）
+    let videoName: String?
     let thumb: String?
     let author: String?
+    /// 演员 / 女优
+    let actor: String?
+    /// 番号
+    let number: String?
     let publishedAt: String?
     let summary: String?
     let content: String?
@@ -47,10 +53,33 @@ struct ArticleDetail: Decodable, Identifiable {
     let video: String?
     let previewVideo: String?
     let videos: [ArticleVideoItem]?
+    let multiplePic: [String]?
+    /// 现价（金币/贝壳，`coin`）
+    let coin: String?
+    /// 原价（`original_coin`）
+    let originalCoin: String?
+    /// 时长，如 `129分钟`
+    let length: String?
+    /// 体积，如 `1.37GB`
+    let size: String?
+    /// 分辨率，如 `1920x1080`
+    let quality: String?
+    let likeNumber: Int?
+    let collectionNumber: Int?
+    let views: Int?
+    let downloadCount: Int?
+    let shareNumber: Int?
+    let tagList: [ArticleDetailTag]?
 
     var displayTitle: String {
         if let title, !title.isEmpty { return title }
         return "ID \(id)"
+    }
+
+    /// 播放器下方标题：优先 `video_name`，否则回退 `title`。
+    var displayVideoName: String {
+        if let videoName, !videoName.isEmpty { return videoName }
+        return displayTitle
     }
 
     var displayBody: String? {
@@ -59,13 +88,44 @@ struct ArticleDetail: Decodable, Identifiable {
         return nil
     }
 
+    var galleryPaths: [String] {
+        multiplePic?.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } ?? []
+    }
+
+    var displayTags: [ArticleDetailTag] {
+        tagList?.filter { !$0.displayName.isEmpty } ?? []
+    }
+
     enum CodingKeys: String, CodingKey {
-        case id, title, thumb, author, content, video, videos
+        case id, title, thumb, author, actor, number, content, video, videos
+        case videoName = "video_name"
         case publishedAt = "published_at"
         case summary = "description"
         case videoFile = "video_file"
         case videoHls = "video_hls"
         case previewVideo = "preview_video"
+        case multiplePic = "multiple_pic"
+        case coin
+        case originalCoin = "original_coin"
+        case length, size, quality
+        case likeNumber = "like_number"
+        case collectionNumber = "collection_number"
+        case views
+        case downloadCount = "download_count"
+        case shareNumber = "share_number"
+        case tagList = "tag_list"
+    }
+}
+
+/// `article/detail` 的 `tag_list` 项（展示 `slug`）。
+struct ArticleDetailTag: Decodable, Identifiable, Hashable {
+    let id: Int
+    let slug: String?
+
+    var displayName: String {
+        let name = slug?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !name.isEmpty { return name }
+        return "标签 \(id)"
     }
 }
 

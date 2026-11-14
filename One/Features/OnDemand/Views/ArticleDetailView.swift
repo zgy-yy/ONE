@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 点播稿件详情：先 `article/detail` 再拼 `one_video` 播放（与 one-web 调试台一致）。
+/// 点播详情：顶栏固定播放器，其下 `ScrollView` 承载全部文稿信息。
 struct ArticleDetailView: View {
     let article: ArticleSummary
 
@@ -8,14 +8,15 @@ struct ArticleDetailView: View {
 
     var body: some View {
         Group {
-            if session.isLoading, session.detail == nil {
+            switch loadState {
+            case .loading:
                 AppUI.loading("加载详情…")
-            } else if let error = session.error, session.detail == nil {
-                AppUI.loadFailure(message: error) {
+            case .failed(let message):
+                AppUI.loadFailure(message: message) {
                     Task { await session.load(articleID: article.id) }
                 }
-            } else {
-                detailScroll
+            case .content:
+                contentLayout
             }
         }
         .fillPage()
@@ -24,25 +25,19 @@ struct ArticleDetailView: View {
         .task(id: article.id) { await session.load(articleID: article.id) }
     }
 
-    private var detailScroll: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                playerSection
-                heroThumb
-                metaSection
-                if let body = session.detail?.displayBody {
-                    Text(body)
-                        .font(.body)
-                        .foregroundStyle(.primary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
+    private var contentLayout: some View {
+        VStack(spacing: 0) {
+            videoSection
+            ScrollView {
+                ArticleDetailBodyView(detail: session.detail, summary: article)
+                    .padding(.horizontal)
+                    .padding(.vertical, 16)
             }
-            .padding()
         }
     }
 
     @ViewBuilder
-    private var playerSection: some View {
+    private var videoSection: some View {
         if let url = session.playURL {
             ArticleVideoPlayer(url: url)
         } else if session.detail != nil {
@@ -51,35 +46,19 @@ struct ArticleDetailView: View {
             } description: {
                 Text("详情中未找到 video_file / video_hls，或缺少 one_video CDN")
             }
+            .padding()
         }
     }
 
-    @ViewBuilder
-    private var heroThumb: some View {
-        let path = session.detail?.thumb ?? article.thumb
-        if path != nil {
-            OneCoverImage(
-                path: path,
-                size: CGSize(width: 120, height: 160)
-            )
-        }
+    private enum LoadState {
+        case loading
+        case failed(String)
+        case content
     }
 
-    private var metaSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(session.detail?.displayTitle ?? article.displayTitle)
-                .font(.title2.weight(.semibold))
-            if let author = session.detail?.author ?? article.author, !author.isEmpty {
-                Text(author)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            if let publishedAt = session.detail?.publishedAt ?? article.publishedAt, !publishedAt.isEmpty {
-                Text(publishedAt)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+    private var loadState: LoadState {
+        if session.isLoading, session.detail == nil { return .loading }
+        if let error = session.error, session.detail == nil { return .failed(error) }
+        return .content
     }
 }

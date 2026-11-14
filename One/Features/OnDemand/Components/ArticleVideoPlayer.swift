@@ -1,7 +1,7 @@
 import AVKit
 import SwiftUI
 
-/// 稳定持有 `AVPlayer`，避免 `body` 重绘时重复创建。
+/// 全宽 16:9 播放器；`AVPlayer` 放在 `@State` 里，避免界面刷新时反复创建。
 struct ArticleVideoPlayer: View {
     let url: URL
 
@@ -16,19 +16,17 @@ struct ArticleVideoPlayer: View {
                     .frame(maxWidth: .infinity)
             }
         }
+        .frame(maxWidth: .infinity)
         .aspectRatio(16 / 9, contentMode: .fit)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .onAppear { replacePlayer(with: url) }
-            .onChange(of: url) { _, newURL in
-                replacePlayer(with: newURL)
-            }
-            .onDisappear {
-                player?.pause()
-                player = nil
-            }
+        .onAppear { startPlayback(url) }
+        .onChange(of: url) { _, newURL in startPlayback(newURL) }
+        .onDisappear {
+            player?.pause()
+            player = nil
+        }
     }
 
-    private func replacePlayer(with url: URL) {
+    private func startPlayback(_ url: URL) {
         player?.pause()
         player = AVPlayer(url: url)
     }
