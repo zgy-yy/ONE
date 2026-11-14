@@ -121,10 +121,13 @@ enum TokensCrypto {
             let chunk = 32_768
             var buffer = [UInt8](repeating: 0, count: chunk)
             repeat {
-                stream.next_out = UnsafeMutablePointer(mutating: &buffer)
-                stream.avail_out = uInt(chunk)
-                status = inflate(&stream, Z_SYNC_FLUSH)
-                let produced = chunk - Int(stream.avail_out)
+                let produced = buffer.withUnsafeMutableBytes { rawOut -> Int in
+                    guard let outBase = rawOut.bindMemory(to: Bytef.self).baseAddress else { return 0 }
+                    stream.next_out = outBase
+                    stream.avail_out = uInt(chunk)
+                    status = inflate(&stream, Z_SYNC_FLUSH)
+                    return chunk - Int(stream.avail_out)
+                }
                 if produced > 0 {
                     output.append(buffer, count: produced)
                 }

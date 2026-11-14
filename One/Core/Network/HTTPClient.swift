@@ -82,7 +82,7 @@ enum HTTPClient {
         timeout: TimeInterval? = nil,
         responseDecoder: (any HTTPResponseDecoder)? = nil
     ) async throws -> Response {
-        var merged = mergeHeaders(headerFields: headerFields, headers: headers)
+        let merged = mergeHeaders(headerFields: headerFields, headers: headers)
         let request = session.request(
             url,
             method: .post,

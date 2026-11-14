@@ -32,7 +32,6 @@ struct TagPane: View {
         }
         .fillPage()
         .task(id: listLoadToken) { await session.loadArticles(for: tagID) }
-        .refreshable { await session.loadArticles(for: tagID, force: true) }
     }
 
     private var articleList: some View {

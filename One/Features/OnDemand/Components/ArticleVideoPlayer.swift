@@ -1,7 +1,8 @@
 import AVKit
 import SwiftUI
+import UIKit
 
-/// 全宽 16:9 播放器；`AVPlayer` 放在 `@State` 里，避免界面刷新时反复创建。
+/// 全宽 16:9 点播播放器：`AVPlayerViewController` 支持系统全屏与系统控件。
 struct ArticleVideoPlayer: View {
     let url: URL
 
@@ -10,7 +11,7 @@ struct ArticleVideoPlayer: View {
     var body: some View {
         Group {
             if let player {
-                VideoPlayer(player: player)
+                InlineAVPlayerViewController(player: player)
             } else {
                 ProgressView()
                     .frame(maxWidth: .infinity)
@@ -27,7 +28,31 @@ struct ArticleVideoPlayer: View {
     }
 
     private func startPlayback(_ url: URL) {
+        VideoPlaybackAudio.activate()
         player?.pause()
-        player = AVPlayer(url: url)
+        let newPlayer = AVPlayer(url: url)
+        newPlayer.isMuted = false
+        newPlayer.automaticallyWaitsToMinimizeStalling = true
+        player = newPlayer
+        newPlayer.play()
+    }
+}
+
+private struct InlineAVPlayerViewController: UIViewControllerRepresentable {
+    let player: AVPlayer
+
+    func makeUIViewController(context: Context) -> AVPlayerViewController {
+        let controller = AVPlayerViewController()
+        controller.player = player
+        controller.showsPlaybackControls = true
+        controller.allowsPictureInPicturePlayback = true
+        controller.canStartPictureInPictureAutomaticallyFromInline = false
+        return controller
+    }
+
+    func updateUIViewController(_ controller: AVPlayerViewController, context: Context) {
+        if controller.player !== player {
+            controller.player = player
+        }
     }
 }

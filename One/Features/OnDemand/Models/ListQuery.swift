@@ -2,15 +2,15 @@ import Foundation
 
 /// 点播列表排序（接口字段 `sort`）。
 enum VodArticleSort: String, CaseIterable, Identifiable, Hashable {
-    case likeNumber = "like_number"
     case publishedAt = "published_at"
+    case likeNumber = "like_number"
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .likeNumber: "点赞"
         case .publishedAt: "时间"
+        case .likeNumber: "点赞"
         }
     }
 }
@@ -53,7 +53,7 @@ struct MonthYear: Equatable {
         let currentYear = calendar.component(.year, from: now)
         let currentMonth = calendar.component(.month, from: now)
 
-        var y = min(max(year, MonthYear.earliest.year), currentYear)
+        let y = min(max(year, MonthYear.earliest.year), currentYear)
         var m = month
 
         if y == MonthYear.earliest.year {

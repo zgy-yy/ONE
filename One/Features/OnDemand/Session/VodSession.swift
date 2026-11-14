@@ -17,7 +17,7 @@ final class VodSession {
     /// 顶栏锚定/跳转月份；已有分区时由列表滚动，否则重载。
     var listPublishedAt: String = MonthYear.now.apiString
 
-    var listSort: VodArticleSort = .likeNumber {
+    var listSort: VodArticleSort = .publishedAt {
         didSet {
             guard oldValue != listSort else { return }
             tagsArticles = [:]
@@ -40,7 +40,10 @@ final class VodSession {
         await refresh()
     }
 
+    /// 顶栏分类只拉取一次；已有数据则不再请求。
     func refresh() async {
+        guard tags.isEmpty else { return }
+
         isLoading = true
         lastError = nil
         defer { isLoading = false }

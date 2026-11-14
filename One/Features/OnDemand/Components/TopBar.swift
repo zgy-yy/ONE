@@ -10,6 +10,8 @@ struct TopBar: View {
         VStack(spacing: 0) {
             FilterBar(session: session)
             TagStrip(tags: tags, selectedTagID: $selectedTagID)
+            Divider()
         }
+        .background(Color(.systemBackground))
     }
 }

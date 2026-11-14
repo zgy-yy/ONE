@@ -12,12 +12,6 @@ struct VodTabContent: View {
                 .navigationDestination(for: ArticleSummary.self) { article in
                     ArticleDetailView(article: article)
                 }
-                .refreshable {
-                    await session.refresh()
-                    if let selectedTagID {
-                        await session.loadArticles(for: selectedTagID, force: true)
-                    }
-                }
                 .task { await session.loadIfNeeded() }
                 .onChange(of: session.tags, initial: true) { _, tags in
                     syncSelection(with: tags)
