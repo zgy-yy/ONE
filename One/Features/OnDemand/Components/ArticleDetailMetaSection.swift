@@ -1,13 +1,28 @@
 import SwiftUI
 
-/// 播放器下方的固定元信息（片名、价格、演职员、规格、统计）。
+/// 封面下方的固定元信息（片名、播放、价格、演职员、规格、统计）。
 struct ArticleDetailMetaSection: View {
     let detail: ArticleDetail
+    var canPlay: Bool = false
+    var onPlay: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(detail.displayVideoName)
                 .font(.title2.weight(.semibold))
+
+            if let onPlay {
+                Button(action: onPlay) {
+                    Label("播放", systemImage: "play.fill")
+                        .font(.body.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 4)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.orange)
+                .disabled(!canPlay)
+                .opacity(canPlay ? 1 : 0.45)
+            }
 
             DetailPriceNumberRow(detail: detail)
             DetailCastRow(detail: detail)

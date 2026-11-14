@@ -7,6 +7,8 @@ import SwiftUI
 /// - `WindowGroup`：iOS 上通常就一个全屏窗口，根视图是 `ContentView`。
 @main
 struct OneApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     var body: some Scene {
         WindowGroup {
             ContentView()

@@ -64,14 +64,12 @@ struct TagPane: View {
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .onChange(of: session.listPublishedAt) { _, month in
+                // 仅月份筛选变化时跳转；下滑加载更多不要滚回顶部。
                 if sections.contains(where: { $0.month == month }) {
                     scrollToMonth(month, proxy: proxy)
                 } else {
                     Task { await session.loadArticles(for: tagID, force: true) }
                 }
-            }
-            .onChange(of: sections.map(\.month)) { _, _ in
-                scrollToMonth(session.listPublishedAt, proxy: proxy)
             }
         }
     }

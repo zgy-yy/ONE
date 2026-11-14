@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 点播详情：顶栏固定播放器，其下 `ScrollView` 承载全部文稿信息。
+/// 点播详情：封面顶到安全区外；无导航标题；标题下「播放」进入横屏全屏播放。
 struct ArticleDetailView: View {
     let article: ArticleSummary
 
@@ -20,34 +20,33 @@ struct ArticleDetailView: View {
             }
         }
         .fillPage()
-        .navigationTitle(session.detail?.displayTitle ?? article.displayTitle)
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
         .task(id: article.id) { await session.load(articleID: article.id) }
     }
 
     private var contentLayout: some View {
-        VStack(spacing: 0) {
-            videoSection
-            ScrollView {
-                ArticleDetailBodyView(detail: session.detail, summary: article)
-                    .padding(.horizontal)
-                    .padding(.vertical, 16)
-            }
-        }
-    }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                ArticleDetailCover(path: session.detail?.thumb ?? article.thumb)
 
-    @ViewBuilder
-    private var videoSection: some View {
-        if let url = session.playURL {
-            ArticleVideoPlayer(url: url)
-        } else if session.detail != nil {
-            ContentUnavailableView {
-                Label("无法播放", systemImage: "play.slash")
-            } description: {
-                Text("详情中未找到 video_file / video_hls，或缺少 one_video CDN")
+                ArticleDetailBodyView(
+                    detail: session.detail,
+                    summary: article,
+                    canPlay: session.playURL != nil,
+                    onPlay: {
+                        if let url = session.playURL {
+                            ArticleVideoPresenter.present(url: url)
+                        }
+                    }
+                )
+                .padding(.horizontal)
+                .padding(.vertical, 16)
             }
-            .padding()
         }
+        // 封面从屏幕顶端起算（含刘海/状态栏），导航栏浮在封面上。
+        .ignoresSafeArea(edges: .top)
     }
 
     private enum LoadState {

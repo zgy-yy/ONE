@@ -1,9 +1,11 @@
 import SwiftUI
 
-/// 点播详情：播放器下方整块可滚动内容（元信息 → 预览 → 标签 → 正文）。
+/// 点播详情可滚动正文（元信息 → 预览 → 标签 → 正文）。
 struct ArticleDetailBodyView: View {
     let detail: ArticleDetail?
     let summary: ArticleSummary
+    var canPlay: Bool = false
+    var onPlay: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -27,7 +29,7 @@ struct ArticleDetailBodyView: View {
     @ViewBuilder
     private var metaSection: some View {
         if let detail {
-            ArticleDetailMetaSection(detail: detail)
+            ArticleDetailMetaSection(detail: detail, canPlay: canPlay, onPlay: onPlay)
         } else {
             VStack(alignment: .leading, spacing: 6) {
                 Text(summary.displayTitle)
