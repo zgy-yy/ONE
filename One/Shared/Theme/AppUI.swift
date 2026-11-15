@@ -27,6 +27,46 @@ enum AppUI {
                 .foregroundStyle(.secondary)
         }
     }
+
+    /// 分区空态（嵌入滚动内容中，不用整页占位）。
+    static func inlineEmpty(_ title: String) -> some View {
+        Text(title)
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 24)
+    }
+
+    /// 列表 / 网格底部分页状态。
+    @ViewBuilder
+    static func loadMoreFooter(loadingMore: Bool, exhausted: Bool) -> some View {
+        if loadingMore {
+            ProgressView()
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+        } else if exhausted {
+            Text("没有更多了")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+        }
+    }
+
+    /// `List` 底部的分页状态行。
+    @ViewBuilder
+    static func listLoadMoreFooter(loadingMore: Bool, exhausted: Bool) -> some View {
+        loadMoreFooter(loadingMore: loadingMore, exhausted: exhausted)
+            .listFooterRow()
+    }
+}
+
+extension String {
+    /// 去空白后非空则返回自身，否则 `nil`。
+    var nonEmpty: String? {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
 }
 
 extension View {
@@ -46,7 +86,17 @@ extension View {
 
     /// 普通 `List` 数据行的背景与分隔线。
     func styledListRow() -> some View {
-        listRowBackground(Color(.secondarySystemGroupedBackground))
-            .listRowSeparatorTint(Color(.separator))
+        listRowSeparator(.hidden)
+            .listRowBackground(Color(.secondarySystemGroupedBackground))
+    }
+
+    /// 整行可点、无右侧箭头的 `NavigationLink`（适合自定义列表行）。
+    func hiddenNavigationLink<Value: Hashable>(value: Value) -> some View {
+        frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .background {
+                NavigationLink(value: value) { EmptyView() }
+                    .opacity(0)
+            }
     }
 }

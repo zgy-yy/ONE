@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 发现根页面：发布日期 / 排序 + 频道 Tab（图文 / 阅读 / 影视 / 电台）。
+/// 发现 Tab 根页。
 struct DiscoverTabContent: View {
     @Bindable private var session = DiscoverSession.shared
     @State private var channel: DiscoverChannel = .graphic
@@ -8,17 +8,25 @@ struct DiscoverTabContent: View {
     var body: some View {
         NavigationStack {
             DiscoverFeedView(channel: channel)
-                .id("\(channel.rawValue)-\(session.feedFetchKey)")
-                .fillPage()
+                .id(loadToken)
                 .navigationTitle("发现")
                 .navigationBarTitleDisplayMode(.inline)
                 .safeAreaInset(edge: .top, spacing: 0) {
                     DiscoverTopBar(channel: $channel, session: session)
                 }
+                .navigationDestination(for: SeriesSummary.self) { series in
+                    SeriesDetailView(series: series)
+                }
                 .navigationDestination(for: ArticleSummary.self) { article in
                     ArticleDetailView(article: article)
                 }
         }
+    }
+
+    private var loadToken: String {
+        channel.isSeries
+            ? "\(channel.rawValue)-\(session.seriesFeedKey)"
+            : "\(channel.rawValue)-\(session.articleFeedKey)"
     }
 }
 

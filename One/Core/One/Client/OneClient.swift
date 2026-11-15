@@ -88,6 +88,266 @@ enum OneClient {
         return article
     }
 
+    /// 演员主分类（地区等）。
+    static func actorMainNavigations(base: URL, token: String) async throws -> [ActorNavigation] {
+        let envelope = try await post(
+            OneApiEnvelope<ActorNavigationsPayload>.self,
+            base: base,
+            path: OneAPI.actorMainNavigationsPath,
+            token: token,
+            data: nil
+        )
+        let list = try unwrap(envelope)?.list ?? []
+        return list.sorted { ($0.sort ?? .max) < ($1.sort ?? .max) }
+    }
+
+    /// 某主分类下的演员分页列表（可选 `tag_ids` 逗号分隔筛选）。
+    static func actorMainNavigationActors(
+        base: URL,
+        token: String,
+        mainNavigationID: Int,
+        page: Int,
+        size: Int = 30,
+        keyword: String = "",
+        tagIDs: [Int] = []
+    ) async throws -> [ActorSummary] {
+        var data: [String: String] = [
+            "main_navigation_id": String(mainNavigationID),
+            "page": String(page),
+            "size": String(size),
+            "keyword": keyword,
+        ]
+        if !tagIDs.isEmpty {
+            data["tag_ids"] = tagIDs.map(String.init).joined(separator: ",")
+        }
+        let envelope = try await post(
+            OneApiEnvelope<ActorListPayload>.self,
+            base: base,
+            path: OneAPI.actorMainNavigationActorsPath,
+            token: token,
+            data: data
+        )
+        return try unwrap(envelope)?.list ?? []
+    }
+
+    /// 最新演员。
+    static func actorNewActors(
+        base: URL,
+        token: String,
+        page: Int,
+        size: Int = 9,
+        keyword: String = ""
+    ) async throws -> ActorListPayload {
+        let envelope = try await post(
+            OneApiEnvelope<ActorListPayload>.self,
+            base: base,
+            path: OneAPI.actorNewActorsPath,
+            token: token,
+            data: [
+                "page": String(page),
+                "size": String(size),
+                "keyword": keyword,
+            ]
+        )
+        return try unwrap(envelope) ?? ActorListPayload(list: [], date: nil)
+    }
+
+    /// 最热演员。
+    static func actorHotActors(
+        base: URL,
+        token: String,
+        page: Int,
+        size: Int = 9,
+        keyword: String = ""
+    ) async throws -> [ActorSummary] {
+        let envelope = try await post(
+            OneApiEnvelope<ActorListPayload>.self,
+            base: base,
+            path: OneAPI.actorHotActorsPath,
+            token: token,
+            data: [
+                "page": String(page),
+                "size": String(size),
+                "keyword": keyword,
+            ]
+        )
+        return try unwrap(envelope)?.list ?? []
+    }
+
+    /// 演员详情。
+    static func actorDetail(base: URL, token: String, actorID: Int) async throws -> ActorDetail {
+        let envelope = try await post(
+            OneApiEnvelope<ActorDetail>.self,
+            base: base,
+            path: OneAPI.actorDetailPath,
+            token: token,
+            data: ["id": String(actorID)]
+        )
+        guard let detail = try unwrap(envelope) else {
+            throw OneClientError.apiRejected("演员详情为空")
+        }
+        return detail
+    }
+
+    /// 演员作品列表。
+    static func actorArticles(
+        base: URL,
+        token: String,
+        actorID: Int,
+        page: Int,
+        size: Int = 30,
+        keyword: String = "",
+        sort: String = "published_at"
+    ) async throws -> [ArticleSummary] {
+        let envelope = try await post(
+            OneApiEnvelope<ActorArticlesPayload>.self,
+            base: base,
+            path: OneAPI.actorArticlesPath,
+            token: token,
+            data: [
+                "id": String(actorID),
+                "page": String(page),
+                "size": String(size),
+                "keyword": keyword,
+                "sort": sort,
+            ]
+        )
+        return try unwrap(envelope)?.list ?? []
+    }
+
+    /// 演员写真列表。
+    static func actorPhotos(
+        base: URL,
+        token: String,
+        actorID: Int,
+        page: Int,
+        size: Int = 30
+    ) async throws -> [ActorPhoto] {
+        let envelope = try await post(
+            OneApiEnvelope<ActorPhotosPayload>.self,
+            base: base,
+            path: OneAPI.actorPhotosPath,
+            token: token,
+            data: [
+                "id": String(actorID),
+                "page": String(page),
+                "size": String(size),
+            ]
+        )
+        return try unwrap(envelope)?.list ?? []
+    }
+
+    /// 写真系列列表。
+    static func seriesAlbumList(
+        base: URL,
+        token: String,
+        type: Int,
+        page: Int,
+        size: Int = 20,
+        sort: String = "published_at"
+    ) async throws -> [SeriesSummary] {
+        try await seriesList(
+            path: OneAPI.seriesAlbumListPath,
+            base: base,
+            token: token,
+            type: type,
+            page: page,
+            size: size,
+            sort: sort
+        )
+    }
+
+    /// 漫画系列列表。
+    static func seriesMangaList(
+        base: URL,
+        token: String,
+        type: Int,
+        page: Int,
+        size: Int = 20,
+        sort: String = "published_at"
+    ) async throws -> [SeriesSummary] {
+        try await seriesList(
+            path: OneAPI.seriesMangaListPath,
+            base: base,
+            token: token,
+            type: type,
+            page: page,
+            size: size,
+            sort: sort
+        )
+    }
+
+    private static func seriesList(
+        path: String,
+        base: URL,
+        token: String,
+        type: Int,
+        page: Int,
+        size: Int,
+        sort: String
+    ) async throws -> [SeriesSummary] {
+        let envelope = try await post(
+            OneApiEnvelope<SeriesListPayload>.self,
+            base: base,
+            path: path,
+            token: token,
+            data: [
+                "type": String(type),
+                "page": String(page),
+                "size": String(size),
+                "sort": sort,
+            ]
+        )
+        return try unwrap(envelope)?.items ?? []
+    }
+
+    /// 系列章节列表。
+    static func seriesChapters(
+        base: URL,
+        token: String,
+        seriesID: Int
+    ) async throws -> SeriesDetail {
+        let envelope = try await post(
+            OneApiEnvelope<SeriesDetail>.self,
+            base: base,
+            path: OneAPI.seriesChaptersPath,
+            token: token,
+            data: ["series_id": String(seriesID)]
+        )
+        guard let detail = try unwrap(envelope) else {
+            throw OneClientError.apiRejected("章节为空")
+        }
+        return detail
+    }
+
+    /// 评论列表（演员用 `type=2`，`article_id` 传演员 ID）。
+    static func commentList(
+        base: URL,
+        token: String,
+        targetID: Int,
+        type: Int,
+        page: Int,
+        size: Int = 10,
+        sorting: String = "likes",
+        commentID: Int = 0
+    ) async throws -> [CommentItem] {
+        let envelope = try await post(
+            OneApiEnvelope<CommentListPayload>.self,
+            base: base,
+            path: OneAPI.commentListPath,
+            token: token,
+            data: [
+                "article_id": String(targetID),
+                "comment_id": String(commentID),
+                "page": String(page),
+                "size": String(size),
+                "type": String(type),
+                "sorting": sorting,
+            ]
+        )
+        return try unwrap(envelope)?.list ?? []
+    }
+
     private static func unwrap<T>(_ envelope: OneApiEnvelope<T>) throws -> T? {
         guard OneAPI.isSuccess(code: envelope.code) else {
             let detail = envelope.message ?? "code \(envelope.code.map(String.init) ?? "nil")"

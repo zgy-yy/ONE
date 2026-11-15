@@ -41,15 +41,8 @@ struct TagPane: View {
                     Section {
                         ForEach(section.articles) { article in
                             articleRow(article)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .contentShape(Rectangle())
-                                // 透明 NavigationLink：可跳转且不显示右侧箭头。
-                                .background {
-                                    NavigationLink(value: article) { EmptyView() }
-                                        .opacity(0)
-                                }
-                                .listRowSeparator(.hidden)
-                                .listRowBackground(Color(.secondarySystemGroupedBackground))
+                                .hiddenNavigationLink(value: article)
+                                .styledListRow()
                                 .onAppear {
                                     guard isListEnd(article, in: section) else { return }
                                     Task { await session.loadMoreArticles(for: tagID) }
@@ -94,17 +87,11 @@ struct TagPane: View {
         return tail.articles.last?.id == article.id
     }
 
-    @ViewBuilder
     private var listFooter: some View {
-        if session.isLoadingMoreArticles(tagID: tagID) {
-            ProgressView()
-                .listFooterRow()
-        } else if session.showsArticlesEndFooter(tagID: tagID) {
-            Text("没有更多了")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-                .listFooterRow()
-        }
+        AppUI.listLoadMoreFooter(
+            loadingMore: session.isLoadingMoreArticles(tagID: tagID),
+            exhausted: session.showsArticlesEndFooter(tagID: tagID)
+        )
     }
 
     private func articleRow(_ article: ArticleSummary) -> some View {
