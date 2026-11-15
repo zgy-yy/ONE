@@ -17,20 +17,16 @@ struct TagPane: View {
     }
 
     var body: some View {
-        Group {
-            if session.isLoadingArticles(tagID: tagID), sections.isEmpty {
-                AppUI.loading("加载列表…")
-            } else if let error = session.articleError(for: tagID), sections.isEmpty {
-                AppUI.loadFailure(message: error) {
-                    Task { await session.loadArticles(for: tagID, force: true) }
-                }
-            } else if hasNoArticles {
-                AppUI.emptyState(icon: "circle.slash", title: "无内容")
-            } else {
-                articleList
-            }
+        AsyncPage(
+            isLoading: session.isLoadingArticles(tagID: tagID),
+            error: session.articleError(for: tagID),
+            isEmpty: hasNoArticles,
+            loadingTitle: "加载列表…",
+            emptyTitle: "无内容",
+            retry: { Task { await session.loadArticles(for: tagID, force: true) } }
+        ) {
+            articleList
         }
-        .fillPage()
         .task(id: listLoadToken) { await session.loadArticles(for: tagID) }
     }
 
@@ -40,28 +36,22 @@ struct TagPane: View {
                 ForEach(sections) { section in
                     Section {
                         ForEach(section.articles) { article in
-                            articleRow(article)
+                            ArticleListRow(article: article)
                                 .hiddenNavigationLink(value: article)
                                 .styledListRow()
                                 .onAppear {
-                                    guard isListEnd(article, in: section) else { return }
+                                    guard sections.isTailArticle(article, in: section) else { return }
                                     Task { await session.loadMoreArticles(for: tagID) }
                                 }
                         }
                     } header: {
-                        Text(MonthYear.sectionTitle(forAPIString: section.month))
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                            .textCase(nil)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 4)
+                        ArticleMonthSectionHeader(monthAPIString: section.month)
                             .id(section.month)
                     }
                 }
                 listFooter
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
+            .plainContentList()
             .onChange(of: session.listPublishedAt) { _, month in
                 // 仅月份筛选变化时跳转；下滑加载更多不要滚回顶部。
                 if sections.contains(where: { $0.month == month }) {
@@ -82,23 +72,10 @@ struct TagPane: View {
         }
     }
 
-    private func isListEnd(_ article: ArticleSummary, in section: ArticleMonthSection) -> Bool {
-        guard let tail = sections.last, tail.month == section.month else { return false }
-        return tail.articles.last?.id == article.id
-    }
-
     private var listFooter: some View {
         AppUI.listLoadMoreFooter(
             loadingMore: session.isLoadingMoreArticles(tagID: tagID),
             exhausted: session.showsArticlesEndFooter(tagID: tagID)
         )
-    }
-
-    private func articleRow(_ article: ArticleSummary) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            OneCoverImage(path: article.thumb)
-            article.rowMeta
-        }
-        .padding(.vertical, 4)
     }
 }

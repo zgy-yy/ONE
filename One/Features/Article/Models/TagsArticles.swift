@@ -10,6 +10,13 @@ struct ArticleMonthSection: Identifiable, Equatable {
     var id: String { month }
 }
 
+/// 按月串联分页的下一页请求。
+struct MonthPageRequest: Equatable {
+    let month: String
+    let page: Int
+    let newSection: Bool
+}
+
 /// 单个分类：从锚定月份向下串联更早月份。
 struct TagsArticles {
     var sections: [ArticleMonthSection] = []
@@ -27,6 +34,22 @@ struct TagsArticles {
         return MonthYear(apiString: tail.month)?.previous != nil
     }
 
+    /// 当前月耗尽后的下一请求（同月下一页，或更早月份第 1 页）。
+    var nextPageRequest: MonthPageRequest? {
+        guard let tail = sections.last else { return nil }
+        if !tail.monthExhausted {
+            return MonthPageRequest(month: tail.month, page: tail.nextPage, newSection: false)
+        }
+        guard let month = MonthYear(apiString: tail.month)?.previous else { return nil }
+        return MonthPageRequest(month: month.apiString, page: 1, newSection: true)
+    }
+
+    /// 锚定月无数据且已耗尽时，应继续拉更早月份。
+    var shouldAdvancePastEmptyTail: Bool {
+        guard canLoadMore, let tail = sections.last else { return false }
+        return tail.monthExhausted && tail.articles.isEmpty
+    }
+
     mutating func reset() {
         sections = []
         error = nil
@@ -37,6 +60,15 @@ struct TagsArticles {
     mutating func recordError(_ message: String) {
         error = message
         loaded = false
+    }
+
+    /// 已到最早可请求月份且该月耗尽时标记全局结束。
+    mutating func markFullyExhaustedIfNeeded() {
+        guard let tail = sections.last,
+              tail.monthExhausted,
+              MonthYear(apiString: tail.month)?.previous == nil
+        else { return }
+        fullyExhausted = true
     }
 
     mutating func mergePage(

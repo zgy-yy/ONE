@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 列表通用筛选：发布年月 + 排序（点赞 / 时间）。
+/// 列表通用筛选：发布年月 + 排序（发布时间 / 最受欢迎）。
 struct FilterBar: View {
     @Binding var publishedAt: String
     @Binding var sort: VodArticleSort
@@ -23,13 +23,7 @@ struct FilterBar: View {
 
             Spacer(minLength: 8)
 
-            Picker("排序", selection: $sort) {
-                ForEach(VodArticleSort.allCases) { item in
-                    Text(item.title).tag(item)
-                }
-            }
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 168)
+            VodArticleSortPicker(sort: $sort)
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 4)

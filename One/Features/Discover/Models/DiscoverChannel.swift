@@ -25,10 +25,10 @@ enum DiscoverChannel: String, CaseIterable, Identifiable, Hashable {
     /// 文章频道的 `model_id`；系列频道为 `nil`。
     var articleModelID: Int? {
         switch self {
-        case .graphic: 1
-        case .reading: 2
-        case .film: 3
-        case .radio: 5
+        case .graphic: ArticleModelID.graphic
+        case .reading: ArticleModelID.reading
+        case .film: ArticleModelID.film
+        case .radio: ArticleModelID.radio
         case .album, .manga: nil
         }
     }

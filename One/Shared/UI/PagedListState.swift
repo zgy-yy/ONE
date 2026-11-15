@@ -16,8 +16,10 @@ struct PagedListState<Item: Identifiable> where Item.ID: Hashable {
         self.pageSize = pageSize
     }
 
+    /// 当前是否没有任何条目（首屏空态判断用）。
     var isEmpty: Bool { items.isEmpty }
 
+    /// 清空列表并重置分页游标（换筛选条件时调用）。
     mutating func reset() {
         items = []
         isLoading = false
@@ -42,6 +44,7 @@ struct PagedListState<Item: Identifiable> where Item.ID: Hashable {
         return true
     }
 
+    /// 首屏成功：写入本页数据，并决定是否还有下一页。
     mutating func finishLoad(_ list: [Item], hasMore: Bool? = nil) {
         items = list
         nextPage = 2
@@ -51,6 +54,7 @@ struct PagedListState<Item: Identifiable> where Item.ID: Hashable {
         isLoading = false
     }
 
+    /// 首屏失败：保存错误文案，结束 loading。
     mutating func failLoad(_ message: String) {
         error = message
         isLoading = false
@@ -64,6 +68,7 @@ struct PagedListState<Item: Identifiable> where Item.ID: Hashable {
         return nextPage
     }
 
+    /// 加载更多成功：去重追加，并推进页码。
     mutating func finishLoadMore(_ list: [Item], hasMore: Bool? = nil) {
         let existing = Set(items.map(\.id))
         items.append(contentsOf: list.filter { !existing.contains($0.id) })
@@ -72,6 +77,7 @@ struct PagedListState<Item: Identifiable> where Item.ID: Hashable {
         isLoadingMore = false
     }
 
+    /// 加载更多失败：仅结束 loadingMore，保留已有列表。
     mutating func cancelLoadMore() {
         isLoadingMore = false
     }

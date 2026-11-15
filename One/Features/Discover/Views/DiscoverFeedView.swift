@@ -19,7 +19,6 @@ struct DiscoverFeedView: View {
                 articlePage
             }
         }
-        .fillPage()
         .task(id: loadToken) {
             if channel.isSeries {
                 await session.loadSeries(channel: channel)
@@ -35,24 +34,22 @@ struct DiscoverFeedView: View {
         session.articles(for: channel)
     }
 
-    @ViewBuilder
     private var articlePage: some View {
-        if session.isLoadingArticles(channel), articles.isEmpty {
-            AppUI.loading("加载\(channel.title)…")
-        } else if let error = session.articleError(for: channel), articles.isEmpty {
-            AppUI.loadFailure(message: error) {
-                Task { await session.loadArticles(channel: channel, force: true) }
-            }
-        } else if articles.isEmpty {
-            AppUI.emptyState(icon: "circle.slash", title: "无内容")
-        } else {
+        AsyncPage(
+            isLoading: session.isLoadingArticles(channel),
+            error: session.articleError(for: channel),
+            isEmpty: articles.isEmpty,
+            loadingTitle: "加载\(channel.title)…",
+            emptyTitle: "无内容",
+            retry: { Task { await session.loadArticles(channel: channel, force: true) } }
+        ) {
             List {
                 ForEach(articles) { article in
-                    articleRow(article)
+                    ArticleListRow(article: article, fallbackModelID: channel.articleModelID)
                         .hiddenNavigationLink(value: article)
                         .styledListRow()
                         .onAppear {
-                            guard articles.last?.id == article.id else { return }
+                            guard articles.isLastItem(article) else { return }
                             Task { await session.loadMoreArticles(channel: channel) }
                         }
                 }
@@ -61,17 +58,8 @@ struct DiscoverFeedView: View {
                     exhausted: session.showsArticlesEndFooter(channel)
                 )
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
+            .plainContentList()
         }
-    }
-
-    private func articleRow(_ article: ArticleSummary) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            OneCoverImage(path: article.thumb)
-            article.rowMeta
-        }
-        .padding(.vertical, 4)
     }
 
     // MARK: - 系列
@@ -80,24 +68,22 @@ struct DiscoverFeedView: View {
         session.series(for: channel)
     }
 
-    @ViewBuilder
     private var seriesPage: some View {
-        if session.isLoadingSeries(channel), seriesItems.isEmpty {
-            AppUI.loading("加载\(channel.title)…")
-        } else if let error = session.seriesError(for: channel), seriesItems.isEmpty {
-            AppUI.loadFailure(message: error) {
-                Task { await session.loadSeries(channel: channel, force: true) }
-            }
-        } else if seriesItems.isEmpty {
-            AppUI.emptyState(icon: "circle.slash", title: "无内容")
-        } else {
+        AsyncPage(
+            isLoading: session.isLoadingSeries(channel),
+            error: session.seriesError(for: channel),
+            isEmpty: seriesItems.isEmpty,
+            loadingTitle: "加载\(channel.title)…",
+            emptyTitle: "无内容",
+            retry: { Task { await session.loadSeries(channel: channel, force: true) } }
+        ) {
             List {
                 ForEach(seriesItems) { item in
                     SeriesRow(item: item)
                         .hiddenNavigationLink(value: item)
                         .styledListRow()
                         .onAppear {
-                            guard seriesItems.last?.id == item.id else { return }
+                            guard seriesItems.isLastItem(item) else { return }
                             Task { await session.loadMoreSeries(channel: channel) }
                         }
                 }
@@ -106,8 +92,7 @@ struct DiscoverFeedView: View {
                     exhausted: session.showsSeriesEndFooter(channel)
                 )
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
+            .plainContentList()
         }
     }
 }

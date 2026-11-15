@@ -13,6 +13,14 @@ final class ActorDetailSession {
     private(set) var photos = PagedListState<ActorPhoto>(pageSize: 30)
     private(set) var comments = PagedListState<CommentItem>(pageSize: 10)
 
+    /// 作品排序（UI：发布时间 / 最受欢迎 → 接口 `published_at` / `like_number`）。
+    var articleSort: VodArticleSort = .publishedAt {
+        didSet {
+            guard oldValue != articleSort else { return }
+            articles.reset()
+        }
+    }
+
     private var loadedActorID: Int?
     private static var detailCache: [Int: ActorDetail] = [:]
 
@@ -21,6 +29,7 @@ final class ActorDetailSession {
             articles.reset()
             photos.reset()
             comments.reset()
+            articleSort = .publishedAt
             detail = nil
             loadedActorID = actorID
         }
@@ -79,8 +88,9 @@ final class ActorDetailSession {
         switch segment {
         case .articles:
             guard articles.beginLoad(force: force) else { return }
+            let sort = articleSort.rawValue
             await applyFirstPage(to: \.articles) {
-                try await Self.fetchArticles(actorID: actorID, page: 1, size: 30)
+                try await Self.fetchArticles(actorID: actorID, page: 1, size: 30, sort: sort)
             }
         case .photos:
             guard photos.beginLoad(force: force) else { return }
@@ -99,8 +109,9 @@ final class ActorDetailSession {
         switch segment {
         case .articles:
             guard let page = articles.beginLoadMore() else { return }
+            let sort = articleSort.rawValue
             await applyMorePage(to: \.articles) {
-                try await Self.fetchArticles(actorID: actorID, page: page, size: 30)
+                try await Self.fetchArticles(actorID: actorID, page: page, size: 30, sort: sort)
             }
         case .photos:
             guard let page = photos.beginLoadMore() else { return }
@@ -145,10 +156,20 @@ final class ActorDetailSession {
         }
     }
 
-    private static func fetchArticles(actorID: Int, page: Int, size: Int) async throws -> [ArticleSummary] {
+    private static func fetchArticles(
+        actorID: Int,
+        page: Int,
+        size: Int,
+        sort: String
+    ) async throws -> [ArticleSummary] {
         let creds = try requireCreds(OneAPI.actorArticlesPath)
         return try await OneClient.actorArticles(
-            base: creds.base, token: creds.token, actorID: actorID, page: page, size: size
+            base: creds.base,
+            token: creds.token,
+            actorID: actorID,
+            page: page,
+            size: size,
+            sort: sort
         )
     }
 

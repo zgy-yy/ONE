@@ -40,13 +40,7 @@ struct DiscoverTopBar: View {
 
             Spacer(minLength: 8)
 
-            Picker("排序", selection: $session.listSort) {
-                ForEach(VodArticleSort.allCases) { item in
-                    Text(item.title).tag(item)
-                }
-            }
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 168)
+            VodArticleSortPicker(sort: $session.listSort)
         }
         .padding(.horizontal, 12)
         .padding(.bottom, 4)

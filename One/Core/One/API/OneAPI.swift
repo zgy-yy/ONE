@@ -5,6 +5,7 @@ enum OneAPI {
     /// 相对 `OneTargets.bases`（拼接后为含 `v2.5` 的基址）。
     static let demandTagListPath = "navigation/getDemandTagList"
     static let discoveryPath = "article/discovery"
+    static let articleDayPath = "article/day"
     static let detailPath = "article/detail"
     static let actorMainNavigationsPath = "actor/getMainNavigations"
     static let actorMainNavigationActorsPath = "actor/getMainNavigationActors"

@@ -36,7 +36,11 @@ enum MineContentCategory: Int, CaseIterable, Identifiable, Hashable {
     var modelID: Int {
         switch self {
         case .all, .album, .manga: 0
-        case .image, .reading, .film, .radio, .vod: rawValue
+        case .image: ArticleModelID.graphic
+        case .reading: ArticleModelID.reading
+        case .film: ArticleModelID.film
+        case .radio: ArticleModelID.radio
+        case .vod: rawValue
         }
     }
 

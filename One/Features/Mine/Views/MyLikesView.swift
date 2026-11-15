@@ -6,8 +6,6 @@ struct MyLikesView: View {
 
     var body: some View {
         listContent
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(.systemBackground))
             .safeAreaInset(edge: .top, spacing: 0) {
                 MineCategoryStrip(category: $session.likeCategory)
             }
@@ -18,21 +16,17 @@ struct MyLikesView: View {
             }
     }
 
-    @ViewBuilder
     private var listContent: some View {
         let items = session.likes.items
-        if session.likes.isLoading, items.isEmpty {
-            AppUI.loading("加载喜欢…")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if let error = session.likes.error, items.isEmpty {
-            AppUI.loadFailure(message: error) {
-                Task { await session.loadLikes(force: true) }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if items.isEmpty {
-            AppUI.emptyState(icon: "heart.slash", title: "暂无喜欢")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
+        return AsyncPage(
+            isLoading: session.likes.isLoading,
+            error: session.likes.error,
+            isEmpty: items.isEmpty,
+            loadingTitle: "加载喜欢…",
+            emptyIcon: "heart.slash",
+            emptyTitle: "暂无喜欢",
+            retry: { Task { await session.loadLikes(force: true) } }
+        ) {
             List {
                 ForEach(items) { item in
                     NavigationLink(value: item.asArticleSummary) {
@@ -40,15 +34,15 @@ struct MyLikesView: View {
                             title: item.displayTitle,
                             author: item.author,
                             imagePath: item.imagePath,
-                            subtitle: item.publishedAt
+                            subtitle: item.publishedAt,
+                            coverAspectRatio: CoverAspect.ratio(modelID: item.modelID)
                         )
                     }
                     .buttonStyle(.plain)
                     .styledListRow()
                 }
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
+            .plainContentList()
         }
     }
 }

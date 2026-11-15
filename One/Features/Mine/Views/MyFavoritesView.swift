@@ -10,8 +10,6 @@ struct MyFavoritesView: View {
 
     var body: some View {
         listContent
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(.systemBackground))
             .safeAreaInset(edge: .top, spacing: 0) {
                 topBars
             }
@@ -58,28 +56,24 @@ struct MyFavoritesView: View {
         }
     }
 
-    @ViewBuilder
     private var listContent: some View {
         let items = session.favorites.items
-        if session.favorites.isLoading, items.isEmpty {
-            AppUI.loading("加载收藏…")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if let error = session.favorites.error, items.isEmpty {
-            AppUI.loadFailure(message: error) {
-                Task { await session.loadFavorites(force: true) }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if items.isEmpty {
-            AppUI.emptyState(icon: "star.slash", title: "暂无收藏")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
+        return AsyncPage(
+            isLoading: session.favorites.isLoading,
+            error: session.favorites.error,
+            isEmpty: items.isEmpty,
+            loadingTitle: "加载收藏…",
+            emptyIcon: "star.slash",
+            emptyTitle: "暂无收藏",
+            retry: { Task { await session.loadFavorites(force: true) } }
+        ) {
             List {
                 ForEach(items) { item in
                     favoriteLink(item)
                         .buttonStyle(.plain)
                         .styledListRow()
                         .onAppear {
-                            guard items.last?.id == item.id else { return }
+                            guard items.isLastItem(item) else { return }
                             Task { await session.loadMoreFavorites() }
                         }
                 }
@@ -88,8 +82,7 @@ struct MyFavoritesView: View {
                     exhausted: session.favorites.exhausted && session.favorites.loaded
                 )
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
+            .plainContentList()
         }
     }
 
@@ -99,7 +92,8 @@ struct MyFavoritesView: View {
             title: item.displayTitle,
             author: item.author ?? item.contentType,
             imagePath: item.imagePath,
-            subtitle: item.collectTime
+            subtitle: item.collectTime,
+            coverAspectRatio: CoverAspect.ratio(modelID: item.modelID)
         )
         if item.isSeries {
             NavigationLink(value: item.asSeriesSummary) { row }

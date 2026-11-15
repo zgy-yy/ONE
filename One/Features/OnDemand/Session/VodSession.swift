@@ -54,7 +54,8 @@ final class VodSession {
         }
 
         do {
-            tags = try await OneClient.getDemandTagList(base: creds.base, token: creds.token)
+            let remote = try await OneClient.getDemandTagList(base: creds.base, token: creds.token)
+            tags = [.all] + remote.filter { $0.id != DemandTag.all.id }
             tagsArticles = [:]
         } catch {
             lastError = error.localizedDescription
@@ -98,7 +99,7 @@ final class VodSession {
     func loadMoreArticles(for tagID: Int) async {
         guard let state = tagsArticles[tagID], state.loaded, state.canLoadMore else { return }
         guard !articlesLoading.contains(tagID), !articlesLoadingMore.contains(tagID) else { return }
-        guard let next = nextPageRequest(for: state) else {
+        guard let next = state.nextPageRequest else {
             markFullyExhaustedIfNeeded(tagID: tagID)
             return
         }
@@ -112,35 +113,22 @@ final class VodSession {
 
     // MARK: - 分页
 
-    private struct PageRequest {
-        let month: String
-        let page: Int
-        let newSection: Bool
-    }
-
-    private func nextPageRequest(for state: TagsArticles) -> PageRequest? {
-        guard let tail = state.sections.last else { return nil }
-        if !tail.monthExhausted {
-            return PageRequest(month: tail.month, page: tail.nextPage, newSection: false)
-        }
-        guard let month = MonthYear(apiString: tail.month)?.previous else { return nil }
-        return PageRequest(month: month.apiString, page: 1, newSection: true)
-    }
-
     /// 锚定月无文章时继续拉更早月份，直到有数据或无法继续。
     private func advancePastEmptyMonths(tagID: Int) async {
-        while tagsArticles[tagID]?.canLoadMore == true {
-            guard let tail = tagsArticles[tagID]?.sections.last, tail.monthExhausted, tail.articles.isEmpty else { break }
-            await loadMoreArticles(for: tagID)
+        while tagsArticles[tagID]?.shouldAdvancePastEmptyTail == true {
+            guard let next = tagsArticles[tagID]?.nextPageRequest else { break }
+            await fetchArticlePage(
+                tagID: tagID,
+                month: next.month,
+                page: next.page,
+                newSection: next.newSection
+            )
         }
     }
 
     private func markFullyExhaustedIfNeeded(tagID: Int) {
-        guard var state = tagsArticles[tagID],
-              let tail = state.sections.last,
-              tail.monthExhausted,
-              MonthYear(apiString: tail.month)?.previous == nil else { return }
-        state.fullyExhausted = true
+        guard var state = tagsArticles[tagID] else { return }
+        state.markFullyExhaustedIfNeeded()
         tagsArticles[tagID] = state
     }
 

@@ -12,18 +12,15 @@ struct ActorDetailView: View {
     private let articleColumns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 2)
 
     var body: some View {
-        Group {
-            if session.isLoading, session.detail == nil {
-                AppUI.loading("加载演员…")
-            } else if let error = session.error, session.detail == nil {
-                AppUI.loadFailure(message: error) {
-                    Task { await session.load(actorID: actor.id) }
-                }
-            } else {
-                contentScroll
-            }
+        DetailLoadGate(
+            isLoading: session.isLoading,
+            error: session.error,
+            hasContent: session.detail != nil,
+            loadingTitle: "加载演员…",
+            retry: { Task { await session.load(actorID: actor.id) } }
+        ) {
+            contentScroll
         }
-        .fillPage()
         .toolbar(.visible, for: .navigationBar)
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: ArticleSummary.self) { ArticleDetailView(article: $0) }
@@ -34,6 +31,10 @@ struct ActorDetailView: View {
         }
         .onChange(of: segment) { _, value in
             Task { await session.loadSegment(value, actorID: actor.id) }
+        }
+        // 排序变化时 Session 会清空列表，这里重新拉首屏
+        .onChange(of: session.articleSort) { _, _ in
+            Task { await session.loadSegment(.articles, actorID: actor.id) }
         }
     }
 
@@ -57,10 +58,9 @@ struct ActorDetailView: View {
     // MARK: - Header
 
     private var header: some View {
-        HStack(alignment: .top, spacing: 14) {
+        LeadingMediaHeader {
             ActorAvatarImage(path: session.detail?.imagePath ?? actor.imagePath)
-                .frame(width: 110)
-
+        } info: {
             VStack(alignment: .leading, spacing: 6) {
                 Text(session.detail?.displayName ?? actor.displayName)
                     .font(.title3.weight(.semibold))
@@ -74,7 +74,6 @@ struct ActorDetailView: View {
                     Text("昵称 \(nickname)").font(.caption).foregroundStyle(.secondary)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -178,30 +177,41 @@ struct ActorDetailView: View {
     }
 
     private var articlesSection: some View {
-        AsyncSection(
-            isLoading: session.articles.isLoading,
-            error: session.articles.error,
-            isEmpty: session.articles.isEmpty,
-            loadingTitle: "加载作品…",
-            emptyTitle: "暂无作品",
-            retry: { Task { await session.retry(.articles, actorID: actor.id) } }
-        ) {
-            LazyVGrid(columns: articleColumns, spacing: 10) {
-                ForEach(session.articles.items) { article in
-                    NavigationLink(value: article) { articleCard(article) }
-                        .buttonStyle(.plain)
-                        .onAppear { loadMoreIfNeeded(article.id, in: .articles) }
-                }
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                VodArticleSortPicker(sort: $session.articleSort)
+                Spacer(minLength: 0)
             }
-            AppUI.loadMoreFooter(
-                loadingMore: session.articles.isLoadingMore,
-                exhausted: session.articles.exhausted
-            )
+
+            AsyncSection(
+                isLoading: session.articles.isLoading,
+                error: session.articles.error,
+                isEmpty: session.articles.isEmpty,
+                loadingTitle: "加载作品…",
+                emptyTitle: "暂无作品",
+                retry: { Task { await session.retry(.articles, actorID: actor.id) } }
+            ) {
+                LazyVGrid(columns: articleColumns, spacing: 10) {
+                    ForEach(session.articles.items) { article in
+                        NavigationLink(value: article) { articleCard(article) }
+                            .buttonStyle(.plain)
+                            .onAppear {
+                                // 滑到最后一项时请求下一页
+                                guard session.articles.items.isLastItem(article) else { return }
+                                Task { await session.loadMore(.articles, actorID: actor.id) }
+                            }
+                    }
+                }
+                AppUI.loadMoreFooter(
+                    loadingMore: session.articles.isLoadingMore,
+                    exhausted: session.articles.exhausted
+                )
+            }
         }
     }
 
     private func articleCard(_ article: ArticleSummary) -> some View {
-        OneCoverImage(path: article.thumb)
+        OneCoverImage(path: article.thumb, aspectRatio: article.coverAspectRatio())
             .overlay(alignment: .bottom) {
                 Text(article.displayTitle)
                     .font(.caption.weight(.medium))
@@ -234,7 +244,10 @@ struct ActorDetailView: View {
             LazyVGrid(columns: photoColumns, spacing: 8) {
                 ForEach(session.photos.items) { photo in
                     ActorAvatarImage(path: photo.imagePath)
-                        .onAppear { loadMoreIfNeeded(photo.id, in: .photos) }
+                        .onAppear {
+                            guard session.photos.items.isLastItem(photo) else { return }
+                            Task { await session.loadMore(.photos, actorID: actor.id) }
+                        }
                 }
             }
             AppUI.loadMoreFooter(
@@ -256,7 +269,10 @@ struct ActorDetailView: View {
             LazyVStack(alignment: .leading, spacing: 14) {
                 ForEach(session.comments.items) { comment in
                     commentRow(comment)
-                        .onAppear { loadMoreIfNeeded(comment.id, in: .comments) }
+                        .onAppear {
+                            guard session.comments.items.isLastItem(comment) else { return }
+                            Task { await session.loadMore(.comments, actorID: actor.id) }
+                        }
                 }
                 AppUI.loadMoreFooter(
                     loadingMore: session.comments.isLoadingMore,
@@ -288,15 +304,5 @@ struct ActorDetailView: View {
         }
         .padding(12)
         .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-    }
-
-    private func loadMoreIfNeeded(_ id: Int, in segment: ActorDetailSegment) {
-        let isLast: Bool = switch segment {
-        case .articles: session.articles.items.last?.id == id
-        case .photos: session.photos.items.last?.id == id
-        case .comments: session.comments.items.last?.id == id
-        }
-        guard isLast else { return }
-        Task { await session.loadMore(segment, actorID: actor.id) }
     }
 }

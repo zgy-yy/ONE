@@ -6,10 +6,11 @@ struct LibraryRow: View {
     var author: String? = nil
     var imagePath: String? = nil
     var subtitle: String? = nil
+    var coverAspectRatio: CGFloat = CoverAspect.landscape
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            OneCoverImage(path: imagePath)
+            OneCoverImage(path: imagePath, aspectRatio: coverAspectRatio)
                 .frame(width: 120)
             VStack(alignment: .leading, spacing: 6) {
                 Text(title)

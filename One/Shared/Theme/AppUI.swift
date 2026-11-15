@@ -90,6 +90,12 @@ extension View {
             .listRowBackground(Color(.secondarySystemGroupedBackground))
     }
 
+    /// 内容列表通用样式（无分组、隐藏系统滚动背景）。
+    func plainContentList() -> some View {
+        listStyle(.plain)
+            .scrollContentBackground(.hidden)
+    }
+
     /// 整行可点、无右侧箭头的 `NavigationLink`（适合自定义列表行）。
     func hiddenNavigationLink<Value: Hashable>(value: Value) -> some View {
         frame(maxWidth: .infinity, alignment: .leading)

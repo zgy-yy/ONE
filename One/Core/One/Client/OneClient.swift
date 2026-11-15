@@ -78,6 +78,25 @@ enum OneClient {
         return try unwrap(envelope)?.articles ?? []
     }
 
+    /// 首页每日一文：`published_at=YYYY-MM-DD`。
+    static func articleDay(
+        base: URL,
+        token: String,
+        publishedAt: String
+    ) async throws -> ArticleDayPayload {
+        let envelope = try await post(
+            OneApiEnvelope<ArticleDayPayload>.self,
+            base: base,
+            path: OneAPI.articleDayPath,
+            token: token,
+            data: ["published_at": publishedAt]
+        )
+        guard let payload = try unwrap(envelope) else {
+            throw OneClientError.apiRejected("每日内容为空")
+        }
+        return payload
+    }
+
     static func articleDetail(base: URL, token: String, articleID: Int) async throws -> ArticleDetail {
         let envelope = try await post(
             OneApiEnvelope<ArticleDetail>.self,

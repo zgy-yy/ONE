@@ -17,20 +17,17 @@ struct ActorGridPane: View {
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 3)
 
     var body: some View {
-        Group {
-            if session.isLoadingActors(selection), actors.isEmpty {
-                AppUI.loading("加载演员…")
-            } else if let error = session.error(for: selection), actors.isEmpty {
-                AppUI.loadFailure(message: error) {
-                    Task { await session.loadActors(selection: selection, force: true) }
-                }
-            } else if actors.isEmpty {
-                AppUI.emptyState(icon: "person.slash", title: "暂无演员")
-            } else {
-                actorGrid
-            }
+        AsyncPage(
+            isLoading: session.isLoadingActors(selection),
+            error: session.error(for: selection),
+            isEmpty: actors.isEmpty,
+            loadingTitle: "加载演员…",
+            emptyIcon: "person.slash",
+            emptyTitle: "暂无演员",
+            retry: { Task { await session.loadActors(selection: selection, force: true) } }
+        ) {
+            actorGrid
         }
-        .fillPage()
         .safeAreaInset(edge: .top, spacing: 0) {
             if let navigationID, !tags.isEmpty {
                 VStack(spacing: 0) {
@@ -52,7 +49,7 @@ struct ActorGridPane: View {
                     NavigationLink(value: actor) { actorCell(actor) }
                         .buttonStyle(.plain)
                         .onAppear {
-                            guard actors.last?.id == actor.id else { return }
+                            guard actors.isLastItem(actor) else { return }
                             Task { await session.loadMoreActors(selection: selection) }
                         }
                 }

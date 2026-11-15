@@ -50,25 +50,35 @@ final class TokensSession {
     }
 
     /// 按接口路径挑选 JWT。
-    /// - 发短信 / 登录：用游客 token
-    /// - 已登录：优先用户 token
-    /// - `article/detail`：优先壳里的登录 token，再游客
+    ///
+    /// 规则（从上到下）：
+    /// 1. 发短信 / 登录 → 游客 `token_one_visitor`（此时还没有用户 token）
+    /// 2. `article/detail` → **固定**壳配置里的 `token_one`（与是否登录无关）
+    /// 3. 已登录 → 用户登录 token（替代游客 token）
+    /// 4. 未登录 → 游客 token，再退回 `token_one`
     func oneToken(forPath path: String) -> String? {
+        // 1) 认证接口：只能用游客 token
         if path == OneAPI.sendSMSPath || path == OneAPI.userLoginPath {
-            return tokenOneVisitor ?? tokenOne
+            return nonEmpty(tokenOneVisitor) ?? nonEmpty(tokenOne)
         }
+
+        // 2) 文章详情：固定 one token
+        if path == OneAPI.detailPath {
+            return nonEmpty(tokenOne) ?? nonEmpty(tokenOneVisitor)
+        }
+
+        // 3) 已登录：用户 token 代替游客
         if let login = OneAuthStore.loginToken {
             return login
         }
-        if path.contains("article/detail"),
-           let tokenOne, !tokenOne.isEmpty
-        {
-            return tokenOne
-        }
-        if let tokenOneVisitor, !tokenOneVisitor.isEmpty {
-            return tokenOneVisitor
-        }
-        return tokenOne
+
+        // 4) 未登录访客
+        return nonEmpty(tokenOneVisitor) ?? nonEmpty(tokenOne)
+    }
+
+    private func nonEmpty(_ value: String?) -> String? {
+        guard let value, !value.isEmpty else { return nil }
+        return value
     }
 
     var statusSummary: String {

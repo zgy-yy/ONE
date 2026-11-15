@@ -35,13 +35,18 @@ final class ArticleDetailSession {
         playURL = nil
         defer { isLoading = false }
 
+        // detail 固定走 token_one（见 TokensSession.oneToken）
         guard let creds = OneCredentials.pair(tokenPath: OneAPI.detailPath) else {
             error = OneCredentials.readinessError
             return
         }
 
         do {
-            let article = try await OneClient.articleDetail(base: creds.base, token: creds.token, articleID: articleID)
+            let article = try await OneClient.articleDetail(
+                base: creds.base,
+                token: creds.token,
+                articleID: articleID
+            )
             let url = ArticlePlayURL.resolvedURL(detail: article, videoCDN: TokensSession.shared.oneVideoCDN)
             detail = article
             playURL = url

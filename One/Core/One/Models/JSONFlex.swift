@@ -25,7 +25,7 @@ enum JSONFlex {
 struct JSONDiscard: Decodable {
     init(from decoder: Decoder) throws {
         if let single = try? decoder.singleValueContainer() {
-            _ = try? single.decodeNil()
+            _ = single.decodeNil()
             return
         }
         if var array = try? decoder.unkeyedContainer() {

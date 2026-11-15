@@ -1,8 +1,12 @@
+import CoreGraphics
 import Foundation
 
 struct DemandTag: Decodable, Identifiable, Hashable {
     let id: Int
     let title: String?
+
+    /// 点播顶栏「全部」，请求时 `demand_tag_id=0`。
+    static let all = DemandTag(id: 0, title: "全部")
 
     var displayTitle: String {
         if let title, !title.isEmpty { return title }
@@ -24,6 +28,11 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
     let publishedAt: String?
     let modelID: Int?
     let summary: String?
+
+    /// 图文竖图 3:4，其余 16:9；列表未回传 `model_id` 时用 `fallbackModelID`。
+    func coverAspectRatio(fallbackModelID: Int? = nil) -> CGFloat {
+        CoverAspect.ratio(modelID: modelID, fallback: fallbackModelID)
+    }
 
     enum CodingKeys: String, CodingKey {
         case id, title, thumb, author
@@ -155,5 +164,22 @@ struct DiscoveryListPayload: Decodable {
         }
         let wrapped = try container.decode(InfoWrapper.self)
         articles = wrapped.info ?? []
+    }
+}
+
+/// `article/day` 的 `data`。
+struct ArticleDayPayload: Decodable {
+    let articleTopText: String?
+    let info: [ArticleSummary]?
+
+    var articles: [ArticleSummary] { info ?? [] }
+
+    var topText: String? {
+        articleTopText?.nonEmpty
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case info
+        case articleTopText = "article_top_text"
     }
 }

@@ -9,18 +9,15 @@ struct SeriesDetailView: View {
     }
 
     var body: some View {
-        Group {
-            if session.isLoading, session.detail == nil {
-                AppUI.loading("加载章节…")
-            } else if let error = session.error, session.detail == nil {
-                AppUI.loadFailure(message: error) {
-                    Task { await session.load(force: true) }
-                }
-            } else {
-                chapterList
-            }
+        DetailLoadGate(
+            isLoading: session.isLoading,
+            error: session.error,
+            hasContent: session.detail != nil,
+            loadingTitle: "加载章节…",
+            retry: { Task { await session.load(force: true) } }
+        ) {
+            chapterList
         }
-        .fillPage()
         .toolbar(.visible, for: .navigationBar)
         .navigationBarTitleDisplayMode(.inline)
         .task(id: session.series.id) {
@@ -54,15 +51,13 @@ struct SeriesDetailView: View {
                 Text("章节 · \(session.chapters.count)")
             }
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
+        .plainContentList()
     }
 
     private var header: some View {
-        HStack(alignment: .top, spacing: 14) {
+        LeadingMediaHeader {
             OneCoverImage(path: session.coverPath)
-                .frame(width: 110)
-
+        } info: {
             VStack(alignment: .leading, spacing: 8) {
                 Text(session.title)
                     .font(.title3.weight(.semibold))
@@ -77,7 +72,6 @@ struct SeriesDetailView: View {
                     .font(.caption.weight(.medium))
                     .foregroundStyle(session.isFinished ? Color.secondary : Color.accentColor)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)

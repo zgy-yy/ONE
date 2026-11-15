@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 列表行：封面下方单行标题。
+/// 列表行标题：封面下方单行文案。
 struct ArticleRowMeta: View {
     let title: String
 
@@ -14,6 +14,7 @@ struct ArticleRowMeta: View {
 }
 
 extension ArticleSummary {
+    /// 用 `displayTitle` 生成列表标题视图，方便 `ArticleListRow` 直接嵌入。
     var rowMeta: ArticleRowMeta {
         ArticleRowMeta(title: displayTitle)
     }
