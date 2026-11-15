@@ -8,7 +8,7 @@ struct HomeMonthArticlesView: View {
     @Bindable private var homeSession = HomeSession.shared
     @Environment(\.dismiss) private var dismiss
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 2)
+    private let gridSpacing: CGFloat = 10
 
     init(day: DayDate) {
         self.day = day
@@ -42,28 +42,17 @@ struct HomeMonthArticlesView: View {
 
     private var articleGrid: some View {
         ScrollView {
+            // 只用一层 LazyVStack：嵌套 LazyVGrid 会在中段滑动时回跳、复用错乱。
             LazyVStack(alignment: .leading, spacing: 20, pinnedViews: [.sectionHeaders]) {
                 ForEach(session.sections) { section in
                     Section {
-                        LazyVGrid(columns: columns, spacing: 12) {
-                            ForEach(section.articles) { article in
-                                Button {
-                                    jumpToDay(for: article)
-                                } label: {
-                                    articleCard(article)
-                                }
-                                .buttonStyle(.plain)
-                                .onAppear {
-                                    guard session.sections.isTailArticle(article, in: section) else { return }
-                                    Task { await session.loadMore() }
-                                }
-                            }
-                        }
+                        sectionRows(section)
                     } header: {
                         ArticleMonthSectionHeader(monthAPIString: section.month, pinned: true)
                     }
                 }
 
+                loadMoreSentinel
                 AppUI.loadMoreFooter(
                     loadingMore: session.isLoadingMore,
                     exhausted: session.fullyExhausted && session.loaded
@@ -75,6 +64,39 @@ struct HomeMonthArticlesView: View {
             .padding(.bottom, 16)
         }
         .tracksSearchFABScroll()
+    }
+
+    /// 两列用固定 `HStack` 行，避免 `LazyVGrid` 预取导致中段回跳。
+    private func sectionRows(_ section: ArticleMonthSection) -> some View {
+        let rows = section.articles.chunked(into: 2)
+        return VStack(spacing: gridSpacing) {
+            ForEach(rows, id: \.rowID) { row in
+                HStack(alignment: .top, spacing: gridSpacing) {
+                    ForEach(row) { article in
+                        Button {
+                            jumpToDay(for: article)
+                        } label: {
+                            articleCard(article)
+                        }
+                        .buttonStyle(.plain)
+                        .frame(maxWidth: .infinity, alignment: .top)
+                    }
+                    if row.count == 1 {
+                        Color.clear
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+            }
+        }
+    }
+
+    /// 真正滑到列表底部才触发加载更多。
+    private var loadMoreSentinel: some View {
+        Color.clear
+            .frame(height: 1)
+            .onAppear {
+                Task { await session.loadMore() }
+            }
     }
 
     /// 用文章的 `published_at` 回到首页对应日。
@@ -101,4 +123,23 @@ struct HomeMonthArticlesView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
+}
+
+private extension Array {
+    func chunked(into size: Int) -> [[Element]] {
+        guard size > 0, !isEmpty else { return [] }
+        var result: [[Element]] = []
+        result.reserveCapacity((count + size - 1) / size)
+        var index = startIndex
+        while index < endIndex {
+            let next = self.index(index, offsetBy: size, limitedBy: endIndex) ?? endIndex
+            result.append(Array(self[index..<next]))
+            index = next
+        }
+        return result
+    }
+}
+
+private extension Array where Element == ArticleSummary {
+    var rowID: Int { first?.id ?? 0 }
 }

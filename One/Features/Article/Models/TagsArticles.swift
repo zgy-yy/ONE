@@ -80,10 +80,12 @@ struct TagsArticles {
     ) {
         error = nil
         loaded = true
-        let exhausted = list.count < pageSize
 
         if newSection {
-            appendSection(month: month, items: unique(list, except: flatItems), page: page, exhausted: exhausted)
+            let items = unique(list, except: flatItems)
+            // 不足一页，或去重后无新数据 → 该月耗尽。
+            let exhausted = list.count < pageSize || items.isEmpty
+            appendSection(month: month, items: items, page: page, exhausted: exhausted)
             return
         }
 
@@ -93,9 +95,10 @@ struct TagsArticles {
         }
 
         let existing = sections[index].articles
-        sections[index].articles.append(contentsOf: unique(list, except: existing))
+        let items = unique(list, except: existing)
+        sections[index].articles.append(contentsOf: items)
         sections[index].nextPage = page + 1
-        sections[index].monthExhausted = exhausted
+        sections[index].monthExhausted = list.count < pageSize || items.isEmpty
     }
 
     private mutating func appendSection(

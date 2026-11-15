@@ -14,7 +14,7 @@ final class HomeMonthSession {
     private(set) var loaded = false
     private(set) var fullyExhausted = false
 
-    private let pageSize = 31
+    private let pageSize = 20
     private var state = TagsArticles()
 
     init(monthAPIString: String) {
@@ -59,6 +59,7 @@ final class HomeMonthSession {
         defer { isLoadingMore = false }
 
         await fetchPage(month: next.month, page: next.page, newSection: next.newSection)
+        await advancePastEmptyMonths()
         state.markFullyExhaustedIfNeeded()
         syncFromState()
     }
@@ -66,7 +67,9 @@ final class HomeMonthSession {
     // MARK: - Private
 
     private func advancePastEmptyMonths() async {
-        while state.shouldAdvancePastEmptyTail {
+        var hops = 0
+        while state.shouldAdvancePastEmptyTail, hops < 36 {
+            hops += 1
             guard let next = state.nextPageRequest else { break }
             await fetchPage(month: next.month, page: next.page, newSection: next.newSection)
         }
