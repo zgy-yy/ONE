@@ -24,12 +24,7 @@ struct DiscoverTabContent: View {
             .safeAreaInset(edge: .top, spacing: 0) {
                 DiscoverTopBar(channel: $channel, session: session)
             }
-            .navigationDestination(for: SeriesSummary.self) { series in
-                SeriesDetailView(series: series)
-            }
-            .navigationDestination(for: ArticleSummary.self) { article in
-                ArticleDetailView(article: article)
-            }
+            .libraryDetailDestinations()
             .onChange(of: channel) { _, newChannel in
                 visited.insert(newChannel)
             }

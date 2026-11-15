@@ -78,6 +78,44 @@ enum OneClient {
         return try unwrap(envelope)?.articles ?? []
     }
 
+    /// 搜索热词（无 body）。
+    static func articleHotWords(base: URL, token: String) async throws -> [SearchHotWord] {
+        let envelope = try await post(
+            OneApiEnvelope<SearchHotWordsPayload>.self,
+            base: base,
+            path: OneAPI.articleHotWordsPath,
+            token: token,
+            data: nil
+        )
+        return try unwrap(envelope)?.list ?? []
+    }
+
+    /// 搜索：`keyword` + `model_id` + `series_category` 分页。
+    static func articleSearch(
+        base: URL,
+        token: String,
+        keyword: String,
+        modelID: Int,
+        seriesCategory: Int = 0,
+        page: Int,
+        size: Int = 20
+    ) async throws -> [SearchHit] {
+        let envelope = try await post(
+            OneApiEnvelope<[SearchHit]>.self,
+            base: base,
+            path: OneAPI.articleSearchPath,
+            token: token,
+            data: [
+                "keyword": keyword,
+                "model_id": String(modelID),
+                "series_category": String(seriesCategory),
+                "page": String(page),
+                "size": String(size),
+            ]
+        )
+        return try unwrap(envelope) ?? []
+    }
+
     /// 首页每日一文：`published_at=YYYY-MM-DD`。
     static func articleDay(
         base: URL,

@@ -17,32 +17,27 @@ struct MyLikesView: View {
     }
 
     private var listContent: some View {
-        let items = session.likes.items
-        return AsyncPage(
-            isLoading: session.likes.isLoading,
-            error: session.likes.error,
-            isEmpty: items.isEmpty,
+        // 喜欢接口一次返回，无分页；触底 loadMore 为空操作。
+        PagedAsyncList(
+            state: session.likes,
             loadingTitle: "加载喜欢…",
             emptyIcon: "heart.slash",
             emptyTitle: "暂无喜欢",
-            retry: { Task { await session.loadLikes(force: true) } }
-        ) {
-            List {
-                ForEach(items) { item in
-                    NavigationLink(value: item.asArticleSummary) {
-                        LibraryRow(
-                            title: item.displayTitle,
-                            author: item.author,
-                            imagePath: item.imagePath,
-                            subtitle: item.publishedAt,
-                            coverAspectRatio: CoverAspect.ratio(modelID: item.modelID)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .styledListRow()
-                }
-            }
-            .plainContentList()
-        }
+            retry: { Task { await session.loadLikes(force: true) } },
+            loadMore: {},
+            row: likeRow
+        )
+    }
+
+    private func likeRow(_ item: UserLikeItem) -> some View {
+        LibraryRow(
+            title: item.displayTitle,
+            author: item.author,
+            imagePath: item.imagePath,
+            subtitle: item.publishedAt,
+            coverAspectRatio: CoverAspect.ratio(modelID: item.modelID)
+        )
+        .hiddenNavigationLink(value: item.asArticleSummary)
+        .styledListRow()
     }
 }

@@ -13,9 +13,7 @@ struct VodTabContent: View {
         NavigationStack {
             content
                 .fillPage()
-                .navigationDestination(for: ArticleSummary.self) { article in
-                    ArticleDetailView(article: article)
-                }
+                .articleDetailDestination()
                 .task { await session.loadIfNeeded() }
                 .onChange(of: session.tags, initial: true) { _, tags in
                     syncSelection(with: tags)

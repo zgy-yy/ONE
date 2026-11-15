@@ -32,7 +32,7 @@ struct ActorDetailView: View {
         .toolbar(.visible, for: .navigationBar)
         .navigationBarTitleDisplayMode(.inline)
         .navigationTitle(displayName)
-        .navigationDestination(for: ArticleSummary.self) { ArticleDetailView(article: $0) }
+        .articleDetailDestination()
         .task(id: actor.id) {
             showsFullDesc = false
             segment = .articles
@@ -73,6 +73,7 @@ struct ActorDetailView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
         }
+        .tracksSearchFABScroll()
     }
 
     // MARK: - Header

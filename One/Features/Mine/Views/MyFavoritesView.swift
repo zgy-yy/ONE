@@ -41,64 +41,41 @@ struct MyFavoritesView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color(.systemBackground))
         } else if !session.folders.isEmpty {
-            VStack(spacing: 0) {
-                HorizontalCapsuleStrip(
-                    items: session.folders,
-                    selectedID: session.selectedFolderID,
-                    title: { "\($0.displayName)·\($0.articleNum ?? 0)" },
-                    id: \.id,
-                    onSelect: { session.selectedFolderID = $0.id },
-                    compact: true
-                )
-                Divider()
-            }
-            .background(Color(.systemBackground))
+            TopCapsuleBar(
+                items: session.folders,
+                selectedID: session.selectedFolderID,
+                title: { "\($0.displayName)·\($0.articleNum ?? 0)" },
+                id: \.id,
+                onSelect: { session.selectedFolderID = $0.id }
+            )
         }
     }
 
     private var listContent: some View {
-        let items = session.favorites.items
-        return AsyncPage(
-            isLoading: session.favorites.isLoading,
-            error: session.favorites.error,
-            isEmpty: items.isEmpty,
+        PagedAsyncList(
+            state: session.favorites,
             loadingTitle: "加载收藏…",
             emptyIcon: "star.slash",
             emptyTitle: "暂无收藏",
-            retry: { Task { await session.loadFavorites(force: true) } }
-        ) {
-            List {
-                ForEach(items) { item in
-                    favoriteLink(item)
-                        .buttonStyle(.plain)
-                        .styledListRow()
-                        .onAppear {
-                            guard items.isLastItem(item) else { return }
-                            Task { await session.loadMoreFavorites() }
-                        }
-                }
-                AppUI.listLoadMoreFooter(
-                    loadingMore: session.favorites.isLoadingMore,
-                    exhausted: session.favorites.exhausted && session.favorites.loaded
-                )
-            }
-            .plainContentList()
-        }
+            retry: { Task { await session.loadFavorites(force: true) } },
+            loadMore: { Task { await session.loadMoreFavorites() } },
+            row: favoriteRow
+        )
     }
 
-    @ViewBuilder
-    private func favoriteLink(_ item: FavoriteItem) -> some View {
-        let row = LibraryRow(
+    private func favoriteRow(_ item: FavoriteItem) -> some View {
+        LibraryRow(
             title: item.displayTitle,
             author: item.author ?? item.contentType,
             imagePath: item.imagePath,
             subtitle: item.collectTime,
             coverAspectRatio: CoverAspect.ratio(modelID: item.modelID)
         )
-        if item.isSeries {
-            NavigationLink(value: item.asSeriesSummary) { row }
-        } else {
-            NavigationLink(value: item.asArticleSummary) { row }
-        }
+        .libraryNavigation(
+            isSeries: item.isSeries,
+            article: item.asArticleSummary,
+            series: item.asSeriesSummary
+        )
+        .styledListRow()
     }
 }

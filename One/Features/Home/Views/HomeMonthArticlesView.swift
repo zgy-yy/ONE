@@ -74,6 +74,7 @@ struct HomeMonthArticlesView: View {
             .padding(.horizontal, 16)
             .padding(.bottom, 16)
         }
+        .tracksSearchFABScroll()
     }
 
     /// 用文章的 `published_at` 回到首页对应日。

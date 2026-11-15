@@ -15,12 +15,7 @@ struct MineTabContent: View {
                     case .favorites: MyFavoritesView()
                     }
                 }
-                .navigationDestination(for: ArticleSummary.self) { article in
-                    ArticleDetailView(article: article)
-                }
-                .navigationDestination(for: SeriesSummary.self) { series in
-                    SeriesDetailView(series: series)
-                }
+                .libraryDetailDestinations()
         }
     }
 

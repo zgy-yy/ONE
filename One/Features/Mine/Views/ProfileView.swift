@@ -41,6 +41,7 @@ struct ProfileView: View {
                 Button("退出登录", role: .destructive, action: onLogout)
             }
         }
+        .tracksSearchFABScroll()
         .task {
             await library.loadRecordCounts()
         }

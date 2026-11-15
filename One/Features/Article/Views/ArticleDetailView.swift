@@ -47,6 +47,7 @@ struct ArticleDetailView: View {
                 .padding(.vertical, 16)
             }
         }
+        .tracksSearchFABScroll()
         // 封面从屏幕顶端起算（含刘海/状态栏），导航栏浮在封面上。
         .ignoresSafeArea(edges: .top)
     }

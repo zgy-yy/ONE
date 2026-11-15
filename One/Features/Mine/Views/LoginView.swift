@@ -29,6 +29,7 @@ struct LoginView: View {
             .padding(.top, 36)
             .padding(.bottom, 24)
         }
+        .tracksSearchFABScroll()
         .scrollDismissesKeyboard(.interactively)
         .background(pageBackground)
         .onTapGesture { focusedField = nil }

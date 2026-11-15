@@ -33,9 +33,7 @@ struct HomeTabContent: View {
             .navigationDestination(for: DayDate.self) { day in
                 HomeMonthArticlesView(day: day)
             }
-            .navigationDestination(for: ArticleSummary.self) { article in
-                ArticleDetailView(article: article)
-            }
+            .articleDetailDestination()
             .task {
                 session.prepareLoad(session.selectedDay)
                 await session.load(session.selectedDay)
