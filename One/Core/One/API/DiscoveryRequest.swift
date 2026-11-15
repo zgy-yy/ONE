@@ -42,6 +42,25 @@ struct DiscoveryRequest: Sendable {
         )
     }
 
+    /// 发现页频道列表（按 `model_id`；带发布年月与排序）。
+    static func discoverList(
+        modelID: Int,
+        publishedAt: String,
+        sort: String,
+        page: Int = 1,
+        size: Int = 20
+    ) -> DiscoveryRequest {
+        DiscoveryRequest(
+            publishedAt: publishedAt,
+            modelID: String(modelID),
+            demandTagID: nil,
+            size: size,
+            page: page,
+            sort: sort,
+            buyType: nil
+        )
+    }
+
     /// 加密 POST 使用的 `key=value` 表单。
     func formBody() -> [String: String] {
         var body: [String: String] = [

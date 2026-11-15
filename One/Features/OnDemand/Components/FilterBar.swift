@@ -1,28 +1,31 @@
 import SwiftUI
 
+/// 列表通用筛选：发布年月 + 排序（点赞 / 时间）。
 struct FilterBar: View {
-    @Bindable var session: VodSession
+    @Binding var publishedAt: String
+    @Binding var sort: VodArticleSort
     @State private var showMonthPicker = false
+
     var body: some View {
         HStack(spacing: 12) {
             Button {
                 showMonthPicker = true
             } label: {
                 Label(
-                    MonthYear.sectionTitle(forAPIString: session.listPublishedAt),
+                    MonthYear.sectionTitle(forAPIString: publishedAt),
                     systemImage: "calendar"
                 )
-                    .font(.subheadline.monospacedDigit())
-                    .foregroundStyle(.primary)
+                .font(.subheadline.monospacedDigit())
+                .foregroundStyle(.primary)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("发布年月")
 
             Spacer(minLength: 8)
 
-            Picker("排序", selection: $session.listSort) {
-                ForEach(VodArticleSort.allCases) { sort in
-                    Text(sort.title).tag(sort)
+            Picker("排序", selection: $sort) {
+                ForEach(VodArticleSort.allCases) { item in
+                    Text(item.title).tag(item)
                 }
             }
             .pickerStyle(.segmented)
@@ -31,8 +34,8 @@ struct FilterBar: View {
         .padding(.horizontal, 20)
         .padding(.bottom, 4)
         .sheet(isPresented: $showMonthPicker) {
-            MonthPickerSheet(month: MonthYear(apiString: session.listPublishedAt) ?? .now) { month in
-                session.listPublishedAt = month.apiString
+            MonthPickerSheet(month: MonthYear(apiString: publishedAt) ?? .now) { month in
+                publishedAt = month.apiString
                 showMonthPicker = false
             }
         }

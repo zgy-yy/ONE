@@ -8,7 +8,7 @@ struct TopBar: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            FilterBar(session: session)
+            FilterBar(publishedAt: $session.listPublishedAt, sort: $session.listSort)
             TagStrip(tags: tags, selectedTagID: $selectedTagID)
             Divider()
         }
