@@ -21,7 +21,7 @@ struct SeriesDetailView: View {
             }
         }
         .fillPage()
-        .navigationTitle(session.title)
+        .toolbar(.visible, for: .navigationBar)
         .navigationBarTitleDisplayMode(.inline)
         .task(id: session.series.id) {
             await session.load()

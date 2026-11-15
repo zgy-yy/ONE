@@ -50,6 +50,28 @@ struct SeriesSummary: Decodable, Identifiable, Hashable {
         case likeTotal = "like_total"
     }
 
+    init(
+        id: Int,
+        title: String? = nil,
+        author: String? = nil,
+        thumb: String? = nil,
+        thumbnail: String? = nil,
+        end: Int? = nil,
+        firstAt: String? = nil,
+        latestAt: String? = nil,
+        likeTotal: String? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.author = author
+        self.thumb = thumb
+        self.thumbnail = thumbnail
+        self.end = end
+        self.firstAt = firstAt
+        self.latestAt = latestAt
+        self.likeTotal = likeTotal
+    }
+
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(Int.self, forKey: .id)

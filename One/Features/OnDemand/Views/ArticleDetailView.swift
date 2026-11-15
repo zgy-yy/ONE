@@ -20,7 +20,7 @@ struct ArticleDetailView: View {
             }
         }
         .fillPage()
-        .navigationTitle("")
+        .toolbar(.visible, for: .navigationBar)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
         .task(id: article.id) { await session.load(articleID: article.id) }

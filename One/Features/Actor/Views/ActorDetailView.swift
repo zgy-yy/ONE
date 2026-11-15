@@ -24,7 +24,7 @@ struct ActorDetailView: View {
             }
         }
         .fillPage()
-        .navigationTitle(session.detail?.displayName ?? actor.displayName)
+        .toolbar(.visible, for: .navigationBar)
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: ArticleSummary.self) { ArticleDetailView(article: $0) }
         .task(id: actor.id) {

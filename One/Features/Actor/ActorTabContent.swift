@@ -9,8 +9,7 @@ struct ActorTabContent: View {
         NavigationStack {
             content
                 .fillPage()
-                .navigationTitle("演员")
-                .navigationBarTitleDisplayMode(.inline)
+                .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: ActorSummary.self) { ActorDetailView(actor: $0) }
                 .task { await session.loadIfNeeded() }
         }

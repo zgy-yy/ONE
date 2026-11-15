@@ -42,10 +42,11 @@ struct PagedListState<Item: Identifiable> where Item.ID: Hashable {
         return true
     }
 
-    mutating func finishLoad(_ list: [Item]) {
+    mutating func finishLoad(_ list: [Item], hasMore: Bool? = nil) {
         items = list
         nextPage = 2
-        exhausted = list.count < pageSize
+        // 有接口明确返回 hasMore 时优先用它；否则按本页条数判断。
+        exhausted = hasMore.map { !$0 } ?? (list.count < pageSize)
         loaded = true
         isLoading = false
     }
@@ -63,11 +64,11 @@ struct PagedListState<Item: Identifiable> where Item.ID: Hashable {
         return nextPage
     }
 
-    mutating func finishLoadMore(_ list: [Item]) {
+    mutating func finishLoadMore(_ list: [Item], hasMore: Bool? = nil) {
         let existing = Set(items.map(\.id))
         items.append(contentsOf: list.filter { !existing.contains($0.id) })
         nextPage += 1
-        exhausted = list.count < pageSize
+        exhausted = hasMore.map { !$0 } ?? (list.count < pageSize)
         isLoadingMore = false
     }
 

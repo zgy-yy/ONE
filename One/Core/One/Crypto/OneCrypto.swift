@@ -29,23 +29,33 @@ enum OneCrypto {
     private static let aesIV = Data("8597506002939249".utf8)
 
     /// 构造每次 POST 必需的 Header（含 MD5 签名与 JWT）。
-    static func makeRequestHeaders(token: String, timestampSec: Int? = nil) -> [String: String] {
+    /// 登录后把 `user-key` 带上；未登录可传空。
+    static func makeRequestHeaders(
+        token: String,
+        userKey: String = "",
+        timestampSec: Int? = nil
+    ) -> [String: String] {
         let ts = timestampSec ?? Int(Date().timeIntervalSince1970)
         return [
             "uuid": uuid,
-            "user-key": "",
+            "user-key": userKey,
             "timestamp": String(ts),
             "platform": platform,
             "ip": "0.0.0.0",
             "app-version": appVersion,
-            "sign": makeSign(timestampSec: ts),
+            // 签名串中间一段是 user-key；未登录为空。
+            "sign": makeSign(timestampSec: ts, userKey: userKey),
             "token": token,
             "Content-Type": "application/x-www-form-urlencoded",
         ]
     }
 
-    static func makeSign(timestampSec: Int, platform: String = OneCrypto.platform) -> String {
-        let s1 = "0.0.0.0.\(platform).\(timestampSec)..\(uuid)"
+    static func makeSign(
+        timestampSec: Int,
+        userKey: String = "",
+        platform: String = OneCrypto.platform
+    ) -> String {
+        let s1 = "0.0.0.0.\(platform).\(timestampSec).\(userKey).\(uuid)"
         let d1 = md5Hex(s1)
         return md5Hex(d1 + signSalt)
     }

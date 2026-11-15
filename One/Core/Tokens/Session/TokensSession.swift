@@ -49,8 +49,17 @@ final class TokensSession {
         lastUpdated = Date()
     }
 
-    /// 按接口路径挑选 JWT：`article/detail` 优先登录 token，其余优先游客 token。
+    /// 按接口路径挑选 JWT。
+    /// - 发短信 / 登录：用游客 token
+    /// - 已登录：优先用户 token
+    /// - `article/detail`：优先壳里的登录 token，再游客
     func oneToken(forPath path: String) -> String? {
+        if path == OneAPI.sendSMSPath || path == OneAPI.userLoginPath {
+            return tokenOneVisitor ?? tokenOne
+        }
+        if let login = OneAuthStore.loginToken {
+            return login
+        }
         if path.contains("article/detail"),
            let tokenOne, !tokenOne.isEmpty
         {

@@ -17,6 +17,12 @@ enum OneAPI {
     static let seriesAlbumListPath = "series/album/list"
     static let seriesMangaListPath = "series/manga/list"
     static let seriesChaptersPath = "series/chapters"
+    static let sendSMSPath = "sendsms"
+    static let userLoginPath = "user/login"
+    static let userLikeListPath = "my/getUserLikeList"
+    static let collectFolderListPath = "my/getCollectFolderListByPage"
+    static let favoritesPath = "my/favorites"
+    static let myRecordCountsPath = "demand_activity/myRecordCounts"
 
     static func isSuccess(code: Int?) -> Bool {
         code == 200 || code == 400

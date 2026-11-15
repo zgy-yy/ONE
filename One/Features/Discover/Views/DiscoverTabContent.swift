@@ -9,8 +9,7 @@ struct DiscoverTabContent: View {
         NavigationStack {
             DiscoverFeedView(channel: channel)
                 .id(loadToken)
-                .navigationTitle("发现")
-                .navigationBarTitleDisplayMode(.inline)
+                .toolbar(.hidden, for: .navigationBar)
                 .safeAreaInset(edge: .top, spacing: 0) {
                     DiscoverTopBar(channel: $channel, session: session)
                 }

@@ -36,7 +36,11 @@ enum OneClient {
         data: [String: String]? = nil
     ) async throws -> T {
         let url = APIURL.join(base: base.absoluteString, path: path)
-        let headers = OneCrypto.makeRequestHeaders(token: token)
+        // 登录 / 发短信用游客 token，此时还没有 user-key。
+        let userKey = (path == OneAPI.sendSMSPath || path == OneAPI.userLoginPath)
+            ? ""
+            : OneAuthStore.userKeyHeader
+        let headers = OneCrypto.makeRequestHeaders(token: token, userKey: userKey)
         let body = try data.map { try OneCrypto.encryptMapBody($0) }
         return try await HTTPClient.postText(
             type,
@@ -299,6 +303,155 @@ enum OneClient {
             ]
         )
         return try unwrap(envelope)?.items ?? []
+    }
+
+    /// 发送登录短信验证码。
+    static func sendSMS(
+        base: URL,
+        token: String,
+        mobile: String,
+        area: String = "86"
+    ) async throws {
+        let envelope = try await post(
+            OneApiEnvelope<JSONDiscard?>.self,
+            base: base,
+            path: OneAPI.sendSMSPath,
+            token: token,
+            data: [
+                "mobile": mobile,
+                "area": area,
+            ]
+        )
+        _ = try unwrap(envelope)
+    }
+
+    /// 手机号 + 验证码登录（`login_type=0`）。
+    static func userLogin(
+        base: URL,
+        token: String,
+        mobile: String,
+        code: String,
+        area: String = "86",
+        loginType: Int = 0
+    ) async throws -> LoginPayload {
+        let envelope = try await post(
+            OneApiEnvelope<LoginPayload>.self,
+            base: base,
+            path: OneAPI.userLoginPath,
+            token: token,
+            data: [
+                "mobile": mobile,
+                "area": area,
+                "code": code,
+                "login_type": String(loginType),
+            ]
+        )
+        guard let payload = try unwrap(envelope) else {
+            throw OneClientError.apiRejected("登录结果为空")
+        }
+        return payload
+    }
+
+    /// 我喜欢的列表。
+    static func userLikeList(
+        base: URL,
+        token: String,
+        modelID: Int,
+        seriesCategory: Int = 0
+    ) async throws -> UserLikeListPayload {
+        var data = ["model_id": String(modelID)]
+        if seriesCategory != 0 {
+            data["series_category"] = String(seriesCategory)
+        }
+        let envelope = try await post(
+            OneApiEnvelope<UserLikeListPayload>.self,
+            base: base,
+            path: OneAPI.userLikeListPath,
+            token: token,
+            data: data
+        )
+        guard let payload = try unwrap(envelope) else {
+            throw OneClientError.apiRejected("喜欢列表为空")
+        }
+        return payload
+    }
+
+    /// 收藏夹分页列表。
+    static func collectFolderList(
+        base: URL,
+        token: String,
+        page: Int = 1,
+        size: Int = 20,
+        keyword: String = "",
+        sortDim: String = "create_time",
+        sortDesc: Int = 1
+    ) async throws -> [CollectFolder] {
+        let envelope = try await post(
+            OneApiEnvelope<[CollectFolder]>.self,
+            base: base,
+            path: OneAPI.collectFolderListPath,
+            token: token,
+            data: [
+                "page": String(page),
+                "size": String(size),
+                "keyword": keyword,
+                "sort_dim": sortDim,
+                "sort_desc": String(sortDesc),
+            ]
+        )
+        return try unwrap(envelope) ?? []
+    }
+
+    /// 收藏内容列表。
+    static func favorites(
+        base: URL,
+        token: String,
+        modelID: Int,
+        seriesCategory: Int = 0,
+        page: Int = 1,
+        size: Int = 20,
+        folderID: Int = 0,
+        sort: String = "collect",
+        sortDesc: Int = 1,
+        keyword: String = "",
+        purchaseStatus: String = ""
+    ) async throws -> FavoritesPayload {
+        let envelope = try await post(
+            OneApiEnvelope<FavoritesPayload>.self,
+            base: base,
+            path: OneAPI.favoritesPath,
+            token: token,
+            data: [
+                "model_id": String(modelID),
+                "series_category": String(seriesCategory),
+                "page": String(page),
+                "size": String(size),
+                "sort": sort,
+                "sort_desc": String(sortDesc),
+                "purchase_status": purchaseStatus,
+                "user_collect_folder_id": String(folderID),
+                "keyword": keyword,
+            ]
+        )
+        guard let payload = try unwrap(envelope) else {
+            throw OneClientError.apiRejected("收藏列表为空")
+        }
+        return payload
+    }
+
+    /// 我的活动记录数量。
+    static func myRecordCounts(base: URL, token: String) async throws -> MyRecordCounts {
+        let envelope = try await post(
+            OneApiEnvelope<MyRecordCounts>.self,
+            base: base,
+            path: OneAPI.myRecordCountsPath,
+            token: token,
+            data: nil
+        )
+        guard let counts = try unwrap(envelope) else {
+            throw OneClientError.apiRejected("记录为空")
+        }
+        return counts
     }
 
     /// 系列章节列表。
