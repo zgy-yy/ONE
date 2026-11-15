@@ -1,6 +1,8 @@
 import SwiftUI
 
 /// 首页：左右滑动切换日期；点日期进当月 discovery。
+///
+/// 日期从左到右为旧→新；向右滑到「下一个」日期时先完成翻页，再在目标页显示 loading。
 struct HomeTabContent: View {
     @Bindable private var session = HomeSession.shared
 
@@ -20,6 +22,11 @@ struct HomeTabContent: View {
                     }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
+                // 选中变化时立刻进入 loading，不等页面 `.task` 才开始
+                .onChange(of: session.selectedDay) { _, day in
+                    session.prepareLoad(day)
+                    Task { await session.load(day) }
+                }
             }
             .fillPage()
             .toolbar(.hidden, for: .navigationBar)
@@ -28,6 +35,10 @@ struct HomeTabContent: View {
             }
             .navigationDestination(for: ArticleSummary.self) { article in
                 ArticleDetailView(article: article)
+            }
+            .task {
+                session.prepareLoad(session.selectedDay)
+                await session.load(session.selectedDay)
             }
         }
     }

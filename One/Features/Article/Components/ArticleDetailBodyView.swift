@@ -1,19 +1,25 @@
 import SwiftUI
 
-/// 点播详情可滚动正文（元信息 → 预览 → 标签 → 正文）。
+/// 点播详情可滚动正文（元信息 → 预览标题行 → 标签 → 正文）。
 struct ArticleDetailBodyView: View {
     let detail: ArticleDetail?
     let summary: ArticleSummary
     var canPlay: Bool = false
     var onPlay: (() -> Void)?
+    var onCommentsTap: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             metaSection
 
             if let detail {
-                if !detail.galleryPaths.isEmpty {
-                    ArticleMultiplePicGallery(paths: detail.galleryPaths)
+                // 无预览图时也保留标题行，方便点「评论」升起卡片
+                if !detail.galleryPaths.isEmpty || onCommentsTap != nil {
+                    ArticleMultiplePicGallery(
+                        paths: detail.galleryPaths,
+                        commentCount: detail.commentNumber,
+                        onCommentsTap: onCommentsTap
+                    )
                 }
                 if !detail.displayTags.isEmpty {
                     ArticleDetailTagList(tags: detail.displayTags)

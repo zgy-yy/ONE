@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 发现频道列表：文章 或 写真 / 漫画系列。
+/// 发现频道列表：文章按月分段下滑加载更早月；写真 / 漫画为系列扁平列表。
 struct DiscoverFeedView: View {
     let channel: DiscoverChannel
     @Bindable private var session = DiscoverSession.shared
@@ -30,28 +30,45 @@ struct DiscoverFeedView: View {
 
     // MARK: - 文章
 
-    private var articles: [ArticleSummary] {
-        session.articles(for: channel)
+    private var sections: [ArticleMonthSection] {
+        session.articleSections(for: channel)
+    }
+
+    private var hasNoArticles: Bool {
+        sections.isEmpty || sections.allSatisfy(\.articles.isEmpty)
     }
 
     private var articlePage: some View {
         AsyncPage(
             isLoading: session.isLoadingArticles(channel),
             error: session.articleError(for: channel),
-            isEmpty: articles.isEmpty,
+            isEmpty: hasNoArticles,
             loadingTitle: "加载\(channel.title)…",
             emptyTitle: "无内容",
             retry: { Task { await session.loadArticles(channel: channel, force: true) } }
         ) {
+            articleList
+        }
+    }
+
+    private var articleList: some View {
+        ScrollViewReader { proxy in
             List {
-                ForEach(articles) { article in
-                    ArticleListRow(article: article, fallbackModelID: channel.articleModelID)
-                        .hiddenNavigationLink(value: article)
-                        .styledListRow()
-                        .onAppear {
-                            guard articles.isLastItem(article) else { return }
-                            Task { await session.loadMoreArticles(channel: channel) }
+                ForEach(sections) { section in
+                    Section {
+                        ForEach(section.articles) { article in
+                            ArticleListRow(article: article, fallbackModelID: channel.articleModelID)
+                                .hiddenNavigationLink(value: article)
+                                .styledListRow()
+                                .onAppear {
+                                    guard sections.isTailArticle(article, in: section) else { return }
+                                    Task { await session.loadMoreArticles(channel: channel) }
+                                }
                         }
+                    } header: {
+                        ArticleMonthSectionHeader(monthAPIString: section.month)
+                            .id(section.month)
+                    }
                 }
                 AppUI.listLoadMoreFooter(
                     loadingMore: session.isLoadingMoreArticles(channel),
@@ -59,6 +76,23 @@ struct DiscoverFeedView: View {
                 )
             }
             .plainContentList()
+            .onChange(of: session.listPublishedAt) { _, month in
+                // 锚定月已在列表里则滚过去；否则按新锚定月重载
+                if sections.contains(where: { $0.month == month }) {
+                    scrollToMonth(month, proxy: proxy)
+                } else {
+                    Task { await session.loadArticles(channel: channel, force: true) }
+                }
+            }
+        }
+    }
+
+    private func scrollToMonth(_ month: String, proxy: ScrollViewProxy) {
+        guard sections.contains(where: { $0.month == month }) else { return }
+        Task { @MainActor in
+            withAnimation(.easeInOut(duration: 0.25)) {
+                proxy.scrollTo(month, anchor: .top)
+            }
         }
     }
 

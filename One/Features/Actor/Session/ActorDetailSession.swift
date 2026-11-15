@@ -183,7 +183,12 @@ final class ActorDetailSession {
     private static func fetchComments(actorID: Int, page: Int, size: Int) async throws -> [CommentItem] {
         let creds = try requireCreds(OneAPI.commentListPath)
         return try await OneClient.commentList(
-            base: creds.base, token: creds.token, targetID: actorID, type: 2, page: page, size: size
+            base: creds.base,
+            token: creds.token,
+            targetID: actorID,
+            type: CommentTargetType.actor,
+            page: page,
+            size: size
         )
     }
 

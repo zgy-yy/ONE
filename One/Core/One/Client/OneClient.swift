@@ -492,7 +492,7 @@ enum OneClient {
         return detail
     }
 
-    /// 评论列表（演员用 `type=2`，`article_id` 传演员 ID）。
+    /// 评论列表：`type=1` 文章，`type=2` 演员；`sorting` 为 `created_at` / `likes`。
     static func commentList(
         base: URL,
         token: String,
@@ -500,7 +500,7 @@ enum OneClient {
         type: Int,
         page: Int,
         size: Int = 10,
-        sorting: String = "likes",
+        sorting: String = CommentSort.likes.rawValue,
         commentID: Int = 0
     ) async throws -> [CommentItem] {
         let envelope = try await post(

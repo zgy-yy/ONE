@@ -1,17 +1,17 @@
 import Foundation
 import Observation
 
-/// 发现页数据：文章频道 + 写真 / 漫画系列。
+/// 发现页数据：文章频道按月串联；写真 / 漫画系列仍扁平分页。
 @MainActor
 @Observable
 final class DiscoverSession {
     static let shared = DiscoverSession()
 
-    /// 文章频道的月份筛选。
+    /// 文章频道的锚定月份（顶栏筛选；下滑会继续拉更早月）。
     var listPublishedAt: String = MonthYear.now.apiString {
         didSet {
             guard oldValue != listPublishedAt else { return }
-            articleFeeds = [:]
+            // 月份变化时由 View 决定滚到已有分区或 force 重载，这里只清 loading 标记外的缓存键语义
         }
     }
 
@@ -19,7 +19,7 @@ final class DiscoverSession {
     var listSort: VodArticleSort = .publishedAt {
         didSet {
             guard oldValue != listSort else { return }
-            articleFeeds = [:]
+            channelArticles = [:]
             seriesFeeds = [:]
         }
     }
@@ -42,67 +42,74 @@ final class DiscoverSession {
         "\(seriesStatus.rawValue)-\(listSort.rawValue)"
     }
 
-    private var articleFeeds: [String: PagedListState<ArticleSummary>] = [:]
+    private var channelArticles: [DiscoverChannel: TagsArticles] = [:]
+    private var articlesLoading: Set<DiscoverChannel> = []
+    private var articlesLoadingMore: Set<DiscoverChannel> = []
+
     private var seriesFeeds: [String: PagedListState<SeriesSummary>] = [:]
     private let pageSize = 20
 
     private init() {}
 
-    // MARK: - 文章
+    // MARK: - 文章（按月串联）
 
-    func articles(for channel: DiscoverChannel) -> [ArticleSummary] {
-        articleFeeds[articleKey(channel)]?.items ?? []
+    func articleSections(for channel: DiscoverChannel) -> [ArticleMonthSection] {
+        channelArticles[channel]?.sections ?? []
     }
 
     func articleError(for channel: DiscoverChannel) -> String? {
-        articleFeeds[articleKey(channel)]?.error
+        channelArticles[channel]?.error
     }
 
     func isLoadingArticles(_ channel: DiscoverChannel) -> Bool {
-        articleFeeds[articleKey(channel)]?.isLoading == true
+        articlesLoading.contains(channel)
     }
 
     func isLoadingMoreArticles(_ channel: DiscoverChannel) -> Bool {
-        articleFeeds[articleKey(channel)]?.isLoadingMore == true
+        articlesLoadingMore.contains(channel)
     }
 
     func showsArticlesEndFooter(_ channel: DiscoverChannel) -> Bool {
-        let feed = articleFeeds[articleKey(channel)]
-        return feed?.loaded == true && feed?.exhausted == true
+        guard let state = channelArticles[channel], state.loaded else { return false }
+        return state.fullyExhausted
     }
 
     func loadArticles(channel: DiscoverChannel, force: Bool = false) async {
         guard channel.articleModelID != nil else { return }
-        let key = articleKey(channel)
-        var feed = articleFeeds[key] ?? PagedListState(pageSize: pageSize)
-        guard feed.beginLoad(force: force) else {
-            articleFeeds[key] = feed
-            return
-        }
-        articleFeeds[key] = feed
+        if force { channelArticles[channel] = nil }
+        guard !articlesLoading.contains(channel), channelArticles[channel]?.loaded != true else { return }
 
-        do {
-            feed.finishLoad(try await fetchArticles(channel: channel, page: 1))
-            articleFeeds[key] = feed
-        } catch {
-            feed.failLoad(error.localizedDescription)
-            articleFeeds[key] = feed
-        }
+        articlesLoading.insert(channel)
+        defer { articlesLoading.remove(channel) }
+
+        var state = TagsArticles()
+        state.reset()
+        channelArticles[channel] = state
+
+        await fetchArticlePage(channel: channel, month: listPublishedAt, page: 1, newSection: true)
+        await advancePastEmptyMonths(channel: channel)
+        markFullyExhaustedIfNeeded(channel: channel)
     }
 
     func loadMoreArticles(channel: DiscoverChannel) async {
         guard channel.articleModelID != nil else { return }
-        let key = articleKey(channel)
-        guard var feed = articleFeeds[key], let page = feed.beginLoadMore() else { return }
-        articleFeeds[key] = feed
-
-        do {
-            feed.finishLoadMore(try await fetchArticles(channel: channel, page: page))
-            articleFeeds[key] = feed
-        } catch {
-            feed.cancelLoadMore()
-            articleFeeds[key] = feed
+        guard let state = channelArticles[channel], state.loaded, state.canLoadMore else { return }
+        guard !articlesLoading.contains(channel), !articlesLoadingMore.contains(channel) else { return }
+        guard let next = state.nextPageRequest else {
+            markFullyExhaustedIfNeeded(channel: channel)
+            return
         }
+
+        articlesLoadingMore.insert(channel)
+        defer { articlesLoadingMore.remove(channel) }
+
+        await fetchArticlePage(
+            channel: channel,
+            month: next.month,
+            page: next.page,
+            newSection: next.newSection
+        )
+        markFullyExhaustedIfNeeded(channel: channel)
     }
 
     // MARK: - 系列
@@ -162,25 +169,75 @@ final class DiscoverSession {
         }
     }
 
-    // MARK: - 网络请求
+    // MARK: - 文章分页
 
-    private func fetchArticles(channel: DiscoverChannel, page: Int) async throws -> [ArticleSummary] {
-        guard let modelID = channel.articleModelID else { return [] }
-        guard let creds = OneCredentials.pair(tokenPath: OneAPI.discoveryPath) else {
-            throw OneClientError.apiRejected(OneCredentials.readinessError)
-        }
-        return try await OneClient.articleDiscovery(
-            base: creds.base,
-            token: creds.token,
-            request: .discoverList(
-                modelID: modelID,
-                publishedAt: listPublishedAt,
-                sort: listSort.rawValue,
-                page: page,
-                size: pageSize
+    private func advancePastEmptyMonths(channel: DiscoverChannel) async {
+        while channelArticles[channel]?.shouldAdvancePastEmptyTail == true {
+            guard let next = channelArticles[channel]?.nextPageRequest else { break }
+            await fetchArticlePage(
+                channel: channel,
+                month: next.month,
+                page: next.page,
+                newSection: next.newSection
             )
-        )
+        }
     }
+
+    private func markFullyExhaustedIfNeeded(channel: DiscoverChannel) {
+        guard var state = channelArticles[channel] else { return }
+        state.markFullyExhaustedIfNeeded()
+        channelArticles[channel] = state
+    }
+
+    private func fetchArticlePage(
+        channel: DiscoverChannel,
+        month: String,
+        page: Int,
+        newSection: Bool
+    ) async {
+        guard let modelID = channel.articleModelID else { return }
+        guard let creds = OneCredentials.pair(tokenPath: OneAPI.discoveryPath) else {
+            if page == 1, newSection {
+                setArticleError(OneCredentials.readinessError, for: channel)
+            }
+            return
+        }
+
+        do {
+            let list = try await OneClient.articleDiscovery(
+                base: creds.base,
+                token: creds.token,
+                request: .discoverList(
+                    modelID: modelID,
+                    publishedAt: month,
+                    sort: listSort.rawValue,
+                    page: page,
+                    size: pageSize
+                )
+            )
+            var state = channelArticles[channel, default: TagsArticles()]
+            state.mergePage(
+                month: month,
+                list: list,
+                page: page,
+                pageSize: pageSize,
+                newSection: newSection
+            )
+            channelArticles[channel] = state
+        } catch {
+            if page == 1, newSection {
+                setArticleError(error.localizedDescription, for: channel)
+            }
+        }
+    }
+
+    private func setArticleError(_ message: String, for channel: DiscoverChannel) {
+        var state = channelArticles[channel, default: TagsArticles()]
+        state.recordError(message)
+        channelArticles[channel] = state
+    }
+
+    // MARK: - 系列网络
 
     private func fetchSeries(channel: DiscoverChannel, page: Int) async throws -> [SeriesSummary] {
         guard let path = channel.seriesListPath else { return [] }
@@ -210,10 +267,6 @@ final class DiscoverSession {
         default:
             return []
         }
-    }
-
-    private func articleKey(_ channel: DiscoverChannel) -> String {
-        "\(channel.rawValue)|\(articleFeedKey)"
     }
 
     private func seriesKey(_ channel: DiscoverChannel) -> String {

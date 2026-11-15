@@ -1,9 +1,13 @@
 import SwiftUI
 
 /// 点播根页面：顶部分类胶囊切换列表（内容区不横向滑页）。
+///
+/// 各分类列表保活：切走再切回时保留滚动位置。
 struct VodTabContent: View {
     @Bindable private var session = VodSession.shared
     @State private var selectedTagID: Int?
+    /// 只挂载访问过的分类，避免一次创建全部 TagPane。
+    @State private var visitedTagIDs: Set<Int> = []
 
     var body: some View {
         NavigationStack {
@@ -15,6 +19,9 @@ struct VodTabContent: View {
                 .task { await session.loadIfNeeded() }
                 .onChange(of: session.tags, initial: true) { _, tags in
                     syncSelection(with: tags)
+                }
+                .onChange(of: selectedTagID) { _, newID in
+                    if let newID { visitedTagIDs.insert(newID) }
                 }
         }
     }
@@ -41,20 +48,26 @@ struct VodTabContent: View {
         }
     }
 
-    @ViewBuilder
     private var tagContent: some View {
-        if let selectedTagID,
-           let tag = session.tags.first(where: { $0.id == selectedTagID }) {
-            TagPane(tag: tag)
-                .id(selectedTagID)
-        } else {
-            Color.clear
+        ZStack {
+            ForEach(session.tags.filter { visitedTagIDs.contains($0.id) }) { tag in
+                TagPane(tag: tag)
+                    .opacity(tag.id == selectedTagID ? 1 : 0)
+                    .allowsHitTesting(tag.id == selectedTagID)
+                    .accessibilityHidden(tag.id != selectedTagID)
+            }
         }
     }
 
     private func syncSelection(with tags: [DemandTag]) {
-        if let selectedTagID, tags.contains(where: { $0.id == selectedTagID }) { return }
+        if let selectedTagID, tags.contains(where: { $0.id == selectedTagID }) {
+            visitedTagIDs.insert(selectedTagID)
+            return
+        }
         selectedTagID = tags.first?.id
+        if let id = tags.first?.id {
+            visitedTagIDs.insert(id)
+        }
     }
 }
 

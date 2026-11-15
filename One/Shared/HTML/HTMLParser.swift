@@ -74,7 +74,17 @@ enum HTMLParser {
         guard let ns = try? NSAttributedString(data: data, options: options, documentAttributes: nil) else {
             return AttributedString(trimmed)
         }
-        return AttributedString(ns)
+        // HTML 导入常写死黑色；去掉字色/底色，交给 SwiftUI `.foregroundStyle(.primary)` 适配深浅色。
+        return AttributedString(strippingFixedColors(ns))
+    }
+
+    /// 移除 HTML 带入的前景/背景色，避免黑夜模式仍显示黑字。
+    private static func strippingFixedColors(_ input: NSAttributedString) -> NSAttributedString {
+        let mutable = NSMutableAttributedString(attributedString: input)
+        let range = NSRange(location: 0, length: mutable.length)
+        mutable.removeAttribute(.foregroundColor, range: range)
+        mutable.removeAttribute(.backgroundColor, range: range)
+        return mutable
     }
 
     private static func imageLoadPath(from src: String) -> String? {

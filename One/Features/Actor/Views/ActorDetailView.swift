@@ -268,7 +268,7 @@ struct ActorDetailView: View {
         ) {
             LazyVStack(alignment: .leading, spacing: 14) {
                 ForEach(session.comments.items) { comment in
-                    commentRow(comment)
+                    CommentRow(comment: comment)
                         .onAppear {
                             guard session.comments.items.isLastItem(comment) else { return }
                             Task { await session.loadMore(.comments, actorID: actor.id) }
@@ -280,29 +280,5 @@ struct ActorDetailView: View {
                 )
             }
         }
-    }
-
-    private func commentRow(_ comment: CommentItem) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(comment.displayAuthor).font(.subheadline.weight(.semibold))
-                Spacer(minLength: 8)
-                if let likes = comment.likes, likes > 0 {
-                    Label("\(likes)", systemImage: "hand.thumbsup")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            if !comment.displayText.isEmpty {
-                Text(comment.displayText)
-                    .font(.body)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            if let created = comment.createdAt?.nonEmpty {
-                Text(created).font(.caption2).foregroundStyle(.tertiary)
-            }
-        }
-        .padding(12)
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }

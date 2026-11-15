@@ -25,6 +25,28 @@ struct DayDate: Equatable, Hashable, Identifiable {
         String(format: "%d年%d月", year, month)
     }
 
+    init(year: Int, month: Int, day: Int) {
+        self.year = year
+        self.month = month
+        self.day = day
+    }
+
+    /// 从 `YYYY-MM-DD` 或带时间的字符串解析（取前 10 位日期）。
+    init?(apiString: String) {
+        let trimmed = apiString.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 10 else { return nil }
+        let stamp = String(trimmed.prefix(10))
+        let parts = stamp.split(separator: "-")
+        guard parts.count == 3,
+              let year = Int(parts[0]),
+              let month = Int(parts[1]),
+              let day = Int(parts[2]),
+              month >= 1, month <= 12,
+              day >= 1, day <= 31
+        else { return nil }
+        self.init(year: year, month: month, day: day)
+    }
+
     static var today: DayDate {
         let c = Calendar.current
         let now = Date()

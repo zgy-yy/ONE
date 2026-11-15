@@ -28,6 +28,8 @@ struct HTMLContentView: View {
         switch block {
         case .richText(let text, _):
             Text(text)
+                // 解析时已去掉 HTML 死黑字色，这里用语义色适配深浅色
+                .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .textSelection(.enabled)
         case .image(let path, _):

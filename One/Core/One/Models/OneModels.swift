@@ -78,6 +78,8 @@ struct ArticleDetail: Decodable, Identifiable {
     let views: Int?
     let downloadCount: Int?
     let shareNumber: Int?
+    /// 评论数。详情接口字段为 `reply_counts`（兼容 `comment_number` / `comment_num` / `comment_count`）。
+    let commentNumber: Int?
     let tagList: [ArticleDetailTag]?
 
     var displayTitle: String {
@@ -122,7 +124,48 @@ struct ArticleDetail: Decodable, Identifiable {
         case views
         case downloadCount = "download_count"
         case shareNumber = "share_number"
+        case replyCounts = "reply_counts"
+        case commentNumber = "comment_number"
+        case commentNum = "comment_num"
+        case commentCount = "comment_count"
         case tagList = "tag_list"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(Int.self, forKey: .id)
+        title = try c.decodeIfPresent(String.self, forKey: .title)
+        videoName = try c.decodeIfPresent(String.self, forKey: .videoName)
+        thumb = try c.decodeIfPresent(String.self, forKey: .thumb)
+        author = try c.decodeIfPresent(String.self, forKey: .author)
+        actor = try c.decodeIfPresent(String.self, forKey: .actor)
+        number = try c.decodeIfPresent(String.self, forKey: .number)
+        publishedAt = try c.decodeIfPresent(String.self, forKey: .publishedAt)
+        summary = try c.decodeIfPresent(String.self, forKey: .summary)
+        content = try c.decodeIfPresent(String.self, forKey: .content)
+        videoFile = try c.decodeIfPresent(String.self, forKey: .videoFile)
+        videoHls = try c.decodeIfPresent(String.self, forKey: .videoHls)
+        video = try c.decodeIfPresent(String.self, forKey: .video)
+        previewVideo = try c.decodeIfPresent(String.self, forKey: .previewVideo)
+        videos = try c.decodeIfPresent([ArticleVideoItem].self, forKey: .videos)
+        multiplePic = try c.decodeIfPresent([String].self, forKey: .multiplePic)
+        coin = try c.decodeIfPresent(String.self, forKey: .coin)
+        originalCoin = try c.decodeIfPresent(String.self, forKey: .originalCoin)
+        length = try c.decodeIfPresent(String.self, forKey: .length)
+        size = try c.decodeIfPresent(String.self, forKey: .size)
+        quality = try c.decodeIfPresent(String.self, forKey: .quality)
+        likeNumber = JSONFlex.int(c, .likeNumber)
+        collectionNumber = JSONFlex.int(c, .collectionNumber)
+        views = JSONFlex.int(c, .views)
+        downloadCount = JSONFlex.int(c, .downloadCount)
+        shareNumber = JSONFlex.int(c, .shareNumber)
+        tagList = try c.decodeIfPresent([ArticleDetailTag].self, forKey: .tagList)
+        // 详情主字段是 reply_counts
+        commentNumber =
+            JSONFlex.int(c, .replyCounts)
+            ?? JSONFlex.int(c, .commentNumber)
+            ?? JSONFlex.int(c, .commentNum)
+            ?? JSONFlex.int(c, .commentCount)
     }
 }
 

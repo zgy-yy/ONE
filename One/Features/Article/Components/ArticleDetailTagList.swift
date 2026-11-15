@@ -1,13 +1,11 @@
 import SwiftUI
 
-/// 精彩预览下方的 `tag_list`。
+/// 精彩预览下方的 `tag_list`：按文字自适应宽度，自动换行。
 struct ArticleDetailTagList: View {
     let tags: [ArticleDetailTag]
 
-    private let columns = [GridItem(.adaptive(minimum: 44), spacing: 6, alignment: .leading)]
-
     var body: some View {
-        LazyVGrid(columns: columns, alignment: .leading, spacing: 6) {
+        FlowLayout(spacing: 8, lineSpacing: 8) {
             ForEach(tags) { tag in
                 TagChip(title: tag.displayName)
             }
@@ -21,12 +19,12 @@ private struct TagChip: View {
 
     var body: some View {
         Text(title)
-            .font(.caption2)
+            .font(.subheadline)
             .foregroundStyle(.primary)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 4)
-            .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .lineLimit(1)
-            .minimumScaleFactor(0.8)
+            .fixedSize(horizontal: true, vertical: false)
     }
 }
