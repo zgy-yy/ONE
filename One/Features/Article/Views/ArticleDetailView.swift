@@ -27,27 +27,32 @@ struct ArticleDetailView: View {
     }
 
     private var contentLayout: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                // 优先用详情封面；尚未返回时退回列表摘要里的缩略图
-                ArticleDetailCover(path: session.detail?.thumb ?? article.thumb)
+        // 正文多图时 Image 会按像素宽撑开默认 ScrollView，整页就能左右拖。
+        // 用可视宽度锁死内容列，并只允许纵向滚动。
+        GeometryReader { geo in
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(alignment: .leading, spacing: 0) {
+                    // 优先用详情封面；尚未返回时退回列表摘要里的缩略图
+                    ArticleDetailCover(path: session.detail?.thumb ?? article.thumb)
 
-                ArticleDetailBodyView(
-                    detail: session.detail,
-                    summary: article,
-                    canPlay: session.playURL != nil,
-                    onPlay: {
-                        if let url = session.playURL {
-                            ArticleVideoPresenter.present(url: url)
-                        }
-                    },
-                    onCommentsTap: { showsComments = true }
-                )
-                .padding(.horizontal)
-                .padding(.vertical, 16)
+                    ArticleDetailBodyView(
+                        detail: session.detail,
+                        summary: article,
+                        canPlay: session.playURL != nil,
+                        onPlay: {
+                            if let url = session.playURL {
+                                ArticleVideoPresenter.present(url: url)
+                            }
+                        },
+                        onCommentsTap: { showsComments = true }
+                    )
+                    .padding(.horizontal)
+                    .padding(.vertical, 16)
+                }
+                .frame(width: geo.size.width, alignment: .leading)
             }
+            .tracksSearchFABScroll()
         }
-        .tracksSearchFABScroll()
         // 封面从屏幕顶端起算（含刘海/状态栏），导航栏浮在封面上。
         .ignoresSafeArea(edges: .top)
     }

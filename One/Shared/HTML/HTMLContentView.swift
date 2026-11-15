@@ -31,6 +31,7 @@ struct HTMLContentView: View {
                 // 解析时已去掉 HTML 死黑字色，这里用语义色适配深浅色
                 .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
                 .textSelection(.enabled)
         case .image(let path, _):
             HTMLBodyImageView(path: path)

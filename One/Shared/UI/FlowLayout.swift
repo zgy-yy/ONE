@@ -30,7 +30,8 @@ struct FlowLayout: Layout {
     }
 
     private func arrange(proposal: ProposedViewSize, subviews: Subviews) -> Arrangement {
-        let maxWidth = proposal.width ?? .infinity
+        // ScrollView 偶发给 nil 宽时不要按无限宽单行排布，否则标签会撑出横滑。
+        let maxWidth = proposal.width ?? UIScreen.main.bounds.width
         var origins: [CGPoint] = []
         var x: CGFloat = 0
         var y: CGFloat = 0
@@ -47,12 +48,12 @@ struct FlowLayout: Layout {
             origins.append(CGPoint(x: x, y: y))
             rowHeight = max(rowHeight, size.height)
             x += size.width + spacing
-            totalWidth = max(totalWidth, x - spacing)
+            totalWidth = max(totalWidth, min(x - spacing, maxWidth))
         }
 
         return Arrangement(
             origins: origins,
-            size: CGSize(width: totalWidth, height: y + rowHeight)
+            size: CGSize(width: min(totalWidth, maxWidth), height: y + rowHeight)
         )
     }
 }
