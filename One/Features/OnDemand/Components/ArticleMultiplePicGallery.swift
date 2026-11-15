@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// 详情「精彩预览」：`multiple_pic` 横向滑动（`one_img` + 解密）。
+/// 详情「精彩预览」：定宽分页横滑，避免嵌在竖向 ScrollView 里时卡在两页中间。
 struct ArticleMultiplePicGallery: View {
     let paths: [String]
 
-    @State private var page = 0
+    @State private var pageID: Int?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -14,22 +14,39 @@ struct ArticleMultiplePicGallery: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 if paths.count > 1 {
-                    Text("\(page + 1) / \(paths.count)")
+                    Text("\(currentPage + 1) / \(paths.count)")
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.tertiary)
                 }
             }
 
-            TabView(selection: $page) {
-                ForEach(Array(paths.enumerated()), id: \.offset) { index, path in
-                    ArticleGalleryImage(path: path)
-                        .tag(index)
+            GeometryReader { geo in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(spacing: 0) {
+                        ForEach(Array(paths.enumerated()), id: \.offset) { index, path in
+                            ArticleGalleryImage(path: path)
+                                .frame(width: geo.size.width, height: geo.size.height)
+                                .id(index)
+                        }
+                    }
+                    .scrollTargetLayout()
+                }
+                .scrollTargetBehavior(.paging)
+                .scrollPosition(id: $pageID)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+            .frame(height: 320)
+            .onAppear {
+                if pageID == nil {
+                    pageID = 0
                 }
             }
-            .tabViewStyle(.page(indexDisplayMode: paths.count > 1 ? .automatic : .never))
-            .frame(height: 320)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var currentPage: Int {
+        min(max(pageID ?? 0, 0), max(paths.count - 1, 0))
     }
 }
 
@@ -39,22 +56,18 @@ private struct ArticleGalleryImage: View {
     @State private var uiImage: UIImage?
 
     var body: some View {
-        Group {
+        ZStack {
             if let uiImage {
                 Image(uiImage: uiImage)
                     .resizable()
                     .scaledToFit()
             } else {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color(.secondarySystemFill))
-                    .overlay {
-                        ProgressView()
-                    }
+                ProgressView()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .padding(.horizontal, 2)
+        .clipped()
+        .contentShape(Rectangle())
         .task(id: path) {
             uiImage = await OneRemoteImage.load(path: path)
         }

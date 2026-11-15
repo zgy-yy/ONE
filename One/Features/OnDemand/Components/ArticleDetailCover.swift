@@ -25,8 +25,10 @@ struct ArticleDetailCover: View {
         .aspectRatio(16 / 9, contentMode: .fit)
         .clipped()
         .task(id: path) {
-            uiImage = nil
-            guard let path, !path.isEmpty else { return }
+            guard let path, !path.isEmpty else {
+                uiImage = nil
+                return
+            }
             uiImage = await OneRemoteImage.load(path: path)
         }
     }

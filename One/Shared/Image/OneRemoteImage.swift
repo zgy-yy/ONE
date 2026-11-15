@@ -1,21 +1,38 @@
 import Foundation
 import UIKit
 
-/// `one_img` CDN：下载 → 必要时 AES 解密 → 返回图片字节（列表封面、HTML 内图、GIF 共用）。
+/// `one_img` CDN：下载 → 必要时 AES 解密；带内存缓存，返回列表时不重复拉图。
 enum OneRemoteImage {
     struct Payload {
         let data: Data
         let mimeType: String
     }
 
+    private static let imageCache = NSCache<NSString, UIImage>()
+    private static let payloadCache = NSCache<NSString, NSData>()
+
     @MainActor
     static func load(path: String) async -> UIImage? {
+        let key = path as NSString
+        if let cached = imageCache.object(forKey: key) {
+            return cached
+        }
         guard let payload = await loadPayload(path: path) else { return nil }
-        return UIImage(data: payload.data)
+        let image = UIImage(data: payload.data)
+        if let image {
+            imageCache.setObject(image, forKey: key)
+        }
+        return image
     }
 
     @MainActor
     static func loadPayload(path: String) async -> Payload? {
+        let key = path as NSString
+        if let cached = payloadCache.object(forKey: key) {
+            let data = cached as Data
+            return Payload(data: data, mimeType: mimeType(for: data))
+        }
+
         guard let base = TokensSession.shared.oneImgCDN, !base.isEmpty else { return nil }
         let urlString = OneCDN.join(base: base, path: path)
         guard let url = URL(string: urlString) else { return nil }
@@ -28,6 +45,7 @@ enum OneRemoteImage {
             } else {
                 imageData = try OneImageCrypto.decrypt(cipher: data)
             }
+            payloadCache.setObject(imageData as NSData, forKey: key)
             return Payload(data: imageData, mimeType: mimeType(for: imageData))
         } catch {
             return nil

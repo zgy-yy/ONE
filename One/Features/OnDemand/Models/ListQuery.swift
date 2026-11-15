@@ -2,15 +2,15 @@ import Foundation
 
 /// 点播列表排序（接口字段 `sort`）。
 enum VodArticleSort: String, CaseIterable, Identifiable, Hashable {
-    case publishedAt = "published_at"
     case likeNumber = "like_number"
+    case publishedAt = "published_at"
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .publishedAt: "时间"
         case .likeNumber: "点赞"
+        case .publishedAt: "时间"
         }
     }
 }

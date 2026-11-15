@@ -40,14 +40,20 @@ struct TagPane: View {
                 ForEach(sections) { section in
                     Section {
                         ForEach(section.articles) { article in
-                            NavigationLink(value: article) {
-                                articleRow(article)
-                            }
-                            .styledListRow()
-                            .onAppear {
-                                guard isListEnd(article, in: section) else { return }
-                                Task { await session.loadMoreArticles(for: tagID) }
-                            }
+                            articleRow(article)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
+                                // 透明 NavigationLink：可跳转且不显示右侧箭头。
+                                .background {
+                                    NavigationLink(value: article) { EmptyView() }
+                                        .opacity(0)
+                                }
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color(.secondarySystemGroupedBackground))
+                                .onAppear {
+                                    guard isListEnd(article, in: section) else { return }
+                                    Task { await session.loadMoreArticles(for: tagID) }
+                                }
                         }
                     } header: {
                         Text(MonthYear.sectionTitle(forAPIString: section.month))
@@ -102,9 +108,10 @@ struct TagPane: View {
     }
 
     private func articleRow(_ article: ArticleSummary) -> some View {
-        HStack(alignment: .top, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             OneCoverImage(path: article.thumb)
             article.rowMeta
         }
+        .padding(.vertical, 4)
     }
 }
