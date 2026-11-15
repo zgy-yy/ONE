@@ -1,15 +1,14 @@
 import AVKit
 import UIKit
 
-/// 系统 `AVPlayerViewController` 全屏播放；播放中可旋转，关闭后回到竖屏。
+/// 系统 `AVPlayerViewController` 全屏播放（方向跟随系统）。
 enum ArticleVideoPresenter {
     @MainActor
     static func present(url: URL) {
         guard let host = UIViewController.topMost else { return }
         VideoPlaybackAudio.activate()
-        PlaybackOrientation.enterPlayer()
 
-        let controller = RotatableAVPlayerViewController()
+        let controller = PlaybackAVPlayerViewController()
         let player = AVPlayer(url: url)
         player.isMuted = false
         player.automaticallyWaitsToMinimizeStalling = true
@@ -25,8 +24,7 @@ enum ArticleVideoPresenter {
     }
 }
 
-/// 播放页允许竖/横旋转；关闭后强制回竖屏。
-private final class RotatableAVPlayerViewController: AVPlayerViewController {
+private final class PlaybackAVPlayerViewController: AVPlayerViewController {
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask { .allButUpsideDown }
     override var shouldAutorotate: Bool { true }
 
@@ -37,11 +35,9 @@ private final class RotatableAVPlayerViewController: AVPlayerViewController {
 
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
-        // 在 disappear 后再解锁，确保能可靠请求回竖屏。
         guard isBeingDismissed || presentingViewController == nil else { return }
         player?.pause()
         player = nil
-        PlaybackOrientation.exitPlayer()
     }
 
     private func disableContentGestures() {

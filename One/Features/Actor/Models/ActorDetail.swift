@@ -24,8 +24,14 @@ struct ActorDetail: Decodable, Identifiable {
         mainName?.nonEmpty ?? "演员 \(id)"
     }
 
+    /// 列表等场景：优先小图。
     var imagePath: String? {
         OneThumbPath.preferred(thumb: thumb, thumbnail: thumbnail)
+    }
+
+    /// 详情封面：优先原图 `thumb`，更清晰。
+    var coverImagePath: String? {
+        OneThumbPath.full(thumb: thumb, thumbnail: thumbnail)
     }
 
     var displayDesc: String? {

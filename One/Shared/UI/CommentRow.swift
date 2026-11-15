@@ -6,6 +6,9 @@ struct CommentRow: View {
     /// 是否为楼中楼样式（缩进、字号略小）。
     var isReply: Bool = false
 
+    @State private var viewerIndex: Int?
+    @State private var viewerSelection = 0
+
     private let imageColumns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 3)
 
     var body: some View {
@@ -29,6 +32,15 @@ struct CommentRow: View {
             (isReply ? Color(.tertiarySystemFill) : Color(.secondarySystemBackground)),
             in: RoundedRectangle(cornerRadius: isReply ? 8 : 10, style: .continuous)
         )
+        .fullScreenCover(isPresented: Binding(
+            get: { viewerIndex != nil },
+            set: { if !$0 { viewerIndex = nil } }
+        )) {
+            FullscreenImageViewer(
+                paths: comment.viewerImagePaths,
+                selection: $viewerSelection
+            )
+        }
     }
 
     private var header: some View {
@@ -51,11 +63,24 @@ struct CommentRow: View {
         let paths = comment.displayImagePaths
         if !paths.isEmpty {
             LazyVGrid(columns: imageColumns, spacing: 6) {
-                ForEach(Array(paths.enumerated()), id: \.offset) { _, path in
-                    CommentImageThumb(path: path)
+                ForEach(Array(paths.enumerated()), id: \.offset) { index, path in
+                    Button {
+                        openViewer(at: index)
+                    } label: {
+                        CommentImageThumb(path: path)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
+    }
+
+    private func openViewer(at index: Int) {
+        let paths = comment.viewerImagePaths
+        guard !paths.isEmpty else { return }
+        let clamped = min(max(index, 0), paths.count - 1)
+        viewerSelection = clamped
+        viewerIndex = clamped
     }
 
     @ViewBuilder

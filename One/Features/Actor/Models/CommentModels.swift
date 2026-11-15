@@ -14,8 +14,10 @@ struct CommentItem: Decodable, Identifiable, Hashable {
     let imagePath: String?
     let imageBigPath: String?
     let imageSmallPath: String?
-    /// 多图路径（接口可能是字符串数组或对象数组）
+    /// 多图路径（列表缩略，接口可能是字符串数组或对象数组）
     let imagePaths: [String]
+    /// 多图原图路径（与 `imagePaths` 一一对应；字符串数组时与缩略相同）
+    let fullImagePaths: [String]
     /// 楼中楼回复
     let replies: [CommentItem]
 
@@ -32,7 +34,7 @@ struct CommentItem: Decodable, Identifiable, Hashable {
         OneThumbPath.preferred(thumb: avatar, thumbnail: avatarThumbnail)
     }
 
-    /// 评论配图：优先 `images`，否则回退单图字段。
+    /// 评论配图（网格缩略）：优先 `images`，否则回退单图字段。
     var displayImagePaths: [String] {
         if !imagePaths.isEmpty { return imagePaths }
         if let path = OneThumbPath.preferred(thumb: imagePath, thumbnail: imageSmallPath)
@@ -41,6 +43,18 @@ struct CommentItem: Decodable, Identifiable, Hashable {
             return [path]
         }
         return []
+    }
+
+    /// 全屏浏览用原图：优先 `images` 大图，否则回退单图大图字段。
+    var viewerImagePaths: [String] {
+        if !fullImagePaths.isEmpty { return fullImagePaths }
+        if let path = OneThumbPath.full(thumb: imagePath, thumbnail: imageSmallPath)
+            ?? imageBigPath?.nonEmpty
+            ?? imagePath?.nonEmpty
+        {
+            return [path]
+        }
+        return displayImagePaths
     }
 
     enum CodingKeys: String, CodingKey {
@@ -66,20 +80,29 @@ struct CommentItem: Decodable, Identifiable, Hashable {
         imagePath = try c.decodeIfPresent(String.self, forKey: .imagePath)
         imageBigPath = try c.decodeIfPresent(String.self, forKey: .imageBigPath)
         imageSmallPath = try c.decodeIfPresent(String.self, forKey: .imageSmallPath)
-        imagePaths = Self.decodeImagePaths(c)
+        let decoded = Self.decodeImagePaths(c)
+        imagePaths = decoded.preferred
+        fullImagePaths = decoded.full
         replies = (try? c.decodeIfPresent([CommentItem].self, forKey: .replies)) ?? []
     }
 
-    private static func decodeImagePaths<K: CodingKey>(_ c: KeyedDecodingContainer<K>) -> [String] {
-        guard let key = K(stringValue: "images"), c.contains(key) else { return [] }
+    private static func decodeImagePaths<K: CodingKey>(
+        _ c: KeyedDecodingContainer<K>
+    ) -> (preferred: [String], full: [String]) {
+        guard let key = K(stringValue: "images"), c.contains(key) else {
+            return ([], [])
+        }
 
         if let strings = try? c.decode([String].self, forKey: key) {
-            return strings.compactMap(\.nonEmpty)
+            let paths = strings.compactMap(\.nonEmpty)
+            return (paths, paths)
         }
         if let objects = try? c.decode([CommentImageObject].self, forKey: key) {
-            return objects.compactMap(\.preferred)
+            let preferred = objects.compactMap(\.preferred)
+            let full = objects.map { $0.full ?? $0.preferred }.compactMap { $0 }
+            return (preferred, full.isEmpty ? preferred : full)
         }
-        return []
+        return ([], [])
     }
 }
 
@@ -102,6 +125,13 @@ private struct CommentImageObject: Decodable {
         OneThumbPath.preferred(thumb: imagePath ?? path, thumbnail: imageSmallPath)
             ?? imageBigPath?.nonEmpty
             ?? url?.nonEmpty
+    }
+
+    var full: String? {
+        OneThumbPath.full(thumb: imagePath ?? path, thumbnail: imageSmallPath)
+            ?? imageBigPath?.nonEmpty
+            ?? url?.nonEmpty
+            ?? preferred
     }
 }
 

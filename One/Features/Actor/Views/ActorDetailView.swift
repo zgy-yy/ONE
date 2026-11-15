@@ -1,15 +1,23 @@
 import SwiftUI
 
-/// 演员详情：资料、可折叠简介、作品 / 写真 / 评论。
+/// 演员详情：大封面 + 导航栏标题；资料在昵称下；作品/写真/评论选项卡带 icon 与数量。
 struct ActorDetailView: View {
     let actor: ActorSummary
 
     @State private var session = ActorDetailSession()
-    @State private var descExpanded = false
+    @State private var showsFullDesc = false
     @State private var segment: ActorDetailSegment = .articles
+    @State private var photoViewerIndex: Int?
+    @State private var photoViewerSelection = 0
 
     private let photoColumns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 3)
     private let articleColumns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 2)
+    /// 详情封面宽度（竖图 3:4，再大一点更醒目）。
+    private let coverWidth: CGFloat = 176
+
+    private var displayName: String {
+        session.detail?.displayName ?? actor.displayName
+    }
 
     var body: some View {
         DetailLoadGate(
@@ -23,16 +31,30 @@ struct ActorDetailView: View {
         }
         .toolbar(.visible, for: .navigationBar)
         .navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(displayName)
         .navigationDestination(for: ArticleSummary.self) { ArticleDetailView(article: $0) }
         .task(id: actor.id) {
-            descExpanded = false
+            showsFullDesc = false
             segment = .articles
             await session.load(actorID: actor.id)
+        }
+        .sheet(isPresented: $showsFullDesc) {
+            if let desc = session.detail?.displayDesc {
+                descSheet(desc)
+            }
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { photoViewerIndex != nil },
+            set: { if !$0 { photoViewerIndex = nil } }
+        )) {
+            FullscreenImageViewer(
+                paths: photoViewerPaths,
+                selection: $photoViewerSelection
+            )
         }
         .onChange(of: segment) { _, value in
             Task { await session.loadSegment(value, actorID: actor.id) }
         }
-        // 排序变化时 Session 会清空列表，这里重新拉首屏
         .onChange(of: session.articleSort) { _, _ in
             Task { await session.loadSegment(.articles, actorID: actor.id) }
         }
@@ -42,12 +64,10 @@ struct ActorDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 header
-                statsRow
-                infoSection
                 if let desc = session.detail?.displayDesc {
                     descSection(desc)
                 }
-                segmentPicker
+                segmentTabs
                 mediaSection
             }
             .padding(.horizontal, 16)
@@ -58,36 +78,152 @@ struct ActorDetailView: View {
     // MARK: - Header
 
     private var header: some View {
-        LeadingMediaHeader {
-            ActorAvatarImage(path: session.detail?.imagePath ?? actor.imagePath)
+        LeadingMediaHeader(mediaWidth: coverWidth) {
+            // 详情用原图 thumb，比列表 thumbnail 更清晰
+            ActorAvatarImage(
+                path: session.detail?.coverImagePath
+                    ?? OneThumbPath.full(thumb: actor.thumb, thumbnail: actor.thumbnail)
+            )
         } info: {
             VStack(alignment: .leading, spacing: 6) {
-                Text(session.detail?.displayName ?? actor.displayName)
-                    .font(.title3.weight(.semibold))
-                if let japanese = session.detail?.japaneseName?.nonEmpty {
-                    Text(japanese).font(.subheadline).foregroundStyle(.secondary)
+                ForEach(nameRows, id: \.label) { row in
+                    nameRow(icon: row.icon, label: row.label, value: row.value)
                 }
-                if let alias = session.detail?.aliasName?.nonEmpty {
-                    Text(alias).font(.caption).foregroundStyle(.tertiary)
-                }
-                if let nickname = session.detail?.nickname?.nonEmpty {
-                    Text("昵称 \(nickname)").font(.caption).foregroundStyle(.secondary)
-                }
+                infoLines
             }
         }
     }
 
-    private var statsRow: some View {
+    private struct NameRow: Hashable {
+        let icon: String
+        let label: String
+        let value: String
+    }
+
+    private var nameRows: [NameRow] {
+        let d = session.detail
+        return [
+            .init(icon: "textformat", label: "中文名", value: orDash(d?.mainName ?? actor.displayName)),
+            .init(icon: "globe.asia.australia", label: "日文名", value: orDash(d?.japaneseName)),
+            .init(icon: "sparkles", label: "昵称", value: orDash(d?.nickname)),
+            .init(icon: "bookmark", label: "别名", value: orDash(d?.aliasName)),
+        ]
+    }
+
+    private func nameRow(icon: String, label: String, value: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Image(systemName: icon)
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .frame(width: 14, alignment: .center)
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .frame(width: 40, alignment: .leading)
+            Text(value)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.primary)
+                .lineLimit(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label) \(value)")
+    }
+
+    private var infoLines: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(infoRows, id: \.label) { row in
+                nameRow(icon: row.icon, label: row.label, value: row.value)
+            }
+        }
+        .padding(.top, 2)
+    }
+
+    private var infoRows: [NameRow] {
+        let d = session.detail
+        let height = d?.height?.nonEmpty.map { "\($0) cm" }
+        return [
+            .init(icon: "arrow.up.and.down", label: "身高", value: height ?? "-"),
+            .init(icon: "rectangle.split.3x1", label: "三围", value: orDash(d?.bustWaistHip)),
+            .init(icon: "mug", label: "罩杯", value: orDash(d?.cupSize)),
+            .init(icon: "birthday.cake", label: "生日", value: orDash(d?.birthDate)),
+            .init(icon: "person.badge.clock", label: "年龄", value: orDash(d?.age)),
+        ]
+    }
+
+    private func orDash(_ value: String?) -> String {
+        value?.nonEmpty ?? "-"
+    }
+
+    private func descSection(_ text: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("简介").font(.headline)
+            Text(text)
+                .font(.body)
+                .lineLimit(3)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button("展开全部") {
+                showsFullDesc = true
+            }
+            .font(.subheadline.weight(.medium))
+        }
+    }
+
+    private func descSheet(_ text: String) -> some View {
+        NavigationStack {
+            ScrollView {
+                Text(text)
+                    .font(.body)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+            }
+            .navigationTitle("简介")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("完成") { showsFullDesc = false }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    // MARK: - Tabs
+
+    private var segmentTabs: some View {
         HStack(spacing: 0) {
             ForEach(ActorDetailSegment.allCases) { item in
-                Button { segment = item } label: {
-                    stat(item.rawValue, count(for: item), selected: segment == item)
+                Button {
+                    segment = item
+                } label: {
+                    segmentTabLabel(item)
                 }
                 .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
             }
         }
         .padding(.vertical, 10)
         .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func segmentTabLabel(_ item: ActorDetailSegment) -> some View {
+        let selected = segment == item
+        let count = count(for: item) ?? 0
+        return VStack(spacing: 4) {
+            Image(systemName: item.systemImage)
+                .font(.body.weight(.semibold))
+            Text("\(item.rawValue) \(ArticleFormat.shortCount(count))")
+                .font(.caption.weight(.medium))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+        }
+        .foregroundStyle(selected ? Color.accentColor : Color.secondary)
+        .padding(.vertical, 2)
+        .accessibilityLabel("\(item.rawValue) \(count)")
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     private func count(for segment: ActorDetailSegment) -> Int? {
@@ -96,73 +232,6 @@ struct ActorDetailView: View {
         case .photos: session.detail?.photoNum
         case .comments: session.detail?.commentNum
         }
-    }
-
-    private func stat(_ title: String, _ value: Int?, selected: Bool) -> some View {
-        VStack(spacing: 4) {
-            Text("\(value ?? 0)")
-                .font(.headline.monospacedDigit())
-                .foregroundStyle(selected ? Color.accentColor : Color.primary)
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(selected ? Color.accentColor : Color.secondary)
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    // MARK: - Info / Desc
-
-    @ViewBuilder
-    private var infoSection: some View {
-        let rows = infoRows
-        if !rows.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("资料").font(.headline)
-                ForEach(rows, id: \.0) { title, value in
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(title)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .frame(width: 72, alignment: .leading)
-                        Text(value)
-                            .font(.subheadline)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-            }
-        }
-    }
-
-    private var infoRows: [(String, String)] {
-        var rows: [(String, String)] = []
-        let d = session.detail
-        if let v = d?.height?.nonEmpty { rows.append(("身高", "\(v) cm")) }
-        if let v = d?.bustWaistHip?.nonEmpty { rows.append(("三围", v)) }
-        if let v = d?.cupSize?.nonEmpty { rows.append(("罩杯", v)) }
-        if let v = d?.birthDate?.nonEmpty { rows.append(("生日", v)) }
-        if let v = d?.age?.nonEmpty { rows.append(("年龄", v)) }
-        return rows
-    }
-
-    private func descSection(_ text: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("简介").font(.headline)
-            Text(text)
-                .font(.body)
-                .lineLimit(descExpanded ? nil : 3)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Button(descExpanded ? "收起" : "展开全部") {
-                withAnimation(.easeInOut(duration: 0.2)) { descExpanded.toggle() }
-            }
-            .font(.subheadline.weight(.medium))
-        }
-    }
-
-    private var segmentPicker: some View {
-        Picker("内容", selection: $segment) {
-            ForEach(ActorDetailSegment.allCases) { Text($0.rawValue).tag($0) }
-        }
-        .pickerStyle(.segmented)
     }
 
     // MARK: - Media
@@ -196,7 +265,6 @@ struct ActorDetailView: View {
                         NavigationLink(value: article) { articleCard(article) }
                             .buttonStyle(.plain)
                             .onAppear {
-                                // 滑到最后一项时请求下一页
                                 guard session.articles.items.isLastItem(article) else { return }
                                 Task { await session.loadMore(.articles, actorID: actor.id) }
                             }
@@ -232,6 +300,11 @@ struct ActorDetailView: View {
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
+    /// 全屏浏览用的原图路径列表（与网格顺序一致）。
+    private var photoViewerPaths: [String] {
+        session.photos.items.compactMap(\.fullImagePath)
+    }
+
     private var photosSection: some View {
         AsyncSection(
             isLoading: session.photos.isLoading,
@@ -242,12 +315,17 @@ struct ActorDetailView: View {
             retry: { Task { await session.retry(.photos, actorID: actor.id) } }
         ) {
             LazyVGrid(columns: photoColumns, spacing: 8) {
-                ForEach(session.photos.items) { photo in
-                    ActorAvatarImage(path: photo.imagePath)
-                        .onAppear {
-                            guard session.photos.items.isLastItem(photo) else { return }
-                            Task { await session.loadMore(.photos, actorID: actor.id) }
-                        }
+                ForEach(Array(session.photos.items.enumerated()), id: \.element.id) { index, photo in
+                    Button {
+                        openPhotoViewer(at: index)
+                    } label: {
+                        ActorAvatarImage(path: photo.imagePath)
+                    }
+                    .buttonStyle(.plain)
+                    .onAppear {
+                        guard session.photos.items.isLastItem(photo) else { return }
+                        Task { await session.loadMore(.photos, actorID: actor.id) }
+                    }
                 }
             }
             AppUI.loadMoreFooter(
@@ -255,6 +333,18 @@ struct ActorDetailView: View {
                 exhausted: session.photos.exhausted
             )
         }
+    }
+
+    private func openPhotoViewer(at index: Int) {
+        let paths = photoViewerPaths
+        guard !paths.isEmpty else { return }
+        // 网格 index 与原图列表对齐（跳过没有路径的项）
+        let photo = session.photos.items[index]
+        guard let full = photo.fullImagePath,
+              let viewerIndex = paths.firstIndex(of: full)
+        else { return }
+        photoViewerSelection = viewerIndex
+        photoViewerIndex = viewerIndex
     }
 
     private var commentsSection: some View {

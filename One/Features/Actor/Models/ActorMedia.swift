@@ -12,8 +12,14 @@ struct ActorPhoto: Decodable, Identifiable, Hashable {
     let thumbnail: String?
     let sort: Int?
 
+    /// 列表网格：优先小图。
     var imagePath: String? {
         OneThumbPath.preferred(thumb: thumb, thumbnail: thumbnail)
+    }
+
+    /// 全屏浏览：优先原图。
+    var fullImagePath: String? {
+        OneThumbPath.full(thumb: thumb, thumbnail: thumbnail)
     }
 }
 
@@ -29,4 +35,12 @@ enum ActorDetailSegment: String, CaseIterable, Identifiable {
     case comments = "评论"
 
     var id: String { rawValue }
+
+    var systemImage: String {
+        switch self {
+        case .articles: "film"
+        case .photos: "photo.on.rectangle"
+        case .comments: "bubble.left.and.bubble.right"
+        }
+    }
 }
