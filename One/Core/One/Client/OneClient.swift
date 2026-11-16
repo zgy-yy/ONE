@@ -140,10 +140,16 @@ enum OneClient {
     }
 
     static func articleDetail(articleID: Int) async throws -> ArticleDetail {
+        let dn = ArticlePlayURL.videoCDNBase.hasSuffix("/")
+            ? ArticlePlayURL.videoCDNBase
+            : ArticlePlayURL.videoCDNBase + "/"
         let envelope = try await post(
             OneApiEnvelope<ArticleDetail>.self,
             path: OneAPI.detailPath,
-            data: ["id": String(articleID)]
+            data: [
+                "id": String(articleID),
+                "dn": dn,
+            ]
         )
         guard let article = try unwrap(envelope) else {
             throw OneClientError.apiRejected("详情为空")
