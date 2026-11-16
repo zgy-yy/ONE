@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 喜欢 / 收藏列表共用行。
+/// 通用库条目行：封面 + 标题（可选作者 / 副标题）。
 struct LibraryRow: View {
     let title: String
     var author: String? = nil

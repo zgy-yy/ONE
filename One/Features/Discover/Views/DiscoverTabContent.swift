@@ -5,9 +5,9 @@ import SwiftUI
 /// 各频道列表保活：切走再切回时保留滚动位置（不再用 `.id(channel)` 销毁视图）。
 struct DiscoverTabContent: View {
     @Bindable private var session = DiscoverSession.shared
-    @State private var channel: ContentCategory = .graphic
+    @State private var channel: ContentCategory = .film
     /// 只挂载访问过的频道，避免一上来创建 6 份列表。
-    @State private var visited: Set<ContentCategory> = [.graphic]
+    @State private var visited: Set<ContentCategory> = [.film]
 
     var body: some View {
         NavigationStack {
@@ -20,7 +20,6 @@ struct DiscoverTabContent: View {
                 }
             }
             .fillPage()
-            .toolbar(.hidden, for: .navigationBar)
             .safeAreaInset(edge: .top, spacing: 0) {
                 DiscoverTopBar(channel: $channel, session: session)
             }
