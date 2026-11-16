@@ -15,6 +15,7 @@ struct SearchView: View {
                     placement: .navigationBarDrawer(displayMode: .always),
                     prompt: "输入关键词"
                 )
+                .searchPresentationToolbarBehavior(.avoidHidingContent)
                 .onSubmit(of: .search, session.submit)
                 .safeAreaInset(edge: .top, spacing: 0) {
                     TopCapsuleBar(

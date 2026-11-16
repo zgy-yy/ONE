@@ -23,6 +23,8 @@ struct HomeDayBar: View {
                     .lineLimit(2)
                     .multilineTextAlignment(.trailing)
             }
+
+            SearchBarButton()
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

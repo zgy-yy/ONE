@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 主界面底部 Tab；右下角搜索入口，滚动隐藏，点开卡片 sheet。
+/// 主界面底部 Tab；搜索入口在各页顶栏右侧。
 struct MainTabView: View {
     @State private var showsSearch = false
 
@@ -8,26 +8,22 @@ struct MainTabView: View {
         TabView {
             SwiftUI.Tab("首页", systemImage: "house.fill") {
                 HomeTabContent()
-                    .withSearchFAB(isPresented: $showsSearch)
             }
             SwiftUI.Tab("发现", systemImage: "safari.fill") {
                 DiscoverTabContent()
-                    .withSearchFAB(isPresented: $showsSearch)
             }
             SwiftUI.Tab("点播", systemImage: "play.rectangle.fill") {
                 VodTabContent()
-                    .withSearchFAB(isPresented: $showsSearch)
             }
             SwiftUI.Tab("演员", systemImage: "person.2.fill") {
                 ActorTabContent()
-                    .withSearchFAB(isPresented: $showsSearch)
             }
             SwiftUI.Tab("我的", systemImage: "person.circle.fill") {
                 MineTabContent()
-                    .withSearchFAB(isPresented: $showsSearch)
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
+        .environment(\.openSearch) { showsSearch = true }
         .searchCardSheet(isPresented: $showsSearch)
     }
 }

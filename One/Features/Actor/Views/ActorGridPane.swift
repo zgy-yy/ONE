@@ -63,7 +63,6 @@ struct ActorGridPane: View {
             )
             .padding(.bottom, 16)
         }
-        .tracksSearchFABScroll()
     }
 
     private func actorCell(_ actor: ActorSummary) -> some View {

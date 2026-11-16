@@ -24,6 +24,7 @@ struct FilterBar: View {
             Spacer(minLength: 8)
 
             ArticleSortPicker(sort: $sort)
+            SearchBarButton()
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 4)

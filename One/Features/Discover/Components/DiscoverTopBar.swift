@@ -41,6 +41,7 @@ struct DiscoverTopBar: View {
             Spacer(minLength: 8)
 
             ArticleSortPicker(sort: $session.listSort)
+            SearchBarButton()
         }
         .padding(.horizontal, 12)
         .padding(.bottom, 4)

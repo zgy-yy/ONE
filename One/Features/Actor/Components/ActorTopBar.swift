@@ -18,13 +18,17 @@ struct ActorTopBar: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HorizontalCapsuleStrip(
-                items: items,
-                selectedID: selection,
-                title: \.title,
-                id: \.id,
-                onSelect: { selection = $0.id }
-            )
+            HStack(spacing: 8) {
+                HorizontalCapsuleStrip(
+                    items: items,
+                    selectedID: selection,
+                    title: \.title,
+                    id: \.id,
+                    onSelect: { selection = $0.id }
+                )
+                SearchBarButton()
+                    .padding(.trailing, 10)
+            }
             Divider()
         }
         .background(Color(.systemBackground))

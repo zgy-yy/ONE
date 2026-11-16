@@ -90,20 +90,10 @@ extension View {
             .listRowBackground(Color(.secondarySystemGroupedBackground))
     }
 
-    /// 内容列表通用样式（无分组、隐藏系统滚动背景）；并驱动右下角搜索按钮显隐。
+    /// 内容列表通用样式（无分组、隐藏系统滚动背景）。
     func plainContentList() -> some View {
         listStyle(.plain)
             .scrollContentBackground(.hidden)
-            .tracksSearchFABScroll()
-    }
-
-    /// 主内容 `ScrollView` / `List` 滚动时，同步右下角搜索按钮显隐。
-    func tracksSearchFABScroll() -> some View {
-        onScrollGeometryChange(for: CGFloat.self) { geometry in
-            geometry.contentOffset.y
-        } action: { _, newOffset in
-            SearchFABChrome.shared.handleScroll(offsetY: newOffset)
-        }
     }
 
     /// 整行可点、无右侧箭头的 `NavigationLink`（适合自定义列表行）。

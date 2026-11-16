@@ -63,7 +63,6 @@ struct HomeMonthArticlesView: View {
             .padding(.horizontal, 16)
             .padding(.bottom, 16)
         }
-        .tracksSearchFABScroll()
     }
 
     /// 两列用固定 `HStack` 行，避免 `LazyVGrid` 预取导致中段回跳。
