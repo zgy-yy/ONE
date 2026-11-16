@@ -7,7 +7,7 @@ enum OneTargets {
 
     /// 域名根线路；仅用于 `domain/check` 探测，不含版本路径。
     static let hostBases: [String] = [
-         "http:127.0.0.1:3456",
+         "http://zgyyy.me:3456",
 
     ]
 

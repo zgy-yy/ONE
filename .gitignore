@@ -1,0 +1,32 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode user data / local state
+xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+*.moved-aside
+timeline.xctimeline
+playground.xcworkspace
+
+# Build / Derived Data
+build/
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# SwiftPM local
+.build/
+
+# Cursor / VS Code LSP（含本机绝对路径，勿提交）
+buildServer.json
+
+# Misc
+*.swp
+*~
+.idea/

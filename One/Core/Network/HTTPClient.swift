@@ -4,15 +4,43 @@ import Foundation
 /// 项目统一的 HTTP 封装（基于 [Alamofire](https://github.com/Alamofire/Alamofire)）。
 ///
 /// 学习要点：
-/// - 泛型 `get<T: Decodable>`：把 JSON 直接解码成 Swift 结构体/类。
-/// - `async throws`：异步且可能失败，调用方用 `try await`。
-/// - `responseDecoder`：壳 / ONE 接口常先解密再 JSON，与明文接口共用同一套方法。
+/// - `request`：拿响应原文（String），GET/POST 共用。
+/// - `get` / `post`：在原文基础上解密并 JSON 解码成结构体。
+/// - `responseDecoder`：壳 / ONE 接口常先解密再 JSON。
 enum HTTPClient {
     private static let session: Session = {
         let configuration = URLSessionConfiguration.default
         configuration.timeoutIntervalForRequest = 30
         return Session(configuration: configuration)
     }()
+
+    // MARK: - Raw
+
+    /// 发请求并返回响应原文（不 JSON 解码）。
+    /// - Parameters:
+    ///   - method: `.get` / `.post` 等
+    ///   - body: 原始字符串 body（如加密表单）；GET 一般不传
+    static func request(
+        _ method: HTTPMethod,
+        url: URL,
+        body: String? = nil,
+        headerFields: [String: String] = [:],
+        headers: HTTPHeaders = [],
+        timeout: TimeInterval? = nil
+    ) async throws -> String {
+        let merged = mergeHeaders(headerFields: headerFields, headers: headers)
+        return try await session.request(
+            url,
+            method: method,
+            headers: merged,
+            requestModifier: { req in
+                if let timeout { req.timeoutInterval = timeout }
+                if let body { req.httpBody = Data(body.utf8) }
+            }
+        )
+        .serializingString()
+        .value
+    }
 
     // MARK: - JSON
 
@@ -26,9 +54,8 @@ enum HTTPClient {
     ) async throws -> T {
         let merged = mergeHeaders(headerFields: headerFields, headers: headers)
         if let responseDecoder {
-            let raw = try await getText(from: url, headers: merged, timeout: timeout)
-            let data = try responseDecoder.decodeResponseBody(raw)
-            return try JSONDecoder().decode(T.self, from: data)
+            let raw = try await request(.get, url: url, headers: merged, timeout: timeout)
+            return try decode(type, raw: raw, responseDecoder: responseDecoder)
         }
         return try await session.request(url, method: .get, headers: merged, requestModifier: { request in
             if let timeout { request.timeoutInterval = timeout }
@@ -38,94 +65,28 @@ enum HTTPClient {
         .value
     }
 
-    static func post<Body: Encodable, Response: Decodable>(
+    /// POST（字符串 body，如 ONE 加密表单）→ 解密 → 解成模型。
+    static func post<Response: Decodable>(
         _ type: Response.Type,
         to url: URL,
-        body: Body,
+        body: String? = nil,
         headerFields: [String: String] = [:],
         headers: HTTPHeaders = [],
         timeout: TimeInterval? = nil,
-        responseDecoder: (any HTTPResponseDecoder)? = nil
+        responseDecoder: any HTTPResponseDecoder
     ) async throws -> Response {
-        var merged = mergeHeaders(headerFields: headerFields, headers: headers)
-        if merged["Content-Type"] == nil {
-            merged.add(.contentType("application/json"))
-        }
-        let request = session.request(
-            url,
-            method: .post,
-            parameters: body,
-            encoder: JSONParameterEncoder.default,
-            headers: merged,
-            requestModifier: { req in
-                if let timeout { req.timeoutInterval = timeout }
-            }
+        let raw = try await request(
+            .post,
+            url: url,
+            body: body,
+            headerFields: headerFields,
+            headers: headers,
+            timeout: timeout
         )
-        if let responseDecoder {
-            let raw = try await request.serializingString().value
-            let data = try responseDecoder.decodeResponseBody(raw)
-            return try JSONDecoder().decode(Response.self, from: data)
-        }
-        return try await request
-            .validate(statusCode: 200 ..< 300)
-            .serializingDecodable(Response.self)
-            .value
+        return try decode(type, raw: raw, responseDecoder: responseDecoder)
     }
 
-    /// POST 原始字符串 body（如 ONE 加密表单），响应可走 `responseDecoder`
-    static func postText<Response: Decodable>(
-        _ type: Response.Type,
-        to url: URL,
-        body: String?,
-        headerFields: [String: String] = [:],
-        headers: HTTPHeaders = [],
-        timeout: TimeInterval? = nil,
-        responseDecoder: (any HTTPResponseDecoder)? = nil
-    ) async throws -> Response {
-        let merged = mergeHeaders(headerFields: headerFields, headers: headers)
-        let request = session.request(
-            url,
-            method: .post,
-            headers: merged,
-            requestModifier: { req in
-                if let timeout { req.timeoutInterval = timeout }
-                if let body { req.httpBody = Data(body.utf8) }
-            }
-        )
-        if let responseDecoder {
-            let raw = try await request.serializingString().value
-            let data = try responseDecoder.decodeResponseBody(raw)
-            return try JSONDecoder().decode(Response.self, from: data)
-        }
-        return try await request
-            .validate(statusCode: 200 ..< 300)
-            .serializingDecodable(Response.self)
-            .value
-    }
-
-    // MARK: - Raw
-
-    static func getText(
-        from url: URL,
-        headerFields: [String: String] = [:],
-        timeout: TimeInterval? = nil
-    ) async throws -> String {
-        try await getText(from: url, headers: HTTPHeaders(headerFields), timeout: timeout)
-    }
-
-    static func getText(
-        from url: URL,
-        headers: HTTPHeaders = [],
-        timeout: TimeInterval? = nil
-    ) async throws -> String {
-        try await session.request(url, method: .get, headers: headers, requestModifier: { request in
-            if let timeout {
-                request.timeoutInterval = timeout
-            }
-        })
-        .serializingString()
-        .value
-    }
+    // MARK: - Probe
 
     /// 仅探测 HTTP 状态码（如 `box/api/ping`）
     static func getStatusCode(
@@ -155,6 +116,17 @@ enum HTTPClient {
         .serializingData()
         .response
         return (response.response?.statusCode, response.error)
+    }
+
+    // MARK: - Private
+
+    private static func decode<T: Decodable>(
+        _ type: T.Type,
+        raw: String,
+        responseDecoder: any HTTPResponseDecoder
+    ) throws -> T {
+        let data = try responseDecoder.decodeResponseBody(raw)
+        return try JSONDecoder().decode(T.self, from: data)
     }
 
     private static func mergeHeaders(headerFields: [String: String], headers: HTTPHeaders) -> HTTPHeaders {

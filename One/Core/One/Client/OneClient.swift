@@ -42,7 +42,7 @@ enum OneClient {
             : OneAuthStore.userKeyHeader
         let headers = OneCrypto.makeRequestHeaders(token: token, userKey: userKey)
         let body = try data.map { try OneCrypto.encryptMapBody($0) }
-        return try await HTTPClient.postText(
+        return try await HTTPClient.post(
             type,
             to: url,
             body: body,

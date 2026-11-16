@@ -12,8 +12,8 @@
 	"argv": [
 		"/opt/homebrew/bin/xcode-build-server"
 	],
-	"workspace": "/Users/zgy/Documents/code/One/One.xcodeproj/project.xcworkspace",
-	"build_root": "/Users/zgy/Library/Developer/Xcode/DerivedData/One-azdtsobqsbelydepqkbgkgvcmhye",
+	"workspace": "/Users/tal/Desktop/ONE/One.xcodeproj/project.xcworkspace",
+	"build_root": "/Users/tal/Library/Developer/Xcode/DerivedData/One-dfqnsqlynpovpbecrwmcscjqalqq",
 	"scheme": "One",
 	"kind": "xcode"
 }
