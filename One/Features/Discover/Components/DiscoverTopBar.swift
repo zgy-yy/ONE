@@ -27,16 +27,7 @@ struct DiscoverTopBar: View {
 
     private var seriesFilterBar: some View {
         HStack(spacing: 12) {
-            HStack(spacing: 6) {
-                ForEach(SeriesStatusType.allCases) { item in
-                    CapsuleChip(
-                        title: item.title,
-                        selected: session.seriesStatus == item,
-                        compact: true
-                    )
-                    .onTapGesture { session.seriesStatus = item }
-                }
-            }
+            SeriesStatusPicker(status: $session.seriesStatus)
 
             Spacer(minLength: 8)
 
