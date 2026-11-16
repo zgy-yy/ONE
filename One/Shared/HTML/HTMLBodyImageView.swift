@@ -28,14 +28,11 @@ struct HTMLBodyImageView: View {
 
     @ViewBuilder
     private func content(for payload: OneRemoteImage.Payload) -> some View {
-        if payload.mimeType == "image/gif" {
+        if payload.isGIF {
             GIFImageView(data: payload.data)
                 .frame(maxWidth: .infinity)
         } else if let uiImage = UIImage(data: payload.data) {
-            // 用宽高比跟父宽度走，避免 ScrollView 测量时吃像素宽导致整页横滑。
-            let aspect = uiImage.size.height > 0
-                ? uiImage.size.width / uiImage.size.height
-                : 1
+            let aspect = uiImage.size.height > 0 ? uiImage.size.width / uiImage.size.height : 1
             Image(uiImage: uiImage)
                 .resizable()
                 .aspectRatio(aspect, contentMode: .fit)

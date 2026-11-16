@@ -6,6 +6,7 @@ enum OneRemoteImage {
     struct Payload {
         let data: Data
         let mimeType: String
+        var isGIF: Bool { mimeType == "image/gif" }
     }
 
     private static let imageCache = NSCache<NSString, UIImage>()
