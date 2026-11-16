@@ -18,7 +18,7 @@ struct SearchHit: Decodable, Identifiable, Hashable {
     }
 
     /// 搜索里写真 / 漫画条目的 `model_id`。
-    var opensAsSeries: Bool { modelID == 4 }
+    var opensAsSeries: Bool { modelID == ContentCategory.ModelID.series }
 
     var asArticleSummary: ArticleSummary {
         ArticleSummary(

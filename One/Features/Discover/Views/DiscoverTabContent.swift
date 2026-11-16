@@ -5,14 +5,14 @@ import SwiftUI
 /// 各频道列表保活：切走再切回时保留滚动位置（不再用 `.id(channel)` 销毁视图）。
 struct DiscoverTabContent: View {
     @Bindable private var session = DiscoverSession.shared
-    @State private var channel: DiscoverChannel = .graphic
+    @State private var channel: ContentCategory = .graphic
     /// 只挂载访问过的频道，避免一上来创建 6 份列表。
-    @State private var visited: Set<DiscoverChannel> = [.graphic]
+    @State private var visited: Set<ContentCategory> = [.graphic]
 
     var body: some View {
         NavigationStack {
             ZStack {
-                ForEach(DiscoverChannel.allCases.filter { visited.contains($0) }) { item in
+                ForEach(ContentCategory.discoverCases.filter { visited.contains($0) }) { item in
                     DiscoverFeedView(channel: item)
                         .opacity(item == channel ? 1 : 0)
                         .allowsHitTesting(item == channel)

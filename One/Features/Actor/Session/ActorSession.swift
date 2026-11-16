@@ -34,16 +34,8 @@ final class ActorSession {
         lastError = nil
         defer { isLoading = false }
 
-        guard let creds = OneCredentials.pair(tokenPath: OneAPI.actorMainNavigationsPath) else {
-            lastError = OneCredentials.readinessError
-            return
-        }
-
         do {
-            navigations = try await OneClient.actorMainNavigations(
-                base: creds.base,
-                token: creds.token
-            )
+            navigations = try await OneClient.actorMainNavigations()
             if force {
                 feeds = [:]
                 selectedTagIDs = [:]
@@ -137,31 +129,12 @@ final class ActorSession {
         }
     }
 
-    private func tokenPath(for selection: ActorTabSelection) -> String {
-        switch selection {
-        case .newest: OneAPI.actorNewActorsPath
-        case .hottest: OneAPI.actorHotActorsPath
-        case .navigation: OneAPI.actorMainNavigationActorsPath
-        }
-    }
-
     private func fetchPage(selection: ActorTabSelection, page: Int, append: Bool) async {
         let key = feedKey(for: selection)
         var feed = feeds[key] ?? PagedListState(pageSize: pageSize(for: selection))
 
-        guard let creds = OneCredentials.pair(tokenPath: tokenPath(for: selection)) else {
-            if append { feed.cancelLoadMore() } else { feed.failLoad(OneCredentials.readinessError) }
-            feeds[key] = feed
-            return
-        }
-
         do {
-            let list = try await fetchList(
-                selection: selection,
-                base: creds.base,
-                token: creds.token,
-                page: page
-            )
+            let list = try await fetchList(selection: selection, page: page)
             if append { feed.finishLoadMore(list) } else { feed.finishLoad(list) }
             feeds[key] = feed
         } catch {
@@ -172,23 +145,15 @@ final class ActorSession {
 
     private func fetchList(
         selection: ActorTabSelection,
-        base: URL,
-        token: String,
         page: Int
     ) async throws -> [ActorSummary] {
         switch selection {
         case .newest:
-            try await OneClient.actorNewActors(
-                base: base, token: token, page: page, size: spotlightPageSize
-            ).list ?? []
+            try await OneClient.actorNewActors(page: page, size: spotlightPageSize).list ?? []
         case .hottest:
-            try await OneClient.actorHotActors(
-                base: base, token: token, page: page, size: spotlightPageSize
-            )
+            try await OneClient.actorHotActors(page: page, size: spotlightPageSize)
         case .navigation(let id):
             try await OneClient.actorMainNavigationActors(
-                base: base,
-                token: token,
                 mainNavigationID: id,
                 page: page,
                 size: navigationPageSize,

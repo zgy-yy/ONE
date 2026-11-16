@@ -76,20 +76,10 @@ final class HomeMonthSession {
     }
 
     private func fetchPage(month: String, page: Int, newSection: Bool) async {
-        guard let creds = OneCredentials.pair(tokenPath: OneAPI.discoveryPath) else {
-            if page == 1, newSection {
-                error = OneCredentials.readinessError
-                loaded = false
-            }
-            return
-        }
-
         do {
             let list = try await OneClient.articleDiscovery(
-                base: creds.base,
-                token: creds.token,
                 request: .discoverList(
-                    modelID: ArticleModelID.graphic,
+                    modelID: ContentCategory.ModelID.graphic,
                     publishedAt: month,
                     sort: VodArticleSort.publishedAt.rawValue,
                     page: page,

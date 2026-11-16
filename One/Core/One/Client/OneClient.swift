@@ -1,8 +1,11 @@
 import Foundation
 
 /// 业务 API 客户端：选线、签名 POST、具体接口方法。
+///
+/// 需要 token 的接口在内部通过 `OneCredentials` 取 base + token，Feature 不必再 `pair`。
 enum OneClient {
     private static let probeTimeout: TimeInterval = 20
+    private static let apiTimeout: TimeInterval = 30
 
     /// 依次 POST `domain/check`，选第一条可用线路，返回带 `/v2.5` 的基址。
     static func pickBaseURL() async throws -> URL {
@@ -25,22 +28,21 @@ enum OneClient {
         return url
     }
 
-    private static let apiTimeout: TimeInterval = 30
-
-    /// ONE 业务 POST（base 已含 `v2.5`；`data == nil` 时无 body，如 `getDemandTagList`）
-    static func post<T: Decodable>(
+    /// ONE 业务 POST（`data == nil` 时无 body，如 `getDemandTagList`）。
+    private static func post<T: Decodable>(
         _ type: T.Type,
-        base: URL,
         path: String,
-        token: String,
         data: [String: String]? = nil
     ) async throws -> T {
-        let url = APIURL.join(base: base.absoluteString, path: path)
+        let creds = try await MainActor.run {
+            try OneCredentials.requirePair(tokenPath: path)
+        }
+        let url = APIURL.join(base: creds.base.absoluteString, path: path)
         // 登录 / 发短信用游客 token，此时还没有 user-key。
         let userKey = (path == OneAPI.sendSMSPath || path == OneAPI.userLoginPath)
             ? ""
             : OneAuthStore.userKeyHeader
-        let headers = OneCrypto.makeRequestHeaders(token: token, userKey: userKey)
+        let headers = OneCrypto.makeRequestHeaders(token: creds.token, userKey: userKey)
         let body = try data.map { try OneCrypto.encryptMapBody($0) }
         return try await HTTPClient.post(
             type,
@@ -52,39 +54,29 @@ enum OneClient {
         )
     }
 
-    static func getDemandTagList(base: URL, token: String) async throws -> [DemandTag] {
+    static func getDemandTagList() async throws -> [DemandTag] {
         let envelope = try await post(
             OneApiEnvelope<[DemandTag]>.self,
-            base: base,
             path: OneAPI.demandTagListPath,
-            token: token,
             data: nil
         )
         return try unwrap(envelope) ?? []
     }
 
-    static func articleDiscovery(
-        base: URL,
-        token: String,
-        request: DiscoveryRequest
-    ) async throws -> [ArticleSummary] {
+    static func articleDiscovery(request: DiscoveryRequest) async throws -> [ArticleSummary] {
         let envelope = try await post(
             OneApiEnvelope<DiscoveryListPayload>.self,
-            base: base,
             path: OneAPI.discoveryPath,
-            token: token,
             data: request.formBody()
         )
         return try unwrap(envelope)?.articles ?? []
     }
 
     /// 搜索热词（无 body）。
-    static func articleHotWords(base: URL, token: String) async throws -> [SearchHotWord] {
+    static func articleHotWords() async throws -> [SearchHotWord] {
         let envelope = try await post(
             OneApiEnvelope<SearchHotWordsPayload>.self,
-            base: base,
             path: OneAPI.articleHotWordsPath,
-            token: token,
             data: nil
         )
         return try unwrap(envelope)?.list ?? []
@@ -92,8 +84,6 @@ enum OneClient {
 
     /// 搜索：`keyword` + `model_id` + `series_category` 分页。
     static func articleSearch(
-        base: URL,
-        token: String,
         keyword: String,
         modelID: Int,
         seriesCategory: Int = 0,
@@ -102,9 +92,7 @@ enum OneClient {
     ) async throws -> [SearchHit] {
         let envelope = try await post(
             OneApiEnvelope<[SearchHit]>.self,
-            base: base,
             path: OneAPI.articleSearchPath,
-            token: token,
             data: [
                 "keyword": keyword,
                 "model_id": String(modelID),
@@ -117,16 +105,10 @@ enum OneClient {
     }
 
     /// 首页每日一文：`published_at=YYYY-MM-DD`。
-    static func articleDay(
-        base: URL,
-        token: String,
-        publishedAt: String
-    ) async throws -> ArticleDayPayload {
+    static func articleDay(publishedAt: String) async throws -> ArticleDayPayload {
         let envelope = try await post(
             OneApiEnvelope<ArticleDayPayload>.self,
-            base: base,
             path: OneAPI.articleDayPath,
-            token: token,
             data: ["published_at": publishedAt]
         )
         guard let payload = try unwrap(envelope) else {
@@ -135,12 +117,10 @@ enum OneClient {
         return payload
     }
 
-    static func articleDetail(base: URL, token: String, articleID: Int) async throws -> ArticleDetail {
+    static func articleDetail(articleID: Int) async throws -> ArticleDetail {
         let envelope = try await post(
             OneApiEnvelope<ArticleDetail>.self,
-            base: base,
             path: OneAPI.detailPath,
-            token: token,
             data: ["id": String(articleID)]
         )
         guard let article = try unwrap(envelope) else {
@@ -150,12 +130,10 @@ enum OneClient {
     }
 
     /// 演员主分类（地区等）。
-    static func actorMainNavigations(base: URL, token: String) async throws -> [ActorNavigation] {
+    static func actorMainNavigations() async throws -> [ActorNavigation] {
         let envelope = try await post(
             OneApiEnvelope<ActorNavigationsPayload>.self,
-            base: base,
             path: OneAPI.actorMainNavigationsPath,
-            token: token,
             data: nil
         )
         let list = try unwrap(envelope)?.list ?? []
@@ -164,8 +142,6 @@ enum OneClient {
 
     /// 某主分类下的演员分页列表（可选 `tag_ids` 逗号分隔筛选）。
     static func actorMainNavigationActors(
-        base: URL,
-        token: String,
         mainNavigationID: Int,
         page: Int,
         size: Int = 30,
@@ -183,9 +159,7 @@ enum OneClient {
         }
         let envelope = try await post(
             OneApiEnvelope<ActorListPayload>.self,
-            base: base,
             path: OneAPI.actorMainNavigationActorsPath,
-            token: token,
             data: data
         )
         return try unwrap(envelope)?.list ?? []
@@ -193,17 +167,13 @@ enum OneClient {
 
     /// 最新演员。
     static func actorNewActors(
-        base: URL,
-        token: String,
         page: Int,
         size: Int = 9,
         keyword: String = ""
     ) async throws -> ActorListPayload {
         let envelope = try await post(
             OneApiEnvelope<ActorListPayload>.self,
-            base: base,
             path: OneAPI.actorNewActorsPath,
-            token: token,
             data: [
                 "page": String(page),
                 "size": String(size),
@@ -215,17 +185,13 @@ enum OneClient {
 
     /// 最热演员。
     static func actorHotActors(
-        base: URL,
-        token: String,
         page: Int,
         size: Int = 9,
         keyword: String = ""
     ) async throws -> [ActorSummary] {
         let envelope = try await post(
             OneApiEnvelope<ActorListPayload>.self,
-            base: base,
             path: OneAPI.actorHotActorsPath,
-            token: token,
             data: [
                 "page": String(page),
                 "size": String(size),
@@ -236,12 +202,10 @@ enum OneClient {
     }
 
     /// 演员详情。
-    static func actorDetail(base: URL, token: String, actorID: Int) async throws -> ActorDetail {
+    static func actorDetail(actorID: Int) async throws -> ActorDetail {
         let envelope = try await post(
             OneApiEnvelope<ActorDetail>.self,
-            base: base,
             path: OneAPI.actorDetailPath,
-            token: token,
             data: ["id": String(actorID)]
         )
         guard let detail = try unwrap(envelope) else {
@@ -252,8 +216,6 @@ enum OneClient {
 
     /// 演员作品列表。
     static func actorArticles(
-        base: URL,
-        token: String,
         actorID: Int,
         page: Int,
         size: Int = 30,
@@ -262,9 +224,7 @@ enum OneClient {
     ) async throws -> [ArticleSummary] {
         let envelope = try await post(
             OneApiEnvelope<ActorArticlesPayload>.self,
-            base: base,
             path: OneAPI.actorArticlesPath,
-            token: token,
             data: [
                 "id": String(actorID),
                 "page": String(page),
@@ -278,17 +238,13 @@ enum OneClient {
 
     /// 演员写真列表。
     static func actorPhotos(
-        base: URL,
-        token: String,
         actorID: Int,
         page: Int,
         size: Int = 30
     ) async throws -> [ActorPhoto] {
         let envelope = try await post(
             OneApiEnvelope<ActorPhotosPayload>.self,
-            base: base,
             path: OneAPI.actorPhotosPath,
-            token: token,
             data: [
                 "id": String(actorID),
                 "page": String(page),
@@ -300,8 +256,6 @@ enum OneClient {
 
     /// 写真系列列表。
     static func seriesAlbumList(
-        base: URL,
-        token: String,
         type: Int,
         page: Int,
         size: Int = 20,
@@ -309,8 +263,6 @@ enum OneClient {
     ) async throws -> [SeriesSummary] {
         try await seriesList(
             path: OneAPI.seriesAlbumListPath,
-            base: base,
-            token: token,
             type: type,
             page: page,
             size: size,
@@ -320,8 +272,6 @@ enum OneClient {
 
     /// 漫画系列列表。
     static func seriesMangaList(
-        base: URL,
-        token: String,
         type: Int,
         page: Int,
         size: Int = 20,
@@ -329,8 +279,6 @@ enum OneClient {
     ) async throws -> [SeriesSummary] {
         try await seriesList(
             path: OneAPI.seriesMangaListPath,
-            base: base,
-            token: token,
             type: type,
             page: page,
             size: size,
@@ -340,8 +288,6 @@ enum OneClient {
 
     private static func seriesList(
         path: String,
-        base: URL,
-        token: String,
         type: Int,
         page: Int,
         size: Int,
@@ -349,9 +295,7 @@ enum OneClient {
     ) async throws -> [SeriesSummary] {
         let envelope = try await post(
             OneApiEnvelope<SeriesListPayload>.self,
-            base: base,
             path: path,
-            token: token,
             data: [
                 "type": String(type),
                 "page": String(page),
@@ -363,17 +307,10 @@ enum OneClient {
     }
 
     /// 发送登录短信验证码。
-    static func sendSMS(
-        base: URL,
-        token: String,
-        mobile: String,
-        area: String = "86"
-    ) async throws {
+    static func sendSMS(mobile: String, area: String = "86") async throws {
         let envelope = try await post(
             OneApiEnvelope<JSONDiscard?>.self,
-            base: base,
             path: OneAPI.sendSMSPath,
-            token: token,
             data: [
                 "mobile": mobile,
                 "area": area,
@@ -384,8 +321,6 @@ enum OneClient {
 
     /// 手机号 + 验证码登录（`login_type=0`）。
     static func userLogin(
-        base: URL,
-        token: String,
         mobile: String,
         code: String,
         area: String = "86",
@@ -393,9 +328,7 @@ enum OneClient {
     ) async throws -> LoginPayload {
         let envelope = try await post(
             OneApiEnvelope<LoginPayload>.self,
-            base: base,
             path: OneAPI.userLoginPath,
-            token: token,
             data: [
                 "mobile": mobile,
                 "area": area,
@@ -411,8 +344,6 @@ enum OneClient {
 
     /// 我喜欢的列表。
     static func userLikeList(
-        base: URL,
-        token: String,
         modelID: Int,
         seriesCategory: Int = 0
     ) async throws -> UserLikeListPayload {
@@ -422,9 +353,7 @@ enum OneClient {
         }
         let envelope = try await post(
             OneApiEnvelope<UserLikeListPayload>.self,
-            base: base,
             path: OneAPI.userLikeListPath,
-            token: token,
             data: data
         )
         guard let payload = try unwrap(envelope) else {
@@ -435,8 +364,6 @@ enum OneClient {
 
     /// 收藏夹分页列表。
     static func collectFolderList(
-        base: URL,
-        token: String,
         page: Int = 1,
         size: Int = 20,
         keyword: String = "",
@@ -445,9 +372,7 @@ enum OneClient {
     ) async throws -> [CollectFolder] {
         let envelope = try await post(
             OneApiEnvelope<[CollectFolder]>.self,
-            base: base,
             path: OneAPI.collectFolderListPath,
-            token: token,
             data: [
                 "page": String(page),
                 "size": String(size),
@@ -461,8 +386,6 @@ enum OneClient {
 
     /// 收藏内容列表。
     static func favorites(
-        base: URL,
-        token: String,
         modelID: Int,
         seriesCategory: Int = 0,
         page: Int = 1,
@@ -475,9 +398,7 @@ enum OneClient {
     ) async throws -> FavoritesPayload {
         let envelope = try await post(
             OneApiEnvelope<FavoritesPayload>.self,
-            base: base,
             path: OneAPI.favoritesPath,
-            token: token,
             data: [
                 "model_id": String(modelID),
                 "series_category": String(seriesCategory),
@@ -497,12 +418,10 @@ enum OneClient {
     }
 
     /// 我的活动记录数量。
-    static func myRecordCounts(base: URL, token: String) async throws -> MyRecordCounts {
+    static func myRecordCounts() async throws -> MyRecordCounts {
         let envelope = try await post(
             OneApiEnvelope<MyRecordCounts>.self,
-            base: base,
             path: OneAPI.myRecordCountsPath,
-            token: token,
             data: nil
         )
         guard let counts = try unwrap(envelope) else {
@@ -512,16 +431,10 @@ enum OneClient {
     }
 
     /// 系列章节列表。
-    static func seriesChapters(
-        base: URL,
-        token: String,
-        seriesID: Int
-    ) async throws -> SeriesDetail {
+    static func seriesChapters(seriesID: Int) async throws -> SeriesDetail {
         let envelope = try await post(
             OneApiEnvelope<SeriesDetail>.self,
-            base: base,
             path: OneAPI.seriesChaptersPath,
-            token: token,
             data: ["series_id": String(seriesID)]
         )
         guard let detail = try unwrap(envelope) else {
@@ -532,8 +445,6 @@ enum OneClient {
 
     /// 评论列表：`type=1` 文章，`type=2` 演员；`sorting` 为 `created_at` / `likes`。
     static func commentList(
-        base: URL,
-        token: String,
         targetID: Int,
         type: Int,
         page: Int,
@@ -543,9 +454,7 @@ enum OneClient {
     ) async throws -> [CommentItem] {
         let envelope = try await post(
             OneApiEnvelope<CommentListPayload>.self,
-            base: base,
             path: OneAPI.commentListPath,
-            token: token,
             data: [
                 "article_id": String(targetID),
                 "comment_id": String(commentID),

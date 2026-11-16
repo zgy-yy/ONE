@@ -2,7 +2,7 @@ import SwiftUI
 
 /// 发现频道列表：文章按月分段下滑加载更早月；写真 / 漫画为系列扁平列表。
 struct DiscoverFeedView: View {
-    let channel: DiscoverChannel
+    let channel: ContentCategory
     @Bindable private var session = DiscoverSession.shared
 
     private var loadToken: String {

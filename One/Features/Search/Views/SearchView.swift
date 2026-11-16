@@ -18,7 +18,7 @@ struct SearchView: View {
                 .onSubmit(of: .search, session.submit)
                 .safeAreaInset(edge: .top, spacing: 0) {
                     TopCapsuleBar(
-                        items: Array(SearchCategory.allCases),
+                        items: Array(ContentCategory.allCases),
                         selectedID: session.category,
                         title: \.title,
                         id: \.self,

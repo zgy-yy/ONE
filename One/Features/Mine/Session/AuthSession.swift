@@ -33,18 +33,8 @@ final class AuthSession {
         errorMessage = nil
         defer { isSendingSMS = false }
 
-        guard let creds = OneCredentials.pair(tokenPath: OneAPI.sendSMSPath) else {
-            errorMessage = OneCredentials.readinessError
-            return
-        }
-
         do {
-            try await OneClient.sendSMS(
-                base: creds.base,
-                token: creds.token,
-                mobile: phone,
-                area: area
-            )
+            try await OneClient.sendSMS(mobile: phone, area: area)
             startCooldown(60)
         } catch {
             errorMessage = Self.friendlyMessage(from: error, fallback: "验证码发送失败")
@@ -68,19 +58,8 @@ final class AuthSession {
         errorMessage = nil
         defer { isLoggingIn = false }
 
-        guard let creds = OneCredentials.pair(tokenPath: OneAPI.userLoginPath) else {
-            errorMessage = OneCredentials.readinessError
-            return
-        }
-
         do {
-            let payload = try await OneClient.userLogin(
-                base: creds.base,
-                token: creds.token,
-                mobile: phone,
-                code: sms,
-                area: area
-            )
+            let payload = try await OneClient.userLogin(mobile: phone, code: sms, area: area)
             user = payload.user
             OneAuthStore.save(payload.user)
         } catch {

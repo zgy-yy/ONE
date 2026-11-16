@@ -53,18 +53,9 @@ final class ArticleDetailSession {
         playURL = nil
         defer { isLoading = false }
 
-        // detail 固定走 token_one（见 TokensSession.oneToken）
-        guard let creds = OneCredentials.pair(tokenPath: OneAPI.detailPath) else {
-            error = OneCredentials.readinessError
-            return
-        }
-
+        // detail 固定走 token_one（见 TokensSession.oneToken / OneCredentials）
         do {
-            let article = try await OneClient.articleDetail(
-                base: creds.base,
-                token: creds.token,
-                articleID: articleID
-            )
+            let article = try await OneClient.articleDetail(articleID: articleID)
             let url = ArticlePlayURL.resolvedURL(detail: article, videoCDN: TokensSession.shared.oneVideoCDN)
             detail = article
             playURL = url
@@ -108,12 +99,7 @@ final class ArticleDetailSession {
     }
 
     private func fetchComments(articleID: Int, page: Int) async throws -> [CommentItem] {
-        guard let creds = OneCredentials.pair(tokenPath: OneAPI.commentListPath) else {
-            throw OneClientError.apiRejected(OneCredentials.readinessError)
-        }
-        return try await OneClient.commentList(
-            base: creds.base,
-            token: creds.token,
+        try await OneClient.commentList(
             targetID: articleID,
             type: CommentTargetType.article,
             page: page,

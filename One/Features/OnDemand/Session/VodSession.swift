@@ -48,13 +48,8 @@ final class VodSession {
         lastError = nil
         defer { isLoading = false }
 
-        guard let creds = OneCredentials.pair(tokenPath: OneAPI.demandTagListPath) else {
-            lastError = OneCredentials.readinessError
-            return
-        }
-
         do {
-            let remote = try await OneClient.getDemandTagList(base: creds.base, token: creds.token)
+            let remote = try await OneClient.getDemandTagList()
             tags = [.all] + remote.filter { $0.id != DemandTag.all.id }
             tagsArticles = [:]
         } catch {
@@ -135,11 +130,6 @@ final class VodSession {
     // MARK: - 网络
 
     private func fetchArticlePage(tagID: Int, month: String, page: Int, newSection: Bool) async {
-        guard let creds = OneCredentials.pair(tokenPath: OneAPI.discoveryPath) else {
-            if page == 1, newSection { setError(OneCredentials.readinessError, for: tagID) }
-            return
-        }
-
         let request = DiscoveryRequest.vodList(
             demandTagID: tagID,
             publishedAt: month,
@@ -149,7 +139,7 @@ final class VodSession {
         )
 
         do {
-            let list = try await OneClient.articleDiscovery(base: creds.base, token: creds.token, request: request)
+            let list = try await OneClient.articleDiscovery(request: request)
             var state = tagsArticles[tagID, default: TagsArticles()]
             state.mergePage(month: month, list: list, page: page, pageSize: articlePageSize, newSection: newSection)
             tagsArticles[tagID] = state

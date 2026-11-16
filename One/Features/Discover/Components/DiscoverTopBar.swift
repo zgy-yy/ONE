@@ -2,7 +2,7 @@ import SwiftUI
 
 /// 发现页顶栏：筛选 + 频道 Tab。
 struct DiscoverTopBar: View {
-    @Binding var channel: DiscoverChannel
+    @Binding var channel: ContentCategory
     @Bindable var session: DiscoverSession
 
     var body: some View {
@@ -14,7 +14,7 @@ struct DiscoverTopBar: View {
             }
 
             HorizontalCapsuleStrip(
-                items: Array(DiscoverChannel.allCases),
+                items: ContentCategory.discoverCases,
                 selectedID: channel,
                 title: \.title,
                 id: \.self,

@@ -29,17 +29,8 @@ final class SeriesDetailSession {
         error = nil
         defer { isLoading = false }
 
-        guard let creds = OneCredentials.pair(tokenPath: OneAPI.seriesChaptersPath) else {
-            error = OneCredentials.readinessError
-            return
-        }
-
         do {
-            detail = try await OneClient.seriesChapters(
-                base: creds.base,
-                token: creds.token,
-                seriesID: series.id
-            )
+            detail = try await OneClient.seriesChapters(seriesID: series.id)
         } catch {
             self.error = error.localizedDescription
         }

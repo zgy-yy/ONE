@@ -77,19 +77,8 @@ final class HomeSession {
         caches[key] = cache
         defer { inFlight.remove(key) }
 
-        guard let creds = OneCredentials.pair(tokenPath: OneAPI.articleDayPath) else {
-            cache.isLoading = false
-            cache.error = OneCredentials.readinessError
-            caches[key] = cache
-            return
-        }
-
         do {
-            let payload = try await OneClient.articleDay(
-                base: creds.base,
-                token: creds.token,
-                publishedAt: day.apiString
-            )
+            let payload = try await OneClient.articleDay(publishedAt: day.apiString)
             cache.articles = payload.articles
             cache.topText = payload.topText
             cache.loaded = true

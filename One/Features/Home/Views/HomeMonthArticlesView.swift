@@ -113,7 +113,7 @@ struct HomeMonthArticlesView: View {
         VStack(alignment: .leading, spacing: 6) {
             OneCoverImage(
                 path: article.thumb,
-                aspectRatio: article.coverAspectRatio(fallbackModelID: ArticleModelID.graphic)
+                aspectRatio: article.coverAspectRatio(fallbackModelID: ContentCategory.ModelID.graphic)
             )
             Text(article.displayTitle)
                 .font(.caption.weight(.medium))

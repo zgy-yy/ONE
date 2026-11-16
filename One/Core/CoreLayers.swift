@@ -13,9 +13,10 @@
 
  调用链：Feature Session → OneClient / TokensClient → HTTPClient
 
- Features 不直接写 URL、不加解密细节。
+ Features 不直接写 URL、不加解密细节；ONE 凭证由 OneClient 内部取。
 
  Shared/           跨 Feature 复用（无业务 API）
+   Models/         公用领域类型（如 ContentCategory）
    Theme/          通用 UI 壳（loading、占满屏等）
    HTML/           HTML 富文本 + 内嵌图/GIF 渲染
    Image/          one_img 拉取与解密（OneRemoteImage）

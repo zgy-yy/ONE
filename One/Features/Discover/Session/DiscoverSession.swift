@@ -42,9 +42,9 @@ final class DiscoverSession {
         "\(seriesStatus.rawValue)-\(listSort.rawValue)"
     }
 
-    private var channelArticles: [DiscoverChannel: TagsArticles] = [:]
-    private var articlesLoading: Set<DiscoverChannel> = []
-    private var articlesLoadingMore: Set<DiscoverChannel> = []
+    private var channelArticles: [ContentCategory: TagsArticles] = [:]
+    private var articlesLoading: Set<ContentCategory> = []
+    private var articlesLoadingMore: Set<ContentCategory> = []
 
     private var seriesFeeds: [String: PagedListState<SeriesSummary>] = [:]
     private let pageSize = 20
@@ -53,28 +53,28 @@ final class DiscoverSession {
 
     // MARK: - 文章（按月串联）
 
-    func articleSections(for channel: DiscoverChannel) -> [ArticleMonthSection] {
+    func articleSections(for channel: ContentCategory) -> [ArticleMonthSection] {
         channelArticles[channel]?.sections ?? []
     }
 
-    func articleError(for channel: DiscoverChannel) -> String? {
+    func articleError(for channel: ContentCategory) -> String? {
         channelArticles[channel]?.error
     }
 
-    func isLoadingArticles(_ channel: DiscoverChannel) -> Bool {
+    func isLoadingArticles(_ channel: ContentCategory) -> Bool {
         articlesLoading.contains(channel)
     }
 
-    func isLoadingMoreArticles(_ channel: DiscoverChannel) -> Bool {
+    func isLoadingMoreArticles(_ channel: ContentCategory) -> Bool {
         articlesLoadingMore.contains(channel)
     }
 
-    func showsArticlesEndFooter(_ channel: DiscoverChannel) -> Bool {
+    func showsArticlesEndFooter(_ channel: ContentCategory) -> Bool {
         guard let state = channelArticles[channel], state.loaded else { return false }
         return state.fullyExhausted
     }
 
-    func loadArticles(channel: DiscoverChannel, force: Bool = false) async {
+    func loadArticles(channel: ContentCategory, force: Bool = false) async {
         guard channel.articleModelID != nil else { return }
         if force { channelArticles[channel] = nil }
         guard !articlesLoading.contains(channel), channelArticles[channel]?.loaded != true else { return }
@@ -91,7 +91,7 @@ final class DiscoverSession {
         markFullyExhaustedIfNeeded(channel: channel)
     }
 
-    func loadMoreArticles(channel: DiscoverChannel) async {
+    func loadMoreArticles(channel: ContentCategory) async {
         guard channel.articleModelID != nil else { return }
         guard let state = channelArticles[channel], state.loaded, state.canLoadMore else { return }
         guard !articlesLoading.contains(channel), !articlesLoadingMore.contains(channel) else { return }
@@ -114,28 +114,28 @@ final class DiscoverSession {
 
     // MARK: - 系列
 
-    func series(for channel: DiscoverChannel) -> [SeriesSummary] {
+    func series(for channel: ContentCategory) -> [SeriesSummary] {
         seriesFeeds[seriesKey(channel)]?.items ?? []
     }
 
-    func seriesError(for channel: DiscoverChannel) -> String? {
+    func seriesError(for channel: ContentCategory) -> String? {
         seriesFeeds[seriesKey(channel)]?.error
     }
 
-    func isLoadingSeries(_ channel: DiscoverChannel) -> Bool {
+    func isLoadingSeries(_ channel: ContentCategory) -> Bool {
         seriesFeeds[seriesKey(channel)]?.isLoading == true
     }
 
-    func isLoadingMoreSeries(_ channel: DiscoverChannel) -> Bool {
+    func isLoadingMoreSeries(_ channel: ContentCategory) -> Bool {
         seriesFeeds[seriesKey(channel)]?.isLoadingMore == true
     }
 
-    func showsSeriesEndFooter(_ channel: DiscoverChannel) -> Bool {
+    func showsSeriesEndFooter(_ channel: ContentCategory) -> Bool {
         let feed = seriesFeeds[seriesKey(channel)]
         return feed?.loaded == true && feed?.exhausted == true
     }
 
-    func loadSeries(channel: DiscoverChannel, force: Bool = false) async {
+    func loadSeries(channel: ContentCategory, force: Bool = false) async {
         guard channel.isSeries else { return }
         let key = seriesKey(channel)
         var feed = seriesFeeds[key] ?? PagedListState(pageSize: pageSize)
@@ -154,7 +154,7 @@ final class DiscoverSession {
         }
     }
 
-    func loadMoreSeries(channel: DiscoverChannel) async {
+    func loadMoreSeries(channel: ContentCategory) async {
         guard channel.isSeries else { return }
         let key = seriesKey(channel)
         guard var feed = seriesFeeds[key], let page = feed.beginLoadMore() else { return }
@@ -171,7 +171,7 @@ final class DiscoverSession {
 
     // MARK: - 文章分页
 
-    private func advancePastEmptyMonths(channel: DiscoverChannel) async {
+    private func advancePastEmptyMonths(channel: ContentCategory) async {
         while channelArticles[channel]?.shouldAdvancePastEmptyTail == true {
             guard let next = channelArticles[channel]?.nextPageRequest else { break }
             await fetchArticlePage(
@@ -183,30 +183,22 @@ final class DiscoverSession {
         }
     }
 
-    private func markFullyExhaustedIfNeeded(channel: DiscoverChannel) {
+    private func markFullyExhaustedIfNeeded(channel: ContentCategory) {
         guard var state = channelArticles[channel] else { return }
         state.markFullyExhaustedIfNeeded()
         channelArticles[channel] = state
     }
 
     private func fetchArticlePage(
-        channel: DiscoverChannel,
+        channel: ContentCategory,
         month: String,
         page: Int,
         newSection: Bool
     ) async {
         guard let modelID = channel.articleModelID else { return }
-        guard let creds = OneCredentials.pair(tokenPath: OneAPI.discoveryPath) else {
-            if page == 1, newSection {
-                setArticleError(OneCredentials.readinessError, for: channel)
-            }
-            return
-        }
 
         do {
             let list = try await OneClient.articleDiscovery(
-                base: creds.base,
-                token: creds.token,
                 request: .discoverList(
                     modelID: modelID,
                     publishedAt: month,
@@ -231,7 +223,7 @@ final class DiscoverSession {
         }
     }
 
-    private func setArticleError(_ message: String, for channel: DiscoverChannel) {
+    private func setArticleError(_ message: String, for channel: ContentCategory) {
         var state = channelArticles[channel, default: TagsArticles()]
         state.recordError(message)
         channelArticles[channel] = state
@@ -239,17 +231,10 @@ final class DiscoverSession {
 
     // MARK: - 系列网络
 
-    private func fetchSeries(channel: DiscoverChannel, page: Int) async throws -> [SeriesSummary] {
-        guard let path = channel.seriesListPath else { return [] }
-        guard let creds = OneCredentials.pair(tokenPath: path) else {
-            throw OneClientError.apiRejected(OneCredentials.readinessError)
-        }
-
+    private func fetchSeries(channel: ContentCategory, page: Int) async throws -> [SeriesSummary] {
         switch channel {
         case .album:
             return try await OneClient.seriesAlbumList(
-                base: creds.base,
-                token: creds.token,
                 type: seriesStatus.rawValue,
                 page: page,
                 size: pageSize,
@@ -257,8 +242,6 @@ final class DiscoverSession {
             )
         case .manga:
             return try await OneClient.seriesMangaList(
-                base: creds.base,
-                token: creds.token,
                 type: seriesStatus.rawValue,
                 page: page,
                 size: pageSize,
@@ -269,7 +252,7 @@ final class DiscoverSession {
         }
     }
 
-    private func seriesKey(_ channel: DiscoverChannel) -> String {
+    private func seriesKey(_ channel: ContentCategory) -> String {
         "\(channel.rawValue)|\(seriesFeedKey)"
     }
 }

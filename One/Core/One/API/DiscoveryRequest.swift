@@ -33,7 +33,7 @@ struct DiscoveryRequest: Sendable {
     ) -> DiscoveryRequest {
         DiscoveryRequest(
             publishedAt: publishedAt,
-            modelID: "6",
+            modelID: String(ContentCategory.ModelID.vod),
             demandTagID: demandTagID,
             size: size,
             page: page,

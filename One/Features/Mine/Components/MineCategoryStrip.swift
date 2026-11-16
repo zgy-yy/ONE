@@ -2,11 +2,11 @@ import SwiftUI
 
 /// 喜欢 / 收藏顶部的内容分类条。
 struct MineCategoryStrip: View {
-    @Binding var category: MineContentCategory
+    @Binding var category: ContentCategory
 
     var body: some View {
         TopCapsuleBar(
-            items: Array(MineContentCategory.allCases),
+            items: Array(ContentCategory.allCases),
             selectedID: category,
             title: \.title,
             id: \.self,

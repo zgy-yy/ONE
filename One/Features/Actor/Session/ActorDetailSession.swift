@@ -64,17 +64,8 @@ final class ActorDetailSession {
         error = nil
         defer { isLoading = false }
 
-        guard let creds = OneCredentials.pair(tokenPath: OneAPI.actorDetailPath) else {
-            error = OneCredentials.readinessError
-            return
-        }
-
         do {
-            let detail = try await OneClient.actorDetail(
-                base: creds.base,
-                token: creds.token,
-                actorID: actorID
-            )
+            let detail = try await OneClient.actorDetail(actorID: actorID)
             self.detail = detail
             Self.detailCache[actorID] = detail
         } catch {
@@ -162,10 +153,7 @@ final class ActorDetailSession {
         size: Int,
         sort: String
     ) async throws -> [ArticleSummary] {
-        let creds = try requireCreds(OneAPI.actorArticlesPath)
-        return try await OneClient.actorArticles(
-            base: creds.base,
-            token: creds.token,
+        try await OneClient.actorArticles(
             actorID: actorID,
             page: page,
             size: size,
@@ -174,28 +162,15 @@ final class ActorDetailSession {
     }
 
     private static func fetchPhotos(actorID: Int, page: Int, size: Int) async throws -> [ActorPhoto] {
-        let creds = try requireCreds(OneAPI.actorPhotosPath)
-        return try await OneClient.actorPhotos(
-            base: creds.base, token: creds.token, actorID: actorID, page: page, size: size
-        )
+        try await OneClient.actorPhotos(actorID: actorID, page: page, size: size)
     }
 
     private static func fetchComments(actorID: Int, page: Int, size: Int) async throws -> [CommentItem] {
-        let creds = try requireCreds(OneAPI.commentListPath)
-        return try await OneClient.commentList(
-            base: creds.base,
-            token: creds.token,
+        try await OneClient.commentList(
             targetID: actorID,
             type: CommentTargetType.actor,
             page: page,
             size: size
         )
-    }
-
-    private static func requireCreds(_ path: String) throws -> (base: URL, token: String) {
-        guard let creds = OneCredentials.pair(tokenPath: path) else {
-            throw OneClientError.apiRejected(OneCredentials.readinessError)
-        }
-        return creds
     }
 }

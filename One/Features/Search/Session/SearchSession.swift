@@ -7,7 +7,7 @@ import Observation
 final class SearchSession {
     static let shared = SearchSession()
 
-    var category: SearchCategory = .all {
+    var category: ContentCategory = .all {
         didSet {
             guard oldValue != category else { return }
             results.reset()
@@ -40,13 +40,8 @@ final class SearchSession {
         hotWordsError = nil
         defer { isLoadingHotWords = false }
 
-        guard let creds = OneCredentials.pair(tokenPath: OneAPI.articleHotWordsPath) else {
-            hotWordsError = OneCredentials.readinessError
-            return
-        }
-
         do {
-            hotWords = try await OneClient.articleHotWords(base: creds.base, token: creds.token)
+            hotWords = try await OneClient.articleHotWords()
         } catch {
             hotWordsError = error.localizedDescription
         }
@@ -117,12 +112,7 @@ final class SearchSession {
     }
 
     private func fetch(keyword: String, page: Int) async throws -> [SearchHit] {
-        guard let creds = OneCredentials.pair(tokenPath: OneAPI.articleSearchPath) else {
-            throw OneClientError.apiRejected(OneCredentials.readinessError)
-        }
-        return try await OneClient.articleSearch(
-            base: creds.base,
-            token: creds.token,
+        try await OneClient.articleSearch(
             keyword: keyword,
             modelID: category.modelID,
             seriesCategory: category.seriesCategory,
