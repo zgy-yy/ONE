@@ -40,7 +40,7 @@ struct DiscoverTopBar: View {
 
             Spacer(minLength: 8)
 
-            VodArticleSortPicker(sort: $session.listSort)
+            ArticleSortPicker(sort: $session.listSort)
         }
         .padding(.horizontal, 12)
         .padding(.bottom, 4)

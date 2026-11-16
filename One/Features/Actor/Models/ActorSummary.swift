@@ -14,7 +14,7 @@ struct ActorSummary: Decodable, Identifiable, Hashable {
     }
 
     var imagePath: String? {
-        OneThumbPath.preferred(thumb: thumb, thumbnail: thumbnail)
+        ImagePath.preferred(thumb: thumb, thumbnail: thumbnail)
     }
 
     enum CodingKeys: String, CodingKey {

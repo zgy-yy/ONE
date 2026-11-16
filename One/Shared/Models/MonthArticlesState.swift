@@ -17,8 +17,8 @@ struct MonthPageRequest: Equatable {
     let newSection: Bool
 }
 
-/// 单个分类：从锚定月份向下串联更早月份。
-struct TagsArticles {
+/// 按月文章列表状态：从锚定月份向下串联更早月份。
+struct MonthArticlesState {
     var sections: [ArticleMonthSection] = []
     var error: String?
     var loaded = false

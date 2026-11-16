@@ -31,13 +31,13 @@ struct CommentItem: Decodable, Identifiable, Hashable {
     }
 
     var avatarPath: String? {
-        OneThumbPath.preferred(thumb: avatar, thumbnail: avatarThumbnail)
+        ImagePath.preferred(thumb: avatar, thumbnail: avatarThumbnail)
     }
 
     /// 评论配图（网格缩略）：优先 `images`，否则回退单图字段。
     var displayImagePaths: [String] {
         if !imagePaths.isEmpty { return imagePaths }
-        if let path = OneThumbPath.preferred(thumb: imagePath, thumbnail: imageSmallPath)
+        if let path = ImagePath.preferred(thumb: imagePath, thumbnail: imageSmallPath)
             ?? imageBigPath?.nonEmpty
         {
             return [path]
@@ -48,7 +48,7 @@ struct CommentItem: Decodable, Identifiable, Hashable {
     /// 全屏浏览用原图：优先 `images` 大图，否则回退单图大图字段。
     var viewerImagePaths: [String] {
         if !fullImagePaths.isEmpty { return fullImagePaths }
-        if let path = OneThumbPath.full(thumb: imagePath, thumbnail: imageSmallPath)
+        if let path = ImagePath.full(thumb: imagePath, thumbnail: imageSmallPath)
             ?? imageBigPath?.nonEmpty
             ?? imagePath?.nonEmpty
         {
@@ -122,13 +122,13 @@ private struct CommentImageObject: Decodable {
     }
 
     var preferred: String? {
-        OneThumbPath.preferred(thumb: imagePath ?? path, thumbnail: imageSmallPath)
+        ImagePath.preferred(thumb: imagePath ?? path, thumbnail: imageSmallPath)
             ?? imageBigPath?.nonEmpty
             ?? url?.nonEmpty
     }
 
     var full: String? {
-        OneThumbPath.full(thumb: imagePath ?? path, thumbnail: imageSmallPath)
+        ImagePath.full(thumb: imagePath ?? path, thumbnail: imageSmallPath)
             ?? imageBigPath?.nonEmpty
             ?? url?.nonEmpty
             ?? preferred

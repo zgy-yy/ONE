@@ -83,7 +83,7 @@ struct ActorDetailView: View {
             // 详情用原图 thumb，比列表 thumbnail 更清晰
             ActorAvatarImage(
                 path: session.detail?.coverImagePath
-                    ?? OneThumbPath.full(thumb: actor.thumb, thumbnail: actor.thumbnail)
+                    ?? ImagePath.full(thumb: actor.thumb, thumbnail: actor.thumbnail)
             )
         } info: {
             VStack(alignment: .leading, spacing: 6) {
@@ -249,7 +249,7 @@ struct ActorDetailView: View {
     private var articlesSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                VodArticleSortPicker(sort: $session.articleSort)
+                ArticleSortPicker(sort: $session.articleSort)
                 Spacer(minLength: 0)
             }
 

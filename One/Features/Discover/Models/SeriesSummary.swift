@@ -34,7 +34,7 @@ struct SeriesSummary: Decodable, Identifiable, Hashable {
     }
 
     var imagePath: String? {
-        OneThumbPath.preferred(thumb: thumb, thumbnail: thumbnail)
+        ImagePath.preferred(thumb: thumb, thumbnail: thumbnail)
     }
 
     var isFinished: Bool { end == 1 }

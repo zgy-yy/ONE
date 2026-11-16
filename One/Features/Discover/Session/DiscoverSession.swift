@@ -11,15 +11,15 @@ final class DiscoverSession {
     var listPublishedAt: String = MonthYear.now.apiString {
         didSet {
             guard oldValue != listPublishedAt else { return }
-            // 月份变化时由 View 决定滚到已有分区或 force 重载，这里只清 loading 标记外的缓存键语义
+            // 月份变化时由 View 决定滚到已有分区或 force 重载
         }
     }
 
     /// 排序（文章 / 系列共用）。
-    var listSort: VodArticleSort = .publishedAt {
+    var listSort: ArticleSort = .publishedAt {
         didSet {
             guard oldValue != listSort else { return }
-            channelArticles = [:]
+            articleFeeds = [:]
             seriesFeeds = [:]
         }
     }
@@ -42,10 +42,7 @@ final class DiscoverSession {
         "\(seriesStatus.rawValue)-\(listSort.rawValue)"
     }
 
-    private var channelArticles: [ContentCategory: TagsArticles] = [:]
-    private var articlesLoading: Set<ContentCategory> = []
-    private var articlesLoadingMore: Set<ContentCategory> = []
-
+    private var articleFeeds: [ContentCategory: MonthPagedFeed] = [:]
     private var seriesFeeds: [String: PagedListState<SeriesSummary>] = [:]
     private let pageSize = 20
 
@@ -54,62 +51,57 @@ final class DiscoverSession {
     // MARK: - 文章（按月串联）
 
     func articleSections(for channel: ContentCategory) -> [ArticleMonthSection] {
-        channelArticles[channel]?.sections ?? []
+        articleFeeds[channel]?.sections ?? []
     }
 
     func articleError(for channel: ContentCategory) -> String? {
-        channelArticles[channel]?.error
+        articleFeeds[channel]?.error
     }
 
     func isLoadingArticles(_ channel: ContentCategory) -> Bool {
-        articlesLoading.contains(channel)
+        articleFeeds[channel]?.isLoading == true
     }
 
     func isLoadingMoreArticles(_ channel: ContentCategory) -> Bool {
-        articlesLoadingMore.contains(channel)
+        articleFeeds[channel]?.isLoadingMore == true
     }
 
     func showsArticlesEndFooter(_ channel: ContentCategory) -> Bool {
-        guard let state = channelArticles[channel], state.loaded else { return false }
-        return state.fullyExhausted
+        articleFeeds[channel]?.showsEndFooter == true
     }
 
     func loadArticles(channel: ContentCategory, force: Bool = false) async {
-        guard channel.articleModelID != nil else { return }
-        if force { channelArticles[channel] = nil }
-        guard !articlesLoading.contains(channel), channelArticles[channel]?.loaded != true else { return }
-
-        articlesLoading.insert(channel)
-        defer { articlesLoading.remove(channel) }
-
-        var state = TagsArticles()
-        state.reset()
-        channelArticles[channel] = state
-
-        await fetchArticlePage(channel: channel, month: listPublishedAt, page: 1, newSection: true)
-        await advancePastEmptyMonths(channel: channel)
-        markFullyExhaustedIfNeeded(channel: channel)
+        guard let modelID = channel.articleModelID else { return }
+        var feed = articleFeeds[channel] ?? MonthPagedFeed(pageSize: pageSize)
+        let sort = listSort.rawValue
+        let size = pageSize
+        await feed.load(anchorMonth: listPublishedAt, force: force) { month, page, _ in
+            try await OneClient.articleDiscovery(
+                modelID: modelID,
+                publishedAt: month,
+                sort: sort,
+                page: page,
+                size: size
+            )
+        }
+        articleFeeds[channel] = feed
     }
 
     func loadMoreArticles(channel: ContentCategory) async {
-        guard channel.articleModelID != nil else { return }
-        guard let state = channelArticles[channel], state.loaded, state.canLoadMore else { return }
-        guard !articlesLoading.contains(channel), !articlesLoadingMore.contains(channel) else { return }
-        guard let next = state.nextPageRequest else {
-            markFullyExhaustedIfNeeded(channel: channel)
-            return
+        guard let modelID = channel.articleModelID else { return }
+        guard var feed = articleFeeds[channel] else { return }
+        let sort = listSort.rawValue
+        let size = pageSize
+        await feed.loadMore { month, page, _ in
+            try await OneClient.articleDiscovery(
+                modelID: modelID,
+                publishedAt: month,
+                sort: sort,
+                page: page,
+                size: size
+            )
         }
-
-        articlesLoadingMore.insert(channel)
-        defer { articlesLoadingMore.remove(channel) }
-
-        await fetchArticlePage(
-            channel: channel,
-            month: next.month,
-            page: next.page,
-            newSection: next.newSection
-        )
-        markFullyExhaustedIfNeeded(channel: channel)
+        articleFeeds[channel] = feed
     }
 
     // MARK: - 系列
@@ -167,64 +159,6 @@ final class DiscoverSession {
             feed.cancelLoadMore()
             seriesFeeds[key] = feed
         }
-    }
-
-    // MARK: - 文章分页
-
-    private func advancePastEmptyMonths(channel: ContentCategory) async {
-        while channelArticles[channel]?.shouldAdvancePastEmptyTail == true {
-            guard let next = channelArticles[channel]?.nextPageRequest else { break }
-            await fetchArticlePage(
-                channel: channel,
-                month: next.month,
-                page: next.page,
-                newSection: next.newSection
-            )
-        }
-    }
-
-    private func markFullyExhaustedIfNeeded(channel: ContentCategory) {
-        guard var state = channelArticles[channel] else { return }
-        state.markFullyExhaustedIfNeeded()
-        channelArticles[channel] = state
-    }
-
-    private func fetchArticlePage(
-        channel: ContentCategory,
-        month: String,
-        page: Int,
-        newSection: Bool
-    ) async {
-        guard let modelID = channel.articleModelID else { return }
-
-        do {
-            let list = try await OneClient.articleDiscovery(
-                modelID: modelID,
-                publishedAt: month,
-                sort: listSort.rawValue,
-                page: page,
-                size: pageSize
-            )
-            var state = channelArticles[channel, default: TagsArticles()]
-            state.mergePage(
-                month: month,
-                list: list,
-                page: page,
-                pageSize: pageSize,
-                newSection: newSection
-            )
-            channelArticles[channel] = state
-        } catch {
-            if page == 1, newSection {
-                setArticleError(error.localizedDescription, for: channel)
-            }
-        }
-    }
-
-    private func setArticleError(_ message: String, for channel: ContentCategory) {
-        var state = channelArticles[channel, default: TagsArticles()]
-        state.recordError(message)
-        channelArticles[channel] = state
     }
 
     // MARK: - 系列网络

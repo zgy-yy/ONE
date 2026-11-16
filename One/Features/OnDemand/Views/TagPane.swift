@@ -9,7 +9,7 @@ struct TagPane: View {
     private var sections: [ArticleMonthSection] { session.articleSections(for: tagID) }
 
     private var listLoadToken: String {
-        "\(tagID)-\(session.articleFetchKey)"
+        "\(tagID)-\(session.articleFeedKey)"
     }
 
     private var hasNoArticles: Bool {

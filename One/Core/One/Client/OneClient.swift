@@ -331,7 +331,7 @@ enum OneClient {
     /// 发送登录短信验证码。
     static func sendSMS(mobile: String, area: String = "86") async throws {
         let envelope = try await post(
-            OneApiEnvelope<JSONDiscard?>.self,
+            OneApiEnvelope<IgnoredJSON?>.self,
             path: OneAPI.sendSMSPath,
             data: [
                 "mobile": mobile,

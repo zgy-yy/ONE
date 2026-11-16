@@ -11,24 +11,21 @@ final class VodSession {
     private(set) var isLoading = false
     private(set) var lastError: String?
 
-    private(set) var articlesLoading: Set<Int> = []
-    private(set) var articlesLoadingMore: Set<Int> = []
-
     /// 顶栏锚定/跳转月份；已有分区时由列表滚动，否则重载。
     var listPublishedAt: String = MonthYear.now.apiString
 
-    var listSort: VodArticleSort = .publishedAt {
+    var listSort: ArticleSort = .publishedAt {
         didSet {
             guard oldValue != listSort else { return }
-            tagsArticles = [:]
+            articleFeeds = [:]
         }
     }
 
-    var articleFetchKey: String {
+    var articleFeedKey: String {
         "\(listPublishedAt)-\(listSort.rawValue)"
     }
 
-    private var tagsArticles: [Int: TagsArticles] = [:]
+    private var articleFeeds: [Int: MonthPagedFeed] = [:]
     private let articlePageSize = 20
 
     private init() {}
@@ -51,7 +48,7 @@ final class VodSession {
         do {
             let remote = try await OneClient.getDemandTagList()
             tags = [.all] + remote.filter { $0.id != DemandTag.all.id }
-            tagsArticles = [:]
+            articleFeeds = [:]
         } catch {
             lastError = error.localizedDescription
         }
@@ -60,97 +57,56 @@ final class VodSession {
     // MARK: - 文章列表
 
     func articleSections(for tagID: Int) -> [ArticleMonthSection] {
-        tagsArticles[tagID]?.sections ?? []
+        articleFeeds[tagID]?.sections ?? []
     }
 
     func articleError(for tagID: Int) -> String? {
-        tagsArticles[tagID]?.error
+        articleFeeds[tagID]?.error
     }
 
-    func isLoadingArticles(tagID: Int) -> Bool { articlesLoading.contains(tagID) }
-    func isLoadingMoreArticles(tagID: Int) -> Bool { articlesLoadingMore.contains(tagID) }
+    func isLoadingArticles(tagID: Int) -> Bool {
+        articleFeeds[tagID]?.isLoading == true
+    }
+
+    func isLoadingMoreArticles(tagID: Int) -> Bool {
+        articleFeeds[tagID]?.isLoadingMore == true
+    }
 
     func showsArticlesEndFooter(tagID: Int) -> Bool {
-        guard let state = tagsArticles[tagID], state.loaded else { return false }
-        return state.fullyExhausted
+        articleFeeds[tagID]?.showsEndFooter == true
     }
 
     func loadArticles(for tagID: Int, force: Bool = false) async {
-        if force { tagsArticles[tagID] = nil }
-        guard !articlesLoading.contains(tagID), tagsArticles[tagID]?.loaded != true else { return }
-
-        articlesLoading.insert(tagID)
-        defer { articlesLoading.remove(tagID) }
-
-        var state = TagsArticles()
-        state.reset()
-        tagsArticles[tagID] = state
-
-        await fetchArticlePage(tagID: tagID, month: listPublishedAt, page: 1, newSection: true)
-        await advancePastEmptyMonths(tagID: tagID)
-        markFullyExhaustedIfNeeded(tagID: tagID)
+        var feed = articleFeeds[tagID] ?? MonthPagedFeed(pageSize: articlePageSize)
+        let sort = listSort.rawValue
+        let size = articlePageSize
+        await feed.load(anchorMonth: listPublishedAt, force: force) { month, page, _ in
+            try await OneClient.articleDiscovery(
+                modelID: ContentCategory.ModelID.vod,
+                publishedAt: month,
+                sort: sort,
+                page: page,
+                size: size,
+                demandTagID: tagID
+            )
+        }
+        articleFeeds[tagID] = feed
     }
 
     func loadMoreArticles(for tagID: Int) async {
-        guard let state = tagsArticles[tagID], state.loaded, state.canLoadMore else { return }
-        guard !articlesLoading.contains(tagID), !articlesLoadingMore.contains(tagID) else { return }
-        guard let next = state.nextPageRequest else {
-            markFullyExhaustedIfNeeded(tagID: tagID)
-            return
-        }
-
-        articlesLoadingMore.insert(tagID)
-        defer { articlesLoadingMore.remove(tagID) }
-
-        await fetchArticlePage(tagID: tagID, month: next.month, page: next.page, newSection: next.newSection)
-        markFullyExhaustedIfNeeded(tagID: tagID)
-    }
-
-    // MARK: - 分页
-
-    /// 锚定月无文章时继续拉更早月份，直到有数据或无法继续。
-    private func advancePastEmptyMonths(tagID: Int) async {
-        while tagsArticles[tagID]?.shouldAdvancePastEmptyTail == true {
-            guard let next = tagsArticles[tagID]?.nextPageRequest else { break }
-            await fetchArticlePage(
-                tagID: tagID,
-                month: next.month,
-                page: next.page,
-                newSection: next.newSection
-            )
-        }
-    }
-
-    private func markFullyExhaustedIfNeeded(tagID: Int) {
-        guard var state = tagsArticles[tagID] else { return }
-        state.markFullyExhaustedIfNeeded()
-        tagsArticles[tagID] = state
-    }
-
-    // MARK: - 网络
-
-    private func fetchArticlePage(tagID: Int, month: String, page: Int, newSection: Bool) async {
-        do {
-            let list = try await OneClient.articleDiscovery(
+        guard var feed = articleFeeds[tagID] else { return }
+        let sort = listSort.rawValue
+        let size = articlePageSize
+        await feed.loadMore { month, page, _ in
+            try await OneClient.articleDiscovery(
                 modelID: ContentCategory.ModelID.vod,
                 publishedAt: month,
-                sort: listSort.rawValue,
+                sort: sort,
                 page: page,
-                size: articlePageSize,
+                size: size,
                 demandTagID: tagID
             )
-            var state = tagsArticles[tagID, default: TagsArticles()]
-            state.mergePage(month: month, list: list, page: page, pageSize: articlePageSize, newSection: newSection)
-            tagsArticles[tagID] = state
-        } catch {
-            if page == 1, newSection { setError(error.localizedDescription, for: tagID) }
         }
+        articleFeeds[tagID] = feed
     }
-
-    private func setError(_ message: String, for tagID: Int) {
-        var state = tagsArticles[tagID, default: TagsArticles()]
-        state.recordError(message)
-        tagsArticles[tagID] = state
-    }
-
 }

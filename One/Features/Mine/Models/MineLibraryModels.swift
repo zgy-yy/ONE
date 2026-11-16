@@ -16,7 +16,7 @@ struct UserLikeItem: Decodable, Identifiable, Hashable {
     }
 
     var imagePath: String? {
-        OneThumbPath.preferred(thumb: thumb, thumbnail: thumbTiny)
+        ImagePath.preferred(thumb: thumb, thumbnail: thumbTiny)
     }
 
     /// 详情用 `article_id`，不是喜欢记录 id。
@@ -88,7 +88,7 @@ struct FavoriteItem: Decodable, Identifiable, Hashable {
     }
 
     var imagePath: String? {
-        OneThumbPath.preferred(thumb: thumb, thumbnail: thumbnail)
+        ImagePath.preferred(thumb: thumb, thumbnail: thumbnail)
     }
 
     var isSeries: Bool { (seriesCategory ?? 0) > 0 }

@@ -7,105 +7,48 @@ import Observation
 final class HomeMonthSession {
     let anchorMonth: String
 
-    private(set) var sections: [ArticleMonthSection] = []
-    private(set) var isLoading = false
-    private(set) var isLoadingMore = false
-    private(set) var error: String?
-    private(set) var loaded = false
-    private(set) var fullyExhausted = false
-
-    private let pageSize = 20
-    private var state = TagsArticles()
+    private var feed = MonthPagedFeed(pageSize: 20)
 
     init(monthAPIString: String) {
         self.anchorMonth = monthAPIString
     }
+
+    var sections: [ArticleMonthSection] { feed.sections }
+    var isLoading: Bool { feed.isLoading }
+    var isLoadingMore: Bool { feed.isLoadingMore }
+    var error: String? { feed.error }
+    var loaded: Bool { feed.loaded }
+    var fullyExhausted: Bool { feed.fullyExhausted }
 
     var hasContent: Bool {
         !sections.isEmpty && sections.contains { !$0.articles.isEmpty }
     }
 
     func load(force: Bool = false) async {
-        if force {
-            state.reset()
-            sections = []
-            error = nil
-            loaded = false
-            fullyExhausted = false
+        var next = feed
+        await next.load(anchorMonth: anchorMonth, force: force) { month, page, _ in
+            try await OneClient.articleDiscovery(
+                modelID: ContentCategory.ModelID.graphic,
+                publishedAt: month,
+                sort: ArticleSort.publishedAt.rawValue,
+                page: page,
+                size: 20
+            )
         }
-        guard !isLoading, !loaded else { return }
-
-        isLoading = true
-        error = nil
-        defer { isLoading = false }
-
-        state.reset()
-        await fetchPage(month: anchorMonth, page: 1, newSection: true)
-        await advancePastEmptyMonths()
-        state.markFullyExhaustedIfNeeded()
-        syncFromState()
+        feed = next
     }
 
     func loadMore() async {
-        guard loaded, !fullyExhausted, state.canLoadMore else { return }
-        guard !isLoading, !isLoadingMore else { return }
-        guard let next = state.nextPageRequest else {
-            state.markFullyExhaustedIfNeeded()
-            syncFromState()
-            return
-        }
-
-        isLoadingMore = true
-        defer { isLoadingMore = false }
-
-        await fetchPage(month: next.month, page: next.page, newSection: next.newSection)
-        await advancePastEmptyMonths()
-        state.markFullyExhaustedIfNeeded()
-        syncFromState()
-    }
-
-    // MARK: - Private
-
-    private func advancePastEmptyMonths() async {
-        var hops = 0
-        while state.shouldAdvancePastEmptyTail, hops < 36 {
-            hops += 1
-            guard let next = state.nextPageRequest else { break }
-            await fetchPage(month: next.month, page: next.page, newSection: next.newSection)
-        }
-    }
-
-    private func fetchPage(month: String, page: Int, newSection: Bool) async {
-        do {
-            let list = try await OneClient.articleDiscovery(
+        var next = feed
+        await next.loadMore { month, page, _ in
+            try await OneClient.articleDiscovery(
                 modelID: ContentCategory.ModelID.graphic,
                 publishedAt: month,
-                sort: VodArticleSort.publishedAt.rawValue,
+                sort: ArticleSort.publishedAt.rawValue,
                 page: page,
-                size: pageSize
+                size: 20
             )
-            state.mergePage(
-                month: month,
-                list: list,
-                page: page,
-                pageSize: pageSize,
-                newSection: newSection
-            )
-            loaded = true
-            error = nil
-        } catch {
-            if page == 1, newSection {
-                self.error = error.localizedDescription
-                loaded = false
-            }
         }
-    }
-
-    private func syncFromState() {
-        sections = state.sections
-        fullyExhausted = state.fullyExhausted
-        if let message = state.error {
-            error = message
-        }
+        feed = next
     }
 }

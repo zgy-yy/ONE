@@ -14,7 +14,7 @@ final class ActorDetailSession {
     private(set) var comments = PagedListState<CommentItem>(pageSize: 10)
 
     /// 作品排序（UI：发布时间 / 最受欢迎 → 接口 `published_at` / `like_number`）。
-    var articleSort: VodArticleSort = .publishedAt {
+    var articleSort: ArticleSort = .publishedAt {
         didSet {
             guard oldValue != articleSort else { return }
             articles.reset()

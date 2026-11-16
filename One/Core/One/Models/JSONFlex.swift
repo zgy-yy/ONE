@@ -22,14 +22,14 @@ enum JSONFlex {
 }
 
 /// 忽略 `data` 具体内容（发短信等只校验外层 `code`）。
-struct JSONDiscard: Decodable {
+struct IgnoredJSON: Decodable {
     init(from decoder: Decoder) throws {
         if let single = try? decoder.singleValueContainer() {
             _ = single.decodeNil()
             return
         }
         if var array = try? decoder.unkeyedContainer() {
-            while !array.isAtEnd { _ = try? array.decode(JSONDiscard.self) }
+            while !array.isAtEnd { _ = try? array.decode(IgnoredJSON.self) }
             return
         }
         _ = try? decoder.container(keyedBy: AnyKey.self)

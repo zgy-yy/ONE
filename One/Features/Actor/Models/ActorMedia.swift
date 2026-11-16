@@ -14,12 +14,12 @@ struct ActorPhoto: Decodable, Identifiable, Hashable {
 
     /// 列表网格：优先小图。
     var imagePath: String? {
-        OneThumbPath.preferred(thumb: thumb, thumbnail: thumbnail)
+        ImagePath.preferred(thumb: thumb, thumbnail: thumbnail)
     }
 
     /// 全屏浏览：优先原图。
     var fullImagePath: String? {
-        OneThumbPath.full(thumb: thumb, thumbnail: thumbnail)
+        ImagePath.full(thumb: thumb, thumbnail: thumbnail)
     }
 }
 

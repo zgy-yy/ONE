@@ -1,11 +1,11 @@
 import Foundation
 
-/// 缩略图路径选择。
+/// 封面 / 头像路径选择。
 ///
 /// 接口常同时返回：
-/// - `thumb`：原图 / 大图封面
+/// - `thumb`：原图 / 大图
 /// - `thumbnail`：压缩小图，适合列表快速加载
-enum OneThumbPath {
+enum ImagePath {
     /// 列表用：优先小图，没有再退回原图。
     static func preferred(thumb: String?, thumbnail: String?) -> String? {
         thumbnail?.nonEmpty ?? thumb?.nonEmpty

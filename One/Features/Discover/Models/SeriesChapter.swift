@@ -17,7 +17,7 @@ struct SeriesChapter: Decodable, Identifiable, Hashable {
     }
 
     var imagePath: String? {
-        OneThumbPath.preferred(thumb: thumb, thumbnail: thumbnail)
+        ImagePath.preferred(thumb: thumb, thumbnail: thumbnail)
     }
 
     /// 章节 ID 即稿件 ID，可直接打开文章详情。

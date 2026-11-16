@@ -14,7 +14,7 @@ struct SearchHit: Decodable, Identifiable, Hashable {
     }
 
     var imagePath: String? {
-        OneThumbPath.preferred(thumb: thumb, thumbnail: thumbnail)
+        ImagePath.preferred(thumb: thumb, thumbnail: thumbnail)
     }
 
     /// 搜索里写真 / 漫画条目的 `model_id`。
