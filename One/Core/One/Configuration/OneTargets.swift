@@ -7,10 +7,8 @@ enum OneTargets {
 
     /// 域名根线路；仅用于 `domain/check` 探测，不含版本路径。
     static let hostBases: [String] = [
-        "https://api.3459381.com", // 探测 domain/check，业务请求拼成 …/v2.5/
-        "https://api.87735d5.com",
-        "https://api.em1oifd0.com",
-        "https://api.c6dd5cc.com",
+         "http:127.0.0.1:3456",
+
     ]
 
     /// 业务 API 根：`{host}/v2.5`，例如 `https://api.3459381.com/v2.5` → `navigation/getDemandTagList`
