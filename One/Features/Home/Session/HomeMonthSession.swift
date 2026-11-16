@@ -78,13 +78,11 @@ final class HomeMonthSession {
     private func fetchPage(month: String, page: Int, newSection: Bool) async {
         do {
             let list = try await OneClient.articleDiscovery(
-                request: .discoverList(
-                    modelID: ContentCategory.ModelID.graphic,
-                    publishedAt: month,
-                    sort: VodArticleSort.publishedAt.rawValue,
-                    page: page,
-                    size: pageSize
-                )
+                modelID: ContentCategory.ModelID.graphic,
+                publishedAt: month,
+                sort: VodArticleSort.publishedAt.rawValue,
+                page: page,
+                size: pageSize
             )
             state.mergePage(
                 month: month,

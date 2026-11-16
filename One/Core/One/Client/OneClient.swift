@@ -63,11 +63,33 @@ enum OneClient {
         return try unwrap(envelope) ?? []
     }
 
-    static func articleDiscovery(request: DiscoveryRequest) async throws -> [ArticleSummary] {
+    /// 发现 / 点播列表：`model_id` + `published_at` + 排序分页；点播可带 `demand_tag_id`。
+    static func articleDiscovery(
+        modelID: Int,
+        publishedAt: String,
+        sort: String,
+        page: Int = 1,
+        size: Int = 20,
+        demandTagID: Int? = nil,
+        buyType: String? = nil
+    ) async throws -> [ArticleSummary] {
+        var data: [String: String] = [
+            "size": String(size),
+            "page": String(page),
+            "published_at": publishedAt == "0" ? "" : publishedAt,
+            "sort": sort,
+            "model_id": String(modelID),
+        ]
+        if let demandTagID {
+            data["demand_tag_id"] = String(demandTagID)
+        }
+        if let buyType, !buyType.isEmpty {
+            data["buy_type"] = buyType
+        }
         let envelope = try await post(
             OneApiEnvelope<DiscoveryListPayload>.self,
             path: OneAPI.discoveryPath,
-            data: request.formBody()
+            data: data
         )
         return try unwrap(envelope)?.articles ?? []
     }

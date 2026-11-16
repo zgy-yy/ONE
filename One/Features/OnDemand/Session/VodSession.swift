@@ -130,16 +130,15 @@ final class VodSession {
     // MARK: - 网络
 
     private func fetchArticlePage(tagID: Int, month: String, page: Int, newSection: Bool) async {
-        let request = DiscoveryRequest.vodList(
-            demandTagID: tagID,
-            publishedAt: month,
-            sort: listSort.rawValue,
-            page: page,
-            size: articlePageSize
-        )
-
         do {
-            let list = try await OneClient.articleDiscovery(request: request)
+            let list = try await OneClient.articleDiscovery(
+                modelID: ContentCategory.ModelID.vod,
+                publishedAt: month,
+                sort: listSort.rawValue,
+                page: page,
+                size: articlePageSize,
+                demandTagID: tagID
+            )
             var state = tagsArticles[tagID, default: TagsArticles()]
             state.mergePage(month: month, list: list, page: page, pageSize: articlePageSize, newSection: newSection)
             tagsArticles[tagID] = state

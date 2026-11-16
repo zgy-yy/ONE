@@ -199,13 +199,11 @@ final class DiscoverSession {
 
         do {
             let list = try await OneClient.articleDiscovery(
-                request: .discoverList(
-                    modelID: modelID,
-                    publishedAt: month,
-                    sort: listSort.rawValue,
-                    page: page,
-                    size: pageSize
-                )
+                modelID: modelID,
+                publishedAt: month,
+                sort: listSort.rawValue,
+                page: page,
+                size: pageSize
             )
             var state = channelArticles[channel, default: TagsArticles()]
             state.mergePage(
