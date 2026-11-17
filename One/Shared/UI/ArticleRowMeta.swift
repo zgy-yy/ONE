@@ -14,7 +14,7 @@ struct ArticleRowMeta: View {
 }
 
 extension ArticleSummary {
-    /// 用 `displayTitle` 生成列表标题视图，方便 `ArticleListRow` 直接嵌入。
+    /// 用 `displayTitle` 生成列表标题视图，方便 `VodArticleRow` 直接嵌入。
     var rowMeta: ArticleRowMeta {
         ArticleRowMeta(title: displayTitle)
     }

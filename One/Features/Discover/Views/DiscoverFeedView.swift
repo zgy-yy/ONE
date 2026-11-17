@@ -57,7 +57,7 @@ struct DiscoverFeedView: View {
                 ForEach(sections) { section in
                     Section {
                         ForEach(section.articles) { article in
-                            ArticleListRow(article: article, fallbackModelID: channel.articleModelID)
+                            articleRow(article)
                                 .hiddenNavigationLink(value: article)
                                 .styledListRow()
                                 .onAppear {
@@ -86,6 +86,15 @@ struct DiscoverFeedView: View {
                     Task { await session.loadArticles(channel: channel, force: true) }
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func articleRow(_ article: ArticleSummary) -> some View {
+        if channel == .film {
+            FilmArticleRow(article: article)
+        } else {
+            VodArticleRow(article: article, fallbackModelID: channel.articleModelID)
         }
     }
 

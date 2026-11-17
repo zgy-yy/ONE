@@ -1,9 +1,10 @@
 import SwiftUI
 
-/// 主流列表行：封面 + 信息衬底一体卡片；标题叠在封面底；下方金额 / 喜欢 / 时长。
+/// 点播风列表行（发现非影视频道、首页日更也复用）：封面 + 衬底一体卡片。
 ///
+/// 标题叠在封面底；下方金额 / 喜欢 / 时长。
 /// `fallbackModelID`：列表没回传 `model_id` 时，用频道已知类型决定竖图 / 横图。
-struct ArticleListRow: View {
+struct VodArticleRow: View {
     let article: ArticleSummary
     var fallbackModelID: Int? = nil
     var showsAuthor: Bool = false

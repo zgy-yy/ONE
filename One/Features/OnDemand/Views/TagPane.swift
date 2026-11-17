@@ -36,7 +36,7 @@ struct TagPane: View {
                 ForEach(sections) { section in
                     Section {
                         ForEach(section.articles) { article in
-                            ArticleListRow(article: article)
+                            VodArticleRow(article: article)
                                 .hiddenNavigationLink(value: article)
                                 .styledListRow()
                                 .onAppear {
