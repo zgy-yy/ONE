@@ -2,6 +2,9 @@ import Foundation
 
 /// 从 detail 挑选默认播放相对路径（与 one-web `pickDefaultPlayPath` 优先级一致）。
 enum ArticlePlayURL {
+    /// 点播视频 CDN 前缀（拼在 `video_file` / `video_hls` 等相对路径前）。
+    static let videoCDNBase = "https://pwavddl.t556wzr.com"
+
     static func defaultPath(in detail: ArticleDetail) -> String? {
         for candidate in [
             detail.videoFile,
@@ -19,7 +22,7 @@ enum ArticlePlayURL {
 
     static func resolvedURL(detail: ArticleDetail, videoCDN: String?) -> URL? {
         guard let path = defaultPath(in: detail) else { return nil }
-        let joined = OneCDN.join(base: videoCDN ?? "", path: path)
+        let joined = OneCDN.join(base: videoCDN ?? videoCDNBase, path: path)
         return URL(string: joined)
     }
 

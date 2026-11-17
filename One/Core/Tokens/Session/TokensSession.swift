@@ -45,7 +45,8 @@ final class TokensSession {
         tokenOneVisitor = result.tokens.token(named: "token_one_visitor")
         let cdns = TokensCDN.extract(from: result.envelope.data)
         oneImgCDN = cdns.oneImg.isEmpty ? nil : cdns.oneImg
-        oneVideoCDN = cdns.oneVideo.isEmpty ? nil : cdns.oneVideo
+        // 点播 CDN 不用 splash 的 one_video，固定覆盖为本地配置。
+        oneVideoCDN = ArticlePlayURL.videoCDNBase
         lastUpdated = Date()
     }
 
