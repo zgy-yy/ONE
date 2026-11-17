@@ -19,7 +19,6 @@ struct FilterBar: View {
                 .foregroundStyle(.primary)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("发布年月")
 
             Spacer(minLength: 8)
 

@@ -1,11 +1,9 @@
 import Foundation
 
-/// 按月串联分页编排：锚定月 → 空月自动往更早月份 hop → 触底 loadMore。
+/// 按月分页：锚定月 → 空月往更早 hop → 触底 loadMore。
 ///
-/// 状态机在 `MonthArticlesState`；本类型负责 load / loadMore / 跳空月。
-/// 网络请求由调用方通过 `fetch` 闭包注入。
+/// struct：`begin*` 后立刻写回 Session，再 `perform*`，UI 才能看到 loading。
 struct MonthPagedFeed {
-    /// `(month, page, newSection) -> 本页文章`
     typealias PageFetch = (_ month: String, _ page: Int, _ newSection: Bool) async throws -> [ArticleSummary]
 
     private(set) var state = MonthArticlesState()
@@ -24,7 +22,12 @@ struct MonthPagedFeed {
     var loaded: Bool { state.loaded }
     var fullyExhausted: Bool { state.fullyExhausted }
     var canLoadMore: Bool { state.canLoadMore }
-    var showsEndFooter: Bool { state.loaded && state.fullyExhausted }
+    /// 已有内容且无法再请求下一页时显示「到底」文案（不依赖是否已写 fullyExhausted 标记）。
+    var showsEndFooter: Bool {
+        guard loaded, !isLoading, !isLoadingMore else { return false }
+        guard sections.contains(where: { !$0.articles.isEmpty }) else { return false }
+        return !canLoadMore
+    }
 
     mutating func clear() {
         state.reset()
@@ -32,79 +35,61 @@ struct MonthPagedFeed {
         isLoadingMore = false
     }
 
-    /// 从锚定月份拉第一页；若该月为空则继续往更早月份。
-    mutating func load(
-        anchorMonth: String,
-        force: Bool = false,
-        fetch: PageFetch
-    ) async {
+    mutating func beginLoad(force: Bool = false) -> Bool {
         if force { clear() }
-        guard !isLoading, !state.loaded else { return }
-
+        guard !isLoading, !loaded else { return false }
         isLoading = true
-        defer { isLoading = false }
-
         state.reset()
-        await fetchPage(month: anchorMonth, page: 1, newSection: true, fetch: fetch)
-        await advancePastEmptyMonths(fetch: fetch)
-        state.markFullyExhaustedIfNeeded()
+        return true
     }
 
-    /// 触底加载：同月下一页或更早月份；空月会自动 hop。
-    mutating func loadMore(fetch: PageFetch) async {
-        guard state.loaded, !state.fullyExhausted, state.canLoadMore else { return }
-        guard !isLoading, !isLoadingMore else { return }
+    mutating func beginLoadMore() -> Bool {
+        guard !isLoading, !isLoadingMore else { return false }
+        guard canLoadMore else {
+            state.markFullyExhaustedIfNeeded()
+            return false
+        }
+        isLoadingMore = true
+        return true
+    }
+
+    mutating func performLoad(anchorMonth: String, fetch: PageFetch) async {
+        defer { isLoading = false }
+        await run(.init(month: anchorMonth, page: 1, newSection: true), fetch: fetch)
+    }
+
+    mutating func performLoadMore(fetch: PageFetch) async {
+        defer { isLoadingMore = false }
         guard let next = state.nextPageRequest else {
             state.markFullyExhaustedIfNeeded()
             return
         }
-
-        isLoadingMore = true
-        defer { isLoadingMore = false }
-
-        await fetchPage(
-            month: next.month,
-            page: next.page,
-            newSection: next.newSection,
-            fetch: fetch
-        )
-        await advancePastEmptyMonths(fetch: fetch)
-        state.markFullyExhaustedIfNeeded()
+        await run(next, fetch: fetch)
     }
 
-    // MARK: - Private
-
-    private mutating func advancePastEmptyMonths(fetch: PageFetch) async {
+    private mutating func run(_ first: MonthPageRequest, fetch: PageFetch) async {
+        await fetchPage(first, fetch: fetch)
         var hops = 0
         while state.shouldAdvancePastEmptyTail, hops < maxEmptyMonthHops {
             hops += 1
             guard let next = state.nextPageRequest else { break }
-            await fetchPage(
-                month: next.month,
-                page: next.page,
-                newSection: next.newSection,
-                fetch: fetch
-            )
+            await fetchPage(next, fetch: fetch)
         }
+        state.markFullyExhaustedIfNeeded()
     }
 
-    private mutating func fetchPage(
-        month: String,
-        page: Int,
-        newSection: Bool,
-        fetch: PageFetch
-    ) async {
+    private mutating func fetchPage(_ request: MonthPageRequest, fetch: PageFetch) async {
         do {
-            let list = try await fetch(month, page, newSection)
+            let list = try await fetch(request.month, request.page, request.newSection)
             state.mergePage(
-                month: month,
+                month: request.month,
                 list: list,
-                page: page,
+                page: request.page,
                 pageSize: pageSize,
-                newSection: newSection
+                newSection: request.newSection
             )
         } catch {
-            if page == 1, newSection {
+            if request.page == 1, request.newSection {
                 state.recordError(error.localizedDescription)
             }
         }

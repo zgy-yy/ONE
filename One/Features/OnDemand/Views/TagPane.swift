@@ -49,7 +49,9 @@ struct TagPane: View {
                             .id(section.month)
                     }
                 }
-                listFooter
+                Section {
+                    listFooter
+                }
             }
             .plainContentList()
             .onChange(of: session.listPublishedAt) { _, month in

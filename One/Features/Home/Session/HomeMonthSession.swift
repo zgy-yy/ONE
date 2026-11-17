@@ -26,7 +26,12 @@ final class HomeMonthSession {
 
     func load(force: Bool = false) async {
         var next = feed
-        await next.load(anchorMonth: anchorMonth, force: force) { month, page, _ in
+        guard next.beginLoad(force: force) else {
+            feed = next
+            return
+        }
+        feed = next
+        await next.performLoad(anchorMonth: anchorMonth) { month, page, _ in
             try await OneClient.articleDiscovery(
                 modelID: ContentCategory.ModelID.graphic,
                 publishedAt: month,
@@ -40,7 +45,12 @@ final class HomeMonthSession {
 
     func loadMore() async {
         var next = feed
-        await next.loadMore { month, page, _ in
+        guard next.beginLoadMore() else {
+            feed = next
+            return
+        }
+        feed = next
+        await next.performLoadMore { month, page, _ in
             try await OneClient.articleDiscovery(
                 modelID: ContentCategory.ModelID.graphic,
                 publishedAt: month,

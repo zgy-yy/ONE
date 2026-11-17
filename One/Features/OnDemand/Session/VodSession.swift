@@ -78,9 +78,15 @@ final class VodSession {
 
     func loadArticles(for tagID: Int, force: Bool = false) async {
         var feed = articleFeeds[tagID] ?? MonthPagedFeed(pageSize: articlePageSize)
+        guard feed.beginLoad(force: force) else {
+            articleFeeds[tagID] = feed
+            return
+        }
+        articleFeeds[tagID] = feed
+
         let sort = listSort.rawValue
         let size = articlePageSize
-        await feed.load(anchorMonth: listPublishedAt, force: force) { month, page, _ in
+        await feed.performLoad(anchorMonth: listPublishedAt) { month, page, _ in
             try await OneClient.articleDiscovery(
                 modelID: ContentCategory.ModelID.vod,
                 publishedAt: month,
@@ -95,9 +101,15 @@ final class VodSession {
 
     func loadMoreArticles(for tagID: Int) async {
         guard var feed = articleFeeds[tagID] else { return }
+        guard feed.beginLoadMore() else {
+            articleFeeds[tagID] = feed
+            return
+        }
+        articleFeeds[tagID] = feed
+
         let sort = listSort.rawValue
         let size = articlePageSize
-        await feed.loadMore { month, page, _ in
+        await feed.performLoadMore { month, page, _ in
             try await OneClient.articleDiscovery(
                 modelID: ContentCategory.ModelID.vod,
                 publishedAt: month,

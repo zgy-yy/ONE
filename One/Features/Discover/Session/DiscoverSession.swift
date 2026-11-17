@@ -73,9 +73,15 @@ final class DiscoverSession {
     func loadArticles(channel: ContentCategory, force: Bool = false) async {
         guard let modelID = channel.articleModelID else { return }
         var feed = articleFeeds[channel] ?? MonthPagedFeed(pageSize: pageSize)
+        guard feed.beginLoad(force: force) else {
+            articleFeeds[channel] = feed
+            return
+        }
+        articleFeeds[channel] = feed
+
         let sort = listSort.rawValue
         let size = pageSize
-        await feed.load(anchorMonth: listPublishedAt, force: force) { month, page, _ in
+        await feed.performLoad(anchorMonth: listPublishedAt) { month, page, _ in
             try await OneClient.articleDiscovery(
                 modelID: modelID,
                 publishedAt: month,
@@ -90,9 +96,15 @@ final class DiscoverSession {
     func loadMoreArticles(channel: ContentCategory) async {
         guard let modelID = channel.articleModelID else { return }
         guard var feed = articleFeeds[channel] else { return }
+        guard feed.beginLoadMore() else {
+            articleFeeds[channel] = feed
+            return
+        }
+        articleFeeds[channel] = feed
+
         let sort = listSort.rawValue
         let size = pageSize
-        await feed.loadMore { month, page, _ in
+        await feed.performLoadMore { month, page, _ in
             try await OneClient.articleDiscovery(
                 modelID: modelID,
                 publishedAt: month,

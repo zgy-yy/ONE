@@ -70,10 +70,12 @@ struct DiscoverFeedView: View {
                             .id(section.month)
                     }
                 }
-                AppUI.listLoadMoreFooter(
-                    loadingMore: session.isLoadingMoreArticles(channel),
-                    exhausted: session.showsArticlesEndFooter(channel)
-                )
+                Section {
+                    AppUI.listLoadMoreFooter(
+                        loadingMore: session.isLoadingMoreArticles(channel),
+                        exhausted: session.showsArticlesEndFooter(channel)
+                    )
+                }
             }
             .plainContentList()
             .onChange(of: session.listPublishedAt) { _, month in
