@@ -43,7 +43,8 @@ struct MonthPickerSheet: View {
                 selection = selection.clamped()
             }
         }
-        .presentationDetents([.height(280)])
+        .frame(height: 280)
+        .background(Color(.systemBackground))
     }
 }
 

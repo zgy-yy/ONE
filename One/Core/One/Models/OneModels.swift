@@ -19,26 +19,76 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
     let id: Int
     let title: String?
     let thumb: String?
+    let author: String?
+    let publishedAt: String?
+    let modelID: Int?
+    let summary: String?
+    /// 现价。
+    let coin: String?
+    /// 原价（`original_coin`）。
+    let originalCoin: String?
+    let likeNumber: Int?
+    /// 时长，如 `129分钟`。
+    let length: String?
 
     var displayTitle: String {
         if let title, !title.isEmpty { return title }
         return "ID \(id)"
     }
-    let author: String?
-    let publishedAt: String?
-    let modelID: Int?
-    let summary: String?
 
     /// 图文竖图 3:4，其余 16:9；列表未回传 `model_id` 时用 `fallbackModelID`。
     func coverAspectRatio(fallbackModelID: Int? = nil) -> CGFloat {
         CoverAspect.ratio(modelID: modelID, fallback: fallbackModelID)
     }
 
+    init(
+        id: Int,
+        title: String?,
+        thumb: String?,
+        author: String?,
+        publishedAt: String?,
+        modelID: Int?,
+        summary: String?,
+        coin: String? = nil,
+        originalCoin: String? = nil,
+        likeNumber: Int? = nil,
+        length: String? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.thumb = thumb
+        self.author = author
+        self.publishedAt = publishedAt
+        self.modelID = modelID
+        self.summary = summary
+        self.coin = coin
+        self.originalCoin = originalCoin
+        self.likeNumber = likeNumber
+        self.length = length
+    }
+
     enum CodingKeys: String, CodingKey {
-        case id, title, thumb, author
+        case id, title, thumb, author, coin, length
         case publishedAt = "published_at"
         case modelID = "model_id"
         case summary = "description"
+        case originalCoin = "original_coin"
+        case likeNumber = "like_number"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(Int.self, forKey: .id)
+        title = try c.decodeIfPresent(String.self, forKey: .title)
+        thumb = try c.decodeIfPresent(String.self, forKey: .thumb)
+        author = try c.decodeIfPresent(String.self, forKey: .author)
+        publishedAt = try c.decodeIfPresent(String.self, forKey: .publishedAt)
+        modelID = JSONFlex.int(c, .modelID)
+        summary = try c.decodeIfPresent(String.self, forKey: .summary)
+        coin = JSONFlex.string(c, .coin)
+        originalCoin = JSONFlex.string(c, .originalCoin)
+        likeNumber = JSONFlex.int(c, .likeNumber)
+        length = JSONFlex.string(c, .length)
     }
 }
 

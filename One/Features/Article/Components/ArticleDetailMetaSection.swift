@@ -49,16 +49,16 @@ private struct DetailPriceNumberRow: View {
                 if showsPrice {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         if let current {
-                            Text("$\(current)")
+                            Text("¥\(current)")
                                 .font(.title3.weight(.bold))
                                 .foregroundStyle(.orange)
                         }
-                        if let original {
+                        if let original, original != current {
                             HStack(spacing: 4) {
                                 Text("原价")
                                     .font(.caption)
                                     .foregroundStyle(.tertiary)
-                                Text("$\(original)")
+                                Text("¥\(original)")
                                     .font(.subheadline.weight(.medium))
                                     .foregroundStyle(.secondary)
                                     .strikethrough(true, color: .secondary)
