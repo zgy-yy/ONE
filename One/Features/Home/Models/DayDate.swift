@@ -21,9 +21,24 @@ struct DayDate: Equatable, Hashable, Identifiable {
         String(format: "%d月%d日", month, day)
     }
 
+    /// 顶栏用：日数字，如 `03`。
+    var dayNumberTitle: String {
+        String(format: "%02d", day)
+    }
+
+    /// 顶栏用：`nov.2026`。
+    var monthYearTitle: String {
+        "\(Self.englishMonthAbbr[month]).\(year)"
+    }
+
     var monthDisplayTitle: String {
         String(format: "%d年%d月", year, month)
     }
+
+    private static let englishMonthAbbr = [
+        "", "jan", "feb", "mar", "apr", "may", "jun",
+        "jul", "aug", "sep", "oct", "nov", "dec",
+    ]
 
     init(year: Int, month: Int, day: Int) {
         self.year = year

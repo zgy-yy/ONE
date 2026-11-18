@@ -87,27 +87,30 @@ extension View {
             .listRowSeparator(.hidden)
     }
 
-    /// 普通 `List` 数据行的背景与分隔线。
+    /// 普通 `List` 数据行：无分隔线、无行背景、行距收紧。
     func styledListRow() -> some View {
         listRowSeparator(.hidden)
-            .listRowBackground(Color(.secondarySystemGroupedBackground))
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
     }
 
     /// 内容列表通用样式（无分组、隐藏系统滚动背景）。
     func plainContentList() -> some View {
         listStyle(.plain)
             .scrollContentBackground(.hidden)
+            .listSectionSpacing(8)
     }
 
     /// 整行可点、无右侧箭头的 `NavigationLink`（适合自定义列表行）。
     ///
-    /// 用行内容做 label，避免 `background { NavigationLink }` 在行内有 `Button` 时整行点不动。
+    /// `NavigationLink` 藏在 background，List 不会画系统 disclosure 箭头。
+    /// 行内交互请用 `onTapGesture`，不要用 `Button`（会抢走跳转手势）。
     func hiddenNavigationLink<Value: Hashable>(value: Value) -> some View {
-        NavigationLink(value: value) {
-            self
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
+        frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .background {
+                NavigationLink(value: value) { EmptyView() }
+                    .opacity(0)
+            }
     }
 }

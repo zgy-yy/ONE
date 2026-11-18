@@ -60,7 +60,7 @@ struct HomeMonthArticlesView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 8)
             .padding(.bottom, 16)
         }
     }
@@ -109,17 +109,6 @@ struct HomeMonthArticlesView: View {
     }
 
     private func articleCard(_ article: ArticleSummary) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            OneCoverImage(
-                path: article.thumb,
-                aspectRatio: CoverAspect.portrait
-            )
-            Text(article.displayTitle)
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.primary)
-                .lineLimit(2)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
+        PortraitArticleCard(article: article, showsDate: false)
     }
 }

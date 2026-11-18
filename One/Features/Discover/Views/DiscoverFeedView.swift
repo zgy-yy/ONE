@@ -4,6 +4,8 @@ import SwiftUI
 struct DiscoverFeedView: View {
     let channel: ContentCategory
     @Bindable private var session = DiscoverSession.shared
+    /// 图文两列同行不能挂两个 `NavigationLink`（List 会一起点开），用单项跳转。
+    @State private var graphicDestination: ArticleSummary?
 
     private var loadToken: String {
         channel.isSeries
@@ -82,6 +84,9 @@ struct DiscoverFeedView: View {
                 }
             }
             .plainContentList()
+            .navigationDestination(item: $graphicDestination) { article in
+                ArticleDetailView(article: article)
+            }
             .onChange(of: session.listPublishedAt) { _, month in
                 // 锚定月已在列表里则滚过去；否则按新锚定月重载
                 if sections.contains(where: { $0.month == month }) {
@@ -93,15 +98,17 @@ struct DiscoverFeedView: View {
         }
     }
 
-    /// 图文两列：每行两个 `GraphicArticleRow`。
+    /// 图文两列：每行两个竖图卡片。
     private func graphicRows(_ section: ArticleMonthSection) -> some View {
         let rows = section.articles.chunked(into: 2)
         return ForEach(rows, id: \.rowID) { row in
             HStack(alignment: .top, spacing: 10) {
                 ForEach(row) { article in
-                    GraphicArticleRow(article: article)
-                        .hiddenNavigationLink(value: article)
+                    PortraitArticleCard(article: article, textAlignment: .leading)
+                        .padding(.vertical, 2)
                         .frame(maxWidth: .infinity, alignment: .top)
+                        .contentShape(Rectangle())
+                        .onTapGesture { graphicDestination = article }
                         .onAppear {
                             guard sections.isTailArticle(article, in: section) else { return }
                             Task { await session.loadMoreArticles(channel: channel) }

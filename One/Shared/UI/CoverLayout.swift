@@ -38,7 +38,7 @@ extension View {
     func matchCoverHeight(
         width: CGFloat,
         aspect: CGFloat = CoverAspect.landscape,
-        padding: CGFloat = 5
+        padding: CGFloat = 2
     ) -> some View {
         let height = CoverAspect.height(width: width, aspect: aspect)
         return self

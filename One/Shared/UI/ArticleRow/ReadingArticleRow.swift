@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// 发现「阅读」列表行：左侧方形封面，右侧标题 / 作者 / 喜欢数。
+/// 发现「阅读」：左方封面，右标题 / 简介 / 作者 / 喜欢 / 日期。
 struct ReadingArticleRow: View {
     let article: ArticleSummary
-
+    var showsDate: Bool = true
     private let coverWidth: CGFloat = 96
 
     var body: some View {
@@ -18,24 +18,30 @@ struct ReadingArticleRow: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(article.displayTitle)
                     .font(.body.weight(.semibold))
-                    .foregroundStyle(.primary)
                     .lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                Spacer(minLength: 0)
+                if let summary = article.summary?.nonEmpty {
+                    Text(summary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
 
                 HStack(spacing: 8) {
                     if let author = article.author?.nonEmpty {
-                        Text(author)
-                            .lineLimit(1)
+                        Text(author).lineLimit(1)
                     }
-                    Spacer(minLength: 0)
                     if let likes = article.likeNumber {
-                        MetaIconText(systemImage: "heart", text: "\(likes)")
+                        MetaIconText.likes(likes)
                     }
                 }
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+
+                if showsDate {
+                    ArticleDateText(publishedAt: article.publishedAt)
+                }
             }
             .matchCoverHeight(width: coverWidth, aspect: CoverAspect.square)
         }

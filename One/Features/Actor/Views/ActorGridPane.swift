@@ -30,11 +30,8 @@ struct ActorGridPane: View {
         }
         .safeAreaInset(edge: .top, spacing: 0) {
             if let navigationID, !tags.isEmpty {
-                VStack(spacing: 0) {
-                    ActorTagFilterStrip(tags: tags, navigationID: navigationID, session: session)
-                    Divider()
-                }
-                .background(Color(.systemBackground))
+                ActorTagFilterStrip(tags: tags, navigationID: navigationID, session: session)
+                    .background(Color(.systemBackground))
             }
         }
         .task(id: loadToken) {
@@ -72,23 +69,6 @@ struct ActorGridPane: View {
                 .font(.caption)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity)
-            meta(for: actor)
-        }
-    }
-
-    @ViewBuilder
-    private func meta(for actor: ActorSummary) -> some View {
-        switch selection {
-        case .hottest:
-            if let score = actor.score {
-                Text("热度 \(score)").font(.caption2).foregroundStyle(.tertiary).lineLimit(1)
-            }
-        case .newest:
-            if let date = actor.latestPublishedAt?.nonEmpty {
-                Text(date).font(.caption2).foregroundStyle(.tertiary).lineLimit(1)
-            }
-        case .navigation:
-            EmptyView()
         }
     }
 }

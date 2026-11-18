@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 单日内容页（嵌在左右滑动的 `TabView` 里）。
+/// 单日内容页（嵌在首页横向分页里）。
 ///
 /// 翻页后本页先出现；未加载完时显示 loading，不挡切换手势。
 struct HomeDayPage: View {
@@ -28,9 +28,19 @@ struct HomeDayPage: View {
         ) {
             List {
                 ForEach(cache.articles) { article in
-                    ArticleRowForModel.view(for: article)
-                        .hiddenNavigationLink(value: article)
+                    ArticleRowForModel.view(
+                        for: article,
+                        showsDate: false,
+                        showsDescription: true
+                    )
+                        .libraryNavigation(
+                            isSeries: article.opensAsSeries,
+                            article: article,
+                            series: article.asSeriesSummary
+                        )
                         .styledListRow()
+                        // 首页略宽：左右留白小于通用列表。
+                        .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8))
                 }
             }
             .plainContentList()

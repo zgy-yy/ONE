@@ -10,7 +10,6 @@ struct TopBar: View {
         VStack(spacing: 0) {
             FilterBar(publishedAt: $session.listPublishedAt, sort: $session.listSort)
             TagStrip(tags: tags, selectedTagID: $selectedTagID)
-            Divider()
         }
         .background(Color(.systemBackground))
     }

@@ -86,10 +86,12 @@ struct SeriesDetailView: View {
                     .padding(.vertical, 12)
             } else {
                 ForEach(session.chapters) { chapter in
-                    SeriesChapterRow(chapter: chapter)
-                        .hiddenNavigationLink(value: chapter.asArticleSummary)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 6)
+                    NavigationLink(value: chapter.asArticleSummary) {
+                        SeriesChapterRow(chapter: chapter)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 6)
                 }
             }
         }

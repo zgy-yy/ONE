@@ -8,9 +8,13 @@ struct HomeDayBar: View {
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
             NavigationLink(value: day) {
-                Text(day.displayTitle)
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(.primary)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(day.dayNumberTitle)
+                        .font(.largeTitle.weight(.bold))
+                    Text(day.monthYearTitle)
+                        .font(.title3.weight(.semibold))
+                }
+                .foregroundStyle(.primary)
             }
             .buttonStyle(.plain)
 
@@ -26,7 +30,7 @@ struct HomeDayBar: View {
 
             SearchBarButton()
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 8)
         .padding(.vertical, 10)
         .background(Color(.systemBackground))
     }

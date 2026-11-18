@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// 发现「影视」列表行：左侧 16:9 封面，右侧标题 / 收藏 / 喜欢 / 期数。
+/// 发现「影视」：左 16:9 封面，右标题 / 收藏·喜欢 / 日期。
 struct FilmArticleRow: View {
     let article: ArticleSummary
-
-    private let coverWidth: CGFloat = 156
+    var showsDate: Bool = true
+    private let coverWidth: CGFloat = 186
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -18,28 +18,29 @@ struct FilmArticleRow: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(article.displayTitle)
                     .font(.body.weight(.semibold))
-                    .foregroundStyle(.primary)
                     .lineLimit(2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .multilineTextAlignment(.leading)
+                    // 与 Spacer 抢高度时优先保两行，避免被压成一行。
+                    .fixedSize(horizontal: false, vertical: true)
+                    .layoutPriority(1)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
 
                 Spacer(minLength: 0)
 
-                HStack(spacing: 14) {
-                    Button(action: ArticleRowActions.favorite) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 14) {
                         Image(systemName: "bookmark")
-                    }
-                    .buttonStyle(.borderless)
-                    if let likes = article.likeNumber {
-                        Button(action: ArticleRowActions.like) {
-                            MetaIconText(systemImage: "heart", text: "\(likes)")
+                            .onTapGesture(perform: ArticleRowActions.favorite)
+                        if let likes = article.likeNumber {
+                            MetaIconText.likes(likes)
+                                .onTapGesture(perform: ArticleRowActions.like)
                         }
-                        .buttonStyle(.borderless)
                     }
-                    if let vol = article.vol {
-                        MetaIconText(systemImage: "number", text: "\(vol)期")
+                    if showsDate {
+                        ArticleDateText(publishedAt: article.publishedAt, font: .subheadline)
                     }
                 }
-                .font(.subheadline.weight(.medium))
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
             }
             .matchCoverHeight(width: coverWidth)

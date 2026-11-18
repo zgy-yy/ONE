@@ -1,10 +1,9 @@
 import SwiftUI
 
-/// 发现页写真 / 漫画列表行。
+/// 写真 / 漫画系列列表行。
 struct SeriesRow: View {
     let item: SeriesSummary
-
-    private let coverWidth: CGFloat = SeriesUI.coverWidth
+    private let coverWidth: CGFloat = 156
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -27,20 +26,17 @@ struct SeriesRow: View {
                         .font(.caption2)
                         .foregroundStyle(item.isFinished ? Color.secondary : Color.accentColor)
 
-                    if let likes = item.likeTotal?.nonEmpty {
-                        MetaIconText(systemImage: "heart", text: likes)
+                    if let raw = item.likeTotal?.nonEmpty {
+                        MetaIconText.likesText(raw)
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
                     }
                 }
+
+                ArticleDateText(publishedAt: item.latestAt ?? item.firstAt)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 2)
     }
-}
-
-enum SeriesUI {
-    /// 写真 / 漫画列表与章节行共用封面宽度。
-    static let coverWidth: CGFloat = 186
 }

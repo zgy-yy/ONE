@@ -19,9 +19,14 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
     let id: Int
     let title: String?
     let thumb: String?
+    let thumbnail: String?
     let author: String?
     let publishedAt: String?
     let modelID: Int?
+    /// 写真 / 漫画细分：1 写真，2 漫画。
+    let seriesCategory: Int?
+    /// 所属系列 id（首页日更里写真/漫画条目用，跳转系列详情）。
+    let seriesID: Int?
     let summary: String?
     /// 现价。
     let coin: Int?
@@ -38,6 +43,34 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
         return "ID \(id)"
     }
 
+    /// 首页 / 列表里 `model_id == 4` 的写真、漫画。
+    var opensAsSeries: Bool { modelID == ContentCategory.ModelID.series }
+
+    /// 转成系列章节行数据（与发现系列详情章节列表同一套 UI）。
+    var asSeriesChapter: SeriesChapter {
+        SeriesChapter(
+            id: id,
+            title: title,
+            thumb: thumb,
+            thumbnail: thumbnail,
+            author: author,
+            description: summary,
+            publishedAt: publishedAt,
+            likeNumber: likeNumber
+        )
+    }
+
+    var asSeriesSummary: SeriesSummary {
+        SeriesSummary(
+            id: seriesID ?? id,
+            title: title,
+            author: author,
+            thumb: thumb,
+            thumbnail: thumbnail,
+            likeTotal: likeNumber.map(String.init)
+        )
+    }
+
     init(
         id: Int,
         title: String?,
@@ -50,14 +83,20 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
         originalCoin: Int? = nil,
         likeNumber: Int? = nil,
         length: String? = nil,
-        vol: Int? = nil
+        vol: Int? = nil,
+        thumbnail: String? = nil,
+        seriesCategory: Int? = nil,
+        seriesID: Int? = nil
     ) {
         self.id = id
         self.title = title
         self.thumb = thumb
+        self.thumbnail = thumbnail
         self.author = author
         self.publishedAt = publishedAt
         self.modelID = modelID
+        self.seriesCategory = seriesCategory
+        self.seriesID = seriesID
         self.summary = summary
         self.coin = coin
         self.originalCoin = originalCoin
@@ -67,12 +106,14 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, title, thumb, author, coin, length, vol
+        case id, title, thumb, thumbnail, author, coin, length, vol
         case publishedAt = "published_at"
         case modelID = "model_id"
         case summary = "description"
         case originalCoin = "original_coin"
         case likeNumber = "like_number"
+        case seriesCategory = "series_category"
+        case seriesID = "series_id"
     }
 
     init(from decoder: Decoder) throws {
@@ -80,9 +121,12 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
         id = try c.decode(Int.self, forKey: .id)
         title = try c.decodeIfPresent(String.self, forKey: .title)
         thumb = try c.decodeIfPresent(String.self, forKey: .thumb)
+        thumbnail = try c.decodeIfPresent(String.self, forKey: .thumbnail)
         author = try c.decodeIfPresent(String.self, forKey: .author)
         publishedAt = try c.decodeIfPresent(String.self, forKey: .publishedAt)
         modelID = JSONFlex.int(c, .modelID)
+        seriesCategory = JSONFlex.int(c, .seriesCategory)
+        seriesID = JSONFlex.int(c, .seriesID)
         summary = try c.decodeIfPresent(String.self, forKey: .summary)
         coin = JSONFlex.int(c, .coin)
         originalCoin = JSONFlex.int(c, .originalCoin)

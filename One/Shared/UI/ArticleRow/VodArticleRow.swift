@@ -1,29 +1,16 @@
 import SwiftUI
 
-/// 点播风列表行（发现非影视频道、首页日更也复用）：封面 + 衬底一体卡片。
-///
-/// 标题叠在封面底；下方金额 / 收藏按钮 / 喜欢 / 时长。
+/// 点播行：封面底标题（作者旁时长）；下方金额 / 收藏 / 喜欢 / 日期。
 struct VodArticleRow: View {
     let article: ArticleSummary
     var aspectRatio: CGFloat = CoverAspect.landscape
-
-    @Environment(\.colorScheme) private var colorScheme
-
-    private let cornerRadius: CGFloat = 12
+    var showsDate: Bool = true
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 3) {
             cover
             metaBar
         }
-        .background {
-            shape.fill(Color.primary.opacity(colorScheme == .dark ? 0.14 : 0.05))
-        }
-        .overlay {
-            shape.strokeBorder(Color.primary.opacity(colorScheme == .dark ? 0.18 : 0.06), lineWidth: 1)
-        }
-        .clipShape(shape)
         .padding(.vertical, 2)
     }
 
@@ -31,60 +18,50 @@ struct VodArticleRow: View {
         OneCoverImage(
             path: article.thumb,
             aspectRatio: aspectRatio,
-            cornerRadius: 0
+            cornerRadius: 8
         )
         .overlay(alignment: .bottom) {
-            titleBlock
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background { CoverBottomFade() }
-        }
-    }
-
-    @ViewBuilder
-    private var titleBlock: some View {
-        if let author = article.author?.nonEmpty {
             VStack(alignment: .leading, spacing: 2) {
                 Text(article.displayTitle)
                     .font(.body.weight(.semibold))
                     .foregroundStyle(.white)
                     .lineLimit(2)
-                Text(author)
+
+                if article.author?.nonEmpty != nil || article.length?.nonEmpty != nil {
+                    HStack(spacing: 8) {
+                        if let author = article.author?.nonEmpty {
+                            Text(author).lineLimit(1)
+                        }
+                        if let length = article.length?.nonEmpty {
+                            MetaIconText(systemImage: "clock", text: length)
+                        }
+                    }
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.85))
-                    .lineLimit(1)
+                }
             }
-        } else {
-            Text(article.displayTitle)
-                .font(.body.weight(.semibold))
-                .foregroundStyle(.white)
-                .lineLimit(2)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background { CoverBottomFade() }
         }
     }
 
     private var metaBar: some View {
-        HStack(alignment: .center, spacing: 14) {
+        HStack(spacing: 14) {
             priceBlock
             Spacer(minLength: 0)
-            Button(action: ArticleRowActions.favorite) {
-                Image(systemName: "bookmark")
-            }
-            .buttonStyle(.borderless)
+            Image(systemName: "bookmark")
+                .onTapGesture(perform: ArticleRowActions.favorite)
             if let likes = article.likeNumber {
-                Button(action: ArticleRowActions.like) {
-                    MetaIconText(systemImage: "heart", text: "\(likes)")
-                }
-                .buttonStyle(.borderless)
+                MetaIconText.likes(likes)
+                    .onTapGesture(perform: ArticleRowActions.like)
             }
-            if let length = article.length?.nonEmpty {
-                MetaIconText(systemImage: "clock", text: length)
+            if showsDate, let date = ArticleFormat.dateOnly(from: article.publishedAt) {
+                Text(date).foregroundStyle(.secondary)
             }
         }
-        .font(.subheadline.weight(.medium))
-        .foregroundStyle(.primary)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 12)
+        .font(.subheadline)
     }
 
     @ViewBuilder
@@ -98,7 +75,6 @@ struct VodArticleRow: View {
                 }
                 if let original = article.originalCoin, original != article.coin {
                     Text("¥\(original)")
-                        .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .strikethrough()
                 }

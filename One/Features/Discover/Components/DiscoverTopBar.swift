@@ -20,7 +20,6 @@ struct DiscoverTopBar: View {
                 id: \.self,
                 onSelect: { channel = $0 }
             )
-            Divider()
         }
         .background(Color(.systemBackground))
     }

@@ -6,9 +6,11 @@ struct SeriesChapter: Decodable, Identifiable, Hashable {
     let title: String?
     let thumb: String?
     let thumbnail: String?
+    let author: String?
     let chapter: Int?
     let description: String?
     let publishedAt: String?
+    let likeNumber: Int?
 
     var displayTitle: String {
         if let title, !title.isEmpty { return title }
@@ -26,16 +28,54 @@ struct SeriesChapter: Decodable, Identifiable, Hashable {
             id: id,
             title: title,
             thumb: thumb,
-            author: nil,
+            author: author,
             publishedAt: publishedAt,
             modelID: nil,
-            summary: description
+            summary: description,
+            likeNumber: likeNumber,
+            thumbnail: thumbnail
         )
     }
 
+    init(
+        id: Int,
+        title: String? = nil,
+        thumb: String? = nil,
+        thumbnail: String? = nil,
+        author: String? = nil,
+        chapter: Int? = nil,
+        description: String? = nil,
+        publishedAt: String? = nil,
+        likeNumber: Int? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.thumb = thumb
+        self.thumbnail = thumbnail
+        self.author = author
+        self.chapter = chapter
+        self.description = description
+        self.publishedAt = publishedAt
+        self.likeNumber = likeNumber
+    }
+
     enum CodingKeys: String, CodingKey {
-        case id, title, thumb, thumbnail, chapter, description
+        case id, title, thumb, thumbnail, author, chapter, description
         case publishedAt = "published_at"
+        case likeNumber = "like_number"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(Int.self, forKey: .id)
+        title = try c.decodeIfPresent(String.self, forKey: .title)
+        thumb = try c.decodeIfPresent(String.self, forKey: .thumb)
+        thumbnail = try c.decodeIfPresent(String.self, forKey: .thumbnail)
+        author = try c.decodeIfPresent(String.self, forKey: .author)
+        chapter = JSONFlex.int(c, .chapter)
+        description = try c.decodeIfPresent(String.self, forKey: .description)
+        publishedAt = try c.decodeIfPresent(String.self, forKey: .publishedAt)
+        likeNumber = JSONFlex.int(c, .likeNumber)
     }
 }
 

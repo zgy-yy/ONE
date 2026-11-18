@@ -11,8 +11,8 @@ enum SeriesStatusType: Int, CaseIterable, Identifiable, Hashable {
     var title: String {
         switch self {
         case .all: "全部"
-        case .ongoing: "连载中"
-        case .finished: "已完结"
+        case .ongoing: "连载"
+        case .finished: "完结"
         }
     }
 }

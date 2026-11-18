@@ -72,7 +72,7 @@ enum ContentCategory: String, CaseIterable, Identifiable, Hashable {
 
     /// 库列表等未专用 Row 时的封面比例（发现图文网格用 4:3；首页图文 Row 用竖图）。
     var coverAspect: CGFloat {
-        self == .graphic ? CoverAspect.fourThree : CoverAspect.landscape
+        self == .graphic ? CoverAspect.portrait : CoverAspect.landscape
     }
 
     /// 文章类发现接口的 `model_id`；系列频道为 `nil`。

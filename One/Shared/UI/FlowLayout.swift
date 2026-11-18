@@ -6,7 +6,7 @@ struct FlowLayout: Layout {
     var lineSpacing: CGFloat = 8
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        arrange(proposal: proposal, subviews: subviews).size
+        arrange(maxWidth: resolvedMaxWidth(proposal), subviews: subviews).size
     }
 
     func placeSubviews(
@@ -15,7 +15,8 @@ struct FlowLayout: Layout {
         subviews: Subviews,
         cache: inout ()
     ) {
-        let result = arrange(proposal: proposal, subviews: subviews)
+        // 实际布局用 bounds 宽度，避免依赖已弃用的 UIScreen.main。
+        let result = arrange(maxWidth: bounds.width, subviews: subviews)
         for (index, origin) in result.origins.enumerated() {
             subviews[index].place(
                 at: CGPoint(x: bounds.minX + origin.x, y: bounds.minY + origin.y),
@@ -29,9 +30,15 @@ struct FlowLayout: Layout {
         var size: CGSize
     }
 
-    private func arrange(proposal: ProposedViewSize, subviews: Subviews) -> Arrangement {
-        // ScrollView 偶发给 nil 宽时不要按无限宽单行排布，否则标签会撑出横滑。
-        let maxWidth = proposal.width ?? UIScreen.main.bounds.width
+    /// ScrollView 偶发 nil 宽时用有限默认值，避免无限宽单行撑出横滑。
+    private func resolvedMaxWidth(_ proposal: ProposedViewSize) -> CGFloat {
+        if let width = proposal.width, width.isFinite, width > 0 {
+            return width
+        }
+        return 393
+    }
+
+    private func arrange(maxWidth: CGFloat, subviews: Subviews) -> Arrangement {
         var origins: [CGPoint] = []
         var x: CGFloat = 0
         var y: CGFloat = 0
