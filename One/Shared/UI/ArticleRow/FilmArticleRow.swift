@@ -28,12 +28,12 @@ struct FilmArticleRow: View {
                     Button(action: ArticleRowActions.favorite) {
                         Image(systemName: "bookmark")
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.borderless)
                     if let likes = article.likeNumber {
                         Button(action: ArticleRowActions.like) {
                             MetaIconText(systemImage: "heart", text: "\(likes)")
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.borderless)
                     }
                     if let vol = article.vol {
                         MetaIconText(systemImage: "number", text: "\(vol)期")

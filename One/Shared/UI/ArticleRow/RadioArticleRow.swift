@@ -54,7 +54,7 @@ struct RadioArticleRow: View {
                     .font(.title2)
                     .foregroundStyle(.white)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.borderless)
         }
     }
 
@@ -68,12 +68,12 @@ struct RadioArticleRow: View {
             Button(action: ArticleRowActions.favorite) {
                 Image(systemName: "bookmark")
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.borderless)
             if let likes = article.likeNumber {
                 Button(action: ArticleRowActions.like) {
                     MetaIconText(systemImage: "heart", text: "\(likes)")
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
             }
         }
         .font(.subheadline)

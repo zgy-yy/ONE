@@ -70,12 +70,12 @@ struct VodArticleRow: View {
             Button(action: ArticleRowActions.favorite) {
                 Image(systemName: "bookmark")
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.borderless)
             if let likes = article.likeNumber {
                 Button(action: ArticleRowActions.like) {
                     MetaIconText(systemImage: "heart", text: "\(likes)")
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
             }
             if let length = article.length?.nonEmpty {
                 MetaIconText(systemImage: "clock", text: length)

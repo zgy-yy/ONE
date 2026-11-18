@@ -100,12 +100,14 @@ extension View {
     }
 
     /// 整行可点、无右侧箭头的 `NavigationLink`（适合自定义列表行）。
+    ///
+    /// 用行内容做 label，避免 `background { NavigationLink }` 在行内有 `Button` 时整行点不动。
     func hiddenNavigationLink<Value: Hashable>(value: Value) -> some View {
-        frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
-            .background {
-                NavigationLink(value: value) { EmptyView() }
-                    .opacity(0)
-            }
+        NavigationLink(value: value) {
+            self
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
