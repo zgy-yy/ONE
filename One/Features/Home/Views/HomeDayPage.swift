@@ -28,7 +28,7 @@ struct HomeDayPage: View {
         ) {
             List {
                 ForEach(cache.articles) { article in
-                    VodArticleRow(article: article)
+                    ArticleRowForModel.view(for: article)
                         .hiddenNavigationLink(value: article)
                         .styledListRow()
                 }

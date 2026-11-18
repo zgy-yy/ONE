@@ -22,8 +22,6 @@ struct SeriesRow: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Spacer(minLength: 0)
-
                 HStack(spacing: 10) {
                     Text(item.statusText)
                         .font(.caption2)
@@ -36,7 +34,7 @@ struct SeriesRow: View {
                     }
                 }
             }
-            .matchCoverHeight(width: coverWidth)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.vertical, 4)
     }

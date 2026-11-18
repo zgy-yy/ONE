@@ -16,15 +16,13 @@ struct SeriesChapterRow: View {
                     .font(.subheadline.weight(.medium))
                     .lineLimit(2)
 
-                Spacer(minLength: 0)
-
                 if let published = chapter.publishedAt?.nonEmpty {
                     Text(published)
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
             }
-            .matchCoverHeight(width: coverWidth)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.vertical, 4)
     }
