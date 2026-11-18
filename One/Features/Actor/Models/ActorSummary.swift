@@ -6,9 +6,6 @@ struct ActorSummary: Decodable, Identifiable, Hashable {
     let mainName: String?
     let thumb: String?
     let thumbnail: String?
-    let birthDate: String?
-    let latestPublishedAt: String?
-    let score: Int?
 
     var displayName: String {
         mainName?.nonEmpty ?? "演员 \(id)"
@@ -19,10 +16,8 @@ struct ActorSummary: Decodable, Identifiable, Hashable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, thumb, thumbnail, score
+        case id, thumb, thumbnail
         case mainName = "main_name"
-        case birthDate = "birth_date"
-        case latestPublishedAt = "latest_published_at"
     }
 }
 

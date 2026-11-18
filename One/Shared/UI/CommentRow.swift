@@ -27,11 +27,7 @@ struct CommentRow: View {
             }
             repliesBlock
         }
-        .padding(isReply ? 10 : 12)
-        .background(
-            (isReply ? Color(.tertiarySystemFill) : Color(.secondarySystemBackground)),
-            in: RoundedRectangle(cornerRadius: isReply ? 8 : 10, style: .continuous)
-        )
+        .padding(.vertical, isReply ? 6 : 8)
         .fullScreenCover(isPresented: Binding(
             get: { viewerIndex != nil },
             set: { if !$0 { viewerIndex = nil } }

@@ -36,9 +36,9 @@ struct ArticleDateText: View {
     }
 }
 
-/// 列表行收藏 / 喜欢 / 播放的临时入口（待接真实接口）。
+/// 列表行收藏 / 喜欢 / 播放入口（待接真实接口）。
 nonisolated enum ArticleRowActions {
-    static func favorite() { print("收藏") }
-    static func like() { print("喜欢") }
-    static func play() { print("播放") }
+    static func favorite() {}
+    static func like() {}
+    static func play() {}
 }

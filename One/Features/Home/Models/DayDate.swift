@@ -17,10 +17,6 @@ struct DayDate: Equatable, Hashable, Identifiable {
         String(format: "%04d-%02d", year, month)
     }
 
-    var displayTitle: String {
-        String(format: "%d月%d日", month, day)
-    }
-
     /// 顶栏用：日数字，如 `03`。
     var dayNumberTitle: String {
         String(format: "%02d", day)

@@ -1,6 +1,6 @@
 import Foundation
 
-/// 详情页常用的字符串、数字展示（避免在 View 里重复写判断）。
+/// 全局展示用字符串 / 数字格式（列表、详情、演员等共用）。
 enum ArticleFormat: Sendable {
     /// 去掉首尾空白；空字符串当作「没有值」返回 `nil`。
     nonisolated static func nonEmpty(_ value: String?) -> String? {

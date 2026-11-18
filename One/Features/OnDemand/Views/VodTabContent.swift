@@ -37,7 +37,7 @@ struct VodTabContent: View {
         } else {
             tagContent
                 .safeAreaInset(edge: .top, spacing: 0) {
-                    TopBar(
+                    VodTopBar(
                         tags: session.tags,
                         selectedTagID: $selectedTagID,
                         session: session

@@ -70,7 +70,7 @@ enum ContentCategory: String, CaseIterable, Identifiable, Hashable {
 
     var isSeries: Bool { seriesCategory > 0 }
 
-    /// 库列表等未专用 Row 时的封面比例（发现图文网格用 4:3；首页图文 Row 用竖图）。
+    /// 库列表等未专用 Row 时的封面比例（图文竖图，其余横图）。
     var coverAspect: CGFloat {
         self == .graphic ? CoverAspect.portrait : CoverAspect.landscape
     }

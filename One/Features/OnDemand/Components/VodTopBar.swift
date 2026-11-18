@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// 点播页顶栏：筛选 + 分类胶囊。
-struct TopBar: View {
+struct VodTopBar: View {
     let tags: [DemandTag]
     @Binding var selectedTagID: Int?
     @Bindable var session: VodSession

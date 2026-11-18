@@ -8,7 +8,9 @@ struct VodArticleRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
+            // 封面（含 GIF）不抢手势，交给外层 `hiddenNavigationLink` 进详情。
             cover
+                .allowsHitTesting(false)
             metaBar
         }
         .padding(.vertical, 2)
