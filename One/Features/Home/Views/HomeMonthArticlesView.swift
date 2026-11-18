@@ -123,22 +123,3 @@ struct HomeMonthArticlesView: View {
         }
     }
 }
-
-private extension Array {
-    func chunked(into size: Int) -> [[Element]] {
-        guard size > 0, !isEmpty else { return [] }
-        var result: [[Element]] = []
-        result.reserveCapacity((count + size - 1) / size)
-        var index = startIndex
-        while index < endIndex {
-            let next = self.index(index, offsetBy: size, limitedBy: endIndex) ?? endIndex
-            result.append(Array(self[index..<next]))
-            index = next
-        }
-        return result
-    }
-}
-
-private extension Array where Element == ArticleSummary {
-    var rowID: Int { first?.id ?? 0 }
-}

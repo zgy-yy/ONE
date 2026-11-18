@@ -4,10 +4,12 @@ import SwiftUI
 struct SeriesRow: View {
     let item: SeriesSummary
 
+    private let coverWidth: CGFloat = SeriesUI.coverWidth
+
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             OneCoverImage(path: item.imagePath)
-                .frame(width: 120)
+                .frame(width: coverWidth)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(item.displayTitle)
@@ -20,26 +22,27 @@ struct SeriesRow: View {
                         .foregroundStyle(.secondary)
                 }
 
-                HStack(spacing: 8) {
+                Spacer(minLength: 0)
+
+                HStack(spacing: 10) {
                     Text(item.statusText)
                         .font(.caption2)
                         .foregroundStyle(item.isFinished ? Color.secondary : Color.accentColor)
 
                     if let likes = item.likeTotal?.nonEmpty {
-                        Text("赞 \(likes)")
+                        MetaIconText(systemImage: "heart", text: likes)
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
                     }
                 }
-
-                if let latest = item.latestAt?.nonEmpty {
-                    Text(latest)
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .matchCoverHeight(width: coverWidth)
         }
         .padding(.vertical, 4)
     }
+}
+
+enum SeriesUI {
+    /// 写真 / 漫画列表与章节行共用封面宽度。
+    static let coverWidth: CGFloat = 186
 }

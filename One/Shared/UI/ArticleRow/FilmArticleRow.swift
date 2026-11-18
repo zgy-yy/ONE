@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// 发现「影视」列表行：左侧 16:9 封面，右侧标题 / 喜欢 / 时长（无作者、无金额）。
+/// 发现「影视」列表行：左侧 16:9 封面，右侧标题 / 收藏 / 喜欢 / 期数。
 struct FilmArticleRow: View {
     let article: ArticleSummary
 
-    private let coverWidth: CGFloat = 148
+    private let coverWidth: CGFloat = 156
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -25,19 +25,25 @@ struct FilmArticleRow: View {
                 Spacer(minLength: 0)
 
                 HStack(spacing: 14) {
-                    if let likes = article.likeNumber {
-                        Label("\(likes)", systemImage: "heart.fill")
+                    Button(action: ArticleRowActions.favorite) {
+                        Image(systemName: "bookmark")
                     }
-                    if let length = article.length?.nonEmpty {
-                        Label(length, systemImage: "clock.fill")
+                    .buttonStyle(.plain)
+                    if let likes = article.likeNumber {
+                        Button(action: ArticleRowActions.like) {
+                            MetaIconText(systemImage: "heart", text: "\(likes)")
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    if let vol = article.vol {
+                        MetaIconText(systemImage: "number", text: "\(vol)期")
                     }
                 }
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(.secondary)
-                .labelStyle(.titleAndIcon)
             }
-            .frame(maxWidth: .infinity, minHeight: coverWidth / CoverAspect.landscape, alignment: .topLeading)
+            .matchCoverHeight(width: coverWidth)
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 2)
     }
 }

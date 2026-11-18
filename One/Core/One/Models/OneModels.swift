@@ -24,12 +24,14 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
     let modelID: Int?
     let summary: String?
     /// 现价。
-    let coin: String?
+    let coin: Int?
     /// 原价（`original_coin`）。
-    let originalCoin: String?
+    let originalCoin: Int?
     let likeNumber: Int?
-    /// 时长，如 `129分钟`。
+    /// 时长展示文案，如 `129分钟`。
     let length: String?
+    /// 分卷 / 集数等（接口 `vol`）。
+    let vol: Int?
 
     var displayTitle: String {
         if let title, !title.isEmpty { return title }
@@ -44,10 +46,11 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
         publishedAt: String?,
         modelID: Int?,
         summary: String?,
-        coin: String? = nil,
-        originalCoin: String? = nil,
+        coin: Int? = nil,
+        originalCoin: Int? = nil,
         likeNumber: Int? = nil,
-        length: String? = nil
+        length: String? = nil,
+        vol: Int? = nil
     ) {
         self.id = id
         self.title = title
@@ -60,10 +63,11 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
         self.originalCoin = originalCoin
         self.likeNumber = likeNumber
         self.length = length
+        self.vol = vol
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, title, thumb, author, coin, length
+        case id, title, thumb, author, coin, length, vol
         case publishedAt = "published_at"
         case modelID = "model_id"
         case summary = "description"
@@ -80,10 +84,11 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
         publishedAt = try c.decodeIfPresent(String.self, forKey: .publishedAt)
         modelID = JSONFlex.int(c, .modelID)
         summary = try c.decodeIfPresent(String.self, forKey: .summary)
-        coin = JSONFlex.string(c, .coin)
-        originalCoin = JSONFlex.string(c, .originalCoin)
+        coin = JSONFlex.int(c, .coin)
+        originalCoin = JSONFlex.int(c, .originalCoin)
         likeNumber = JSONFlex.int(c, .likeNumber)
         length = JSONFlex.string(c, .length)
+        vol = JSONFlex.int(c, .vol)
     }
 }
 
@@ -108,12 +113,14 @@ struct ArticleDetail: Decodable, Identifiable {
     let previewVideo: String?
     let videos: [ArticleVideoItem]?
     let multiplePic: [String]?
-    /// 现价（金币/贝壳，`coin`）
-    let coin: String?
+    /// 现价（`coin`）
+    let coin: Int?
     /// 原价（`original_coin`）
-    let originalCoin: String?
-    /// 时长，如 `129分钟`
+    let originalCoin: Int?
+    /// 时长展示文案，如 `129分钟`
     let length: String?
+    /// 分卷 / 集数等（接口 `vol`）。
+    let vol: Int?
     /// 体积，如 `1.37GB`
     let size: String?
     /// 分辨率，如 `1920x1080`
@@ -163,7 +170,7 @@ struct ArticleDetail: Decodable, Identifiable {
         case multiplePic = "multiple_pic"
         case coin
         case originalCoin = "original_coin"
-        case length, size, quality
+        case length, vol, size, quality
         case likeNumber = "like_number"
         case collectionNumber = "collection_number"
         case views
@@ -194,9 +201,10 @@ struct ArticleDetail: Decodable, Identifiable {
         previewVideo = try c.decodeIfPresent(String.self, forKey: .previewVideo)
         videos = try c.decodeIfPresent([ArticleVideoItem].self, forKey: .videos)
         multiplePic = try c.decodeIfPresent([String].self, forKey: .multiplePic)
-        coin = try c.decodeIfPresent(String.self, forKey: .coin)
-        originalCoin = try c.decodeIfPresent(String.self, forKey: .originalCoin)
-        length = try c.decodeIfPresent(String.self, forKey: .length)
+        coin = JSONFlex.int(c, .coin)
+        originalCoin = JSONFlex.int(c, .originalCoin)
+        length = JSONFlex.string(c, .length)
+        vol = JSONFlex.int(c, .vol)
         size = try c.decodeIfPresent(String.self, forKey: .size)
         quality = try c.decodeIfPresent(String.self, forKey: .quality)
         likeNumber = JSONFlex.int(c, .likeNumber)

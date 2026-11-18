@@ -40,8 +40,8 @@ private struct DetailPriceNumberRow: View {
 
     var body: some View {
         let number = ArticleFormat.nonEmpty(detail.number)
-        let current = ArticleFormat.nonEmpty(detail.coin)
-        let original = ArticleFormat.nonEmpty(detail.originalCoin)
+        let current = detail.coin
+        let original = detail.originalCoin
         let showsPrice = current != nil || original != nil
 
         if number != nil || showsPrice {

@@ -70,9 +70,9 @@ enum ContentCategory: String, CaseIterable, Identifiable, Hashable {
 
     var isSeries: Bool { seriesCategory > 0 }
 
-    /// 该频道列表封面比例（图文竖图，其余横图）。
+    /// 库列表等未专用 Row 时的封面比例（图文 4:3，其余 16:9）。
     var coverAspect: CGFloat {
-        self == .graphic ? CoverAspect.portrait : CoverAspect.landscape
+        self == .graphic ? CoverAspect.fourThree : CoverAspect.landscape
     }
 
     /// 文章类发现接口的 `model_id`；系列频道为 `nil`。

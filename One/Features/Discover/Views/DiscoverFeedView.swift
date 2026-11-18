@@ -56,14 +56,18 @@ struct DiscoverFeedView: View {
             List {
                 ForEach(sections) { section in
                     Section {
-                        ForEach(section.articles) { article in
-                            articleRow(article)
-                                .hiddenNavigationLink(value: article)
-                                .styledListRow()
-                                .onAppear {
-                                    guard sections.isTailArticle(article, in: section) else { return }
-                                    Task { await session.loadMoreArticles(channel: channel) }
-                                }
+                        if channel == .graphic {
+                            graphicRows(section)
+                        } else {
+                            ForEach(section.articles) { article in
+                                articleRow(article)
+                                    .hiddenNavigationLink(value: article)
+                                    .styledListRow()
+                                    .onAppear {
+                                        guard sections.isTailArticle(article, in: section) else { return }
+                                        Task { await session.loadMoreArticles(channel: channel) }
+                                    }
+                            }
                         }
                     } header: {
                         ArticleMonthSectionHeader(monthAPIString: section.month)
@@ -89,11 +93,39 @@ struct DiscoverFeedView: View {
         }
     }
 
+    /// 图文两列：每行两个 `GraphicArticleRow`。
+    private func graphicRows(_ section: ArticleMonthSection) -> some View {
+        let rows = section.articles.chunked(into: 2)
+        return ForEach(rows, id: \.rowID) { row in
+            HStack(alignment: .top, spacing: 10) {
+                ForEach(row) { article in
+                    GraphicArticleRow(article: article)
+                        .hiddenNavigationLink(value: article)
+                        .frame(maxWidth: .infinity, alignment: .top)
+                        .onAppear {
+                            guard sections.isTailArticle(article, in: section) else { return }
+                            Task { await session.loadMoreArticles(channel: channel) }
+                        }
+                }
+                if row.count == 1 {
+                    Color.clear
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .styledListRow()
+        }
+    }
+
     @ViewBuilder
     private func articleRow(_ article: ArticleSummary) -> some View {
-        if channel == .film {
+        switch channel {
+        case .film:
             FilmArticleRow(article: article)
-        } else {
+        case .reading:
+            ReadingArticleRow(article: article)
+        case .radio:
+            RadioArticleRow(article: article)
+        default:
             VodArticleRow(article: article, aspectRatio: channel.coverAspect)
         }
     }
