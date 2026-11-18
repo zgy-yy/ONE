@@ -69,7 +69,9 @@ struct MyFavoritesView: View {
             author: item.author ?? item.contentType,
             imagePath: item.imagePath,
             subtitle: item.collectTime,
-            coverAspectRatio: CoverAspect.ratio(modelID: item.modelID)
+            coverAspectRatio: item.modelID == ContentCategory.ModelID.graphic
+                ? CoverAspect.portrait
+                : CoverAspect.landscape
         )
         .libraryNavigation(
             isSeries: item.isSeries,

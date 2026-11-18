@@ -94,7 +94,7 @@ struct DiscoverFeedView: View {
         if channel == .film {
             FilmArticleRow(article: article)
         } else {
-            VodArticleRow(article: article, fallbackModelID: channel.articleModelID)
+            VodArticleRow(article: article, aspectRatio: channel.coverAspect)
         }
     }
 

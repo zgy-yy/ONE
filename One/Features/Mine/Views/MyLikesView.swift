@@ -35,7 +35,9 @@ struct MyLikesView: View {
             author: item.author,
             imagePath: item.imagePath,
             subtitle: item.publishedAt,
-            coverAspectRatio: CoverAspect.ratio(modelID: item.modelID)
+            coverAspectRatio: item.modelID == ContentCategory.ModelID.graphic
+                ? CoverAspect.portrait
+                : CoverAspect.landscape
         )
         .hiddenNavigationLink(value: item.asArticleSummary)
         .styledListRow()

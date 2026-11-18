@@ -279,7 +279,7 @@ struct ActorDetailView: View {
     }
 
     private func articleCard(_ article: ArticleSummary) -> some View {
-        OneCoverImage(path: article.thumb, aspectRatio: article.coverAspectRatio())
+        OneCoverImage(path: article.thumb, aspectRatio: CoverAspect.landscape)
             .overlay(alignment: .bottom) {
                 Text(article.displayTitle)
                     .font(.caption.weight(.medium))

@@ -36,11 +36,6 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
         return "ID \(id)"
     }
 
-    /// 图文竖图 3:4，其余 16:9；列表未回传 `model_id` 时用 `fallbackModelID`。
-    func coverAspectRatio(fallbackModelID: Int? = nil) -> CGFloat {
-        CoverAspect.ratio(modelID: modelID, fallback: fallbackModelID)
-    }
-
     init(
         id: Int,
         title: String?,

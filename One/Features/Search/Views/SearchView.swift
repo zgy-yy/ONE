@@ -53,10 +53,7 @@ struct SearchView: View {
             title: item.displayTitle,
             author: item.subtitle,
             imagePath: item.imagePath,
-            coverAspectRatio: CoverAspect.ratio(
-                modelID: item.modelID,
-                fallback: session.category.modelID
-            )
+            coverAspectRatio: session.category.coverAspect
         )
         .libraryNavigation(
             isSeries: session.category.isSeries || item.opensAsSeries,

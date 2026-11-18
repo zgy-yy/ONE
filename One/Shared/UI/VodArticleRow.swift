@@ -3,10 +3,9 @@ import SwiftUI
 /// 点播风列表行（发现非影视频道、首页日更也复用）：封面 + 衬底一体卡片。
 ///
 /// 标题叠在封面底；下方金额 / 喜欢 / 时长。
-/// `fallbackModelID`：列表没回传 `model_id` 时，用频道已知类型决定竖图 / 横图。
 struct VodArticleRow: View {
     let article: ArticleSummary
-    var fallbackModelID: Int? = nil
+    var aspectRatio: CGFloat = CoverAspect.landscape
     var showsAuthor: Bool = false
 
     private let cornerRadius: CGFloat = 12
@@ -24,7 +23,7 @@ struct VodArticleRow: View {
     private var cover: some View {
         OneCoverImage(
             path: article.thumb,
-            aspectRatio: article.coverAspectRatio(fallbackModelID: fallbackModelID),
+            aspectRatio: aspectRatio,
             cornerRadius: 0
         )
         .overlay(alignment: .bottom) {

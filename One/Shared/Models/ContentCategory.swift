@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 /// App 公用内容分类（对齐接口 `model_id` / `series_category`）。
@@ -68,6 +69,11 @@ enum ContentCategory: String, CaseIterable, Identifiable, Hashable {
     }
 
     var isSeries: Bool { seriesCategory > 0 }
+
+    /// 该频道列表封面比例（图文竖图，其余横图）。
+    var coverAspect: CGFloat {
+        self == .graphic ? CoverAspect.portrait : CoverAspect.landscape
+    }
 
     /// 文章类发现接口的 `model_id`；系列频道为 `nil`。
     var articleModelID: Int? {
