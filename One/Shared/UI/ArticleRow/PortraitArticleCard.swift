@@ -31,6 +31,9 @@ struct PortraitArticleCard: View {
             if let author = article.author?.nonEmpty {
                 line(author, font: ArticleRowTypography.metaSmall, color: .secondary, limit: 1)
             }
+            ArticleCollectLikeMeta(article: article)
+                .font(ArticleRowTypography.metaSmall)
+                .frame(maxWidth: .infinity, alignment: frameAlignment)
             if showsDate {
                 ArticleDateText(publishedAt: article.publishedAt, font: ArticleRowTypography.metaSmall)
                     .frame(maxWidth: .infinity, alignment: frameAlignment)

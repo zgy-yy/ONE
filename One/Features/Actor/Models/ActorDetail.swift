@@ -18,7 +18,10 @@ struct ActorDetail: Decodable, Identifiable {
     let articleNum: Int?
     let photoNum: Int?
     let commentNum: Int?
+    /// 仅 `0` / `1`：是否已收藏。
     let isCollected: Int?
+
+    var hasCollected: Bool { isCollected == 1 }
 
     var displayName: String {
         mainName?.nonEmpty ?? "演员 \(id)"

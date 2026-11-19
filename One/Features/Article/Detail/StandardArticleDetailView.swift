@@ -17,12 +17,12 @@ struct StandardArticleDetailView: View {
                 ArticleDetailBodyView(
                     detail: session.detail,
                     summary: article,
+                    style: style,
                     canPlay: style.showsPlay && session.playURL != nil,
-                    showsPreview: style.showsPreview,
-                    showsTags: style.showsTags,
-                    showsDownloadCount: style.showsDownloadCount,
                     onPlay: playAction,
-                    onCommentsTap: { showsComments = true }
+                    onCommentsTap: { showsComments = true },
+                    onCollect: { Task { await session.toggleCollect() } },
+                    onLike: { Task { await session.toggleLike() } }
                 )
                 .padding(.horizontal)
                 .padding(.vertical, 16)

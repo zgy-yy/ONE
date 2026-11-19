@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 系列章节行（系列详情 / 首页写真漫画条目）。
+/// 系列详情里的章节行（只负责展示，跳转由外层 `NavigationLink` 处理）。
 struct SeriesChapterRow: View {
     let chapter: SeriesChapter
     var showsDate: Bool = true

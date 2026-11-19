@@ -53,10 +53,7 @@ struct VodArticleRow: View {
         HStack(spacing: 14) {
             priceBlock
             Spacer(minLength: 0)
-            Image(systemName: "bookmark")
-            if let likes = article.likeNumber {
-                MetaIconText.likes(likes)
-            }
+            ArticleCollectLikeMeta(article: article)
             if showsDate, let date = ArticleFormat.dateOnly(from: article.publishedAt) {
                 Text(date).foregroundStyle(.secondary)
             }

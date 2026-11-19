@@ -68,18 +68,53 @@ extension OneClient {
         return payload
     }
 
+    /// 业务详情：与其它接口相同，使用用户 / 游客 token（含 `is_like` / `is_collected`）。
     static func articleDetail(articleID: Int) async throws -> ArticleDetail {
         let envelope = try await post(
             OneApiEnvelope<ArticleDetail>.self,
             path: OneAPI.detailPath,
+            data: ["id": String(articleID)]
+        )
+        guard let article = try unwrap(envelope) else {
+            throw OneClientError.apiRejected("详情为空")
+        }
+        return article
+    }
+
+    /// 播放地址详情：固定 `token_one`，并带 `dn`。
+    static func articleDetailForPlay(articleID: Int) async throws -> ArticleDetail {
+        let envelope = try await post(
+            OneApiEnvelope<ArticleDetail>.self,
+            path: OneAPI.detailPath,
+            tokenPath: OneAPI.detailPlayTokenPath,
             data: [
                 "id": String(articleID),
                 "dn": ArticlePlayURL.detailVideoDN,
             ]
         )
         guard let article = try unwrap(envelope) else {
-            throw OneClientError.apiRejected("详情为空")
+            throw OneClientError.apiRejected("播放详情为空")
         }
         return article
+    }
+
+    /// 切换喜欢（body：`id`）。
+    static func articleLike(articleID: Int) async throws {
+        let envelope = try await post(
+            OneApiEnvelope<IgnoredJSON?>.self,
+            path: OneAPI.articleLikePath,
+            data: ["id": String(articleID)]
+        )
+        _ = try unwrap(envelope)
+    }
+
+    /// 切换收藏（body：`id`）。
+    static func articleCollect(articleID: Int) async throws {
+        let envelope = try await post(
+            OneApiEnvelope<IgnoredJSON?>.self,
+            path: OneAPI.articleCollectPath,
+            data: ["id": String(articleID)]
+        )
+        _ = try unwrap(envelope)
     }
 }

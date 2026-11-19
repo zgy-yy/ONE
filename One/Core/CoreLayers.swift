@@ -3,22 +3,26 @@
 
  App/            入口（OneApp、ContentView）
  Features/       按业务分文件夹（Home / Discover / Article …）
-   Views         界面
-   Session       @Observable 状态与请求编排
-   Models        仅本 Feature 用的模型
- Shared/         多 Feature 共用（UI、导航、图片、评论模型…）
+   Detail/Views  界面
+   Session       @Observable：拉数、编排、把结果交给 View
+ Shared/         多 Feature 共用
+   UI/           Row、导航、通用控件
+   Models/       评论、反应状态（ArticleReactionStore）等
  Core/
    Network/      HTTP 传输
    Tokens/       启动壳：选线、JWT、CDN
    One/
-     Client/     OneClient（传输）+ 业务 API 文件（ArticleAPI / UserAPI …）
-     Models/     接口模型（一文一类型，便于查找）
+     Client/     OneClient + ArticleAPI / UserAPI …
+     Models/     接口模型（一文一文件）
      Crypto/     签名与加解密
 
- 调用链（记住这一条即可）：
-   View → Feature Session → OneClient / TokensClient → HTTPClient
+ 调用链（记住这一条）：
+   View → Feature Session → OneClient → HTTPClient
 
- 不要：在 View 里拼 URL、写加解密、直接依赖其它 Feature 的私有模型。
+ 喜欢 / 收藏：
+   View（详情或 Row）→ ArticleReactionStore → OneClient.articleLike/Collect
+
+ 不要：在 View 里拼 URL、写加解密、直接依赖其它 Feature 的私有类型。
  */
 
 import Foundation

@@ -1,10 +1,13 @@
 import SwiftUI
 
-/// 详情「精彩预览」：定宽分页横滑；标题行右侧为图片数量，再右侧为可点评论入口。
+/// 详情「精彩预览」：定宽分页横滑。
+/// 点播标题行：左日期 / 中「精彩预览」 / 右评论。
 struct ArticleMultiplePicGallery: View {
     let paths: [String]
     var commentCount: Int? = nil
     var onCommentsTap: (() -> Void)? = nil
+    /// 放在标题行左侧的日期文案（点播）。
+    var headerDate: String? = nil
 
     @State private var pageID: Int?
 
@@ -40,36 +43,55 @@ struct ArticleMultiplePicGallery: View {
     }
 
     private var headerRow: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 8) {
+            leftHeader
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            centerHeader
+
+            rightHeader
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+    }
+
+    @ViewBuilder
+    private var leftHeader: some View {
+        if let headerDate {
+            ArticleDetailIconLabel(systemImage: "calendar", text: headerDate)
+        }
+    }
+
+    private var centerHeader: some View {
+        HStack(spacing: 8) {
             Text("精彩预览")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
 
             if !paths.isEmpty {
-                // 当前页 / 总数，例如 3 / 12
                 Text("\(currentPage + 1) / \(paths.count)")
                     .font(.subheadline.monospacedDigit().weight(.medium))
                     .foregroundStyle(.secondary)
                     .accessibilityLabel("第 \(currentPage + 1) 张，共 \(paths.count) 张")
             }
+        }
+    }
 
-            Spacer(minLength: 8)
-
-            if let onCommentsTap {
-                Button(action: onCommentsTap) {
-                    HStack(spacing: 5) {
-                        Image(systemName: "bubble.left.and.bubble.right")
-                        Text("评论")
-                        Text(ArticleFormat.shortCount(commentCount ?? 0))
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
-                    }
-                    .font(.subheadline.weight(.medium))
+    @ViewBuilder
+    private var rightHeader: some View {
+        if let onCommentsTap {
+            Button(action: onCommentsTap) {
+                HStack(spacing: 5) {
+                    Image(systemName: "bubble.left.and.bubble.right")
+                    Text("评论")
+                    Text(ArticleFormat.shortCount(commentCount ?? 0))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(.primary)
-                .accessibilityLabel("评论 \(commentCount ?? 0)")
+                .font(.subheadline.weight(.medium))
             }
+            .buttonStyle(.plain)
+            .foregroundStyle(.primary)
+            .accessibilityLabel("评论 \(commentCount ?? 0)")
         }
     }
 

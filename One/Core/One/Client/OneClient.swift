@@ -27,13 +27,17 @@ enum OneClient {
     }
 
     /// 统一 POST：自动带 token / 签名 / 加密。
+    /// - Parameters:
+    ///   - path: 真实请求路径
+    ///   - tokenPath: 选 token 用的路径；默认与 `path` 相同（播放地址可传 `detailPlayTokenPath`）
     static func post<T: Decodable>(
         _ type: T.Type,
         path: String,
+        tokenPath: String? = nil,
         data: [String: String]? = nil
     ) async throws -> T {
         let creds = try await MainActor.run {
-            try OneCredentials.requirePair(tokenPath: path)
+            try OneCredentials.requirePair(tokenPath: tokenPath ?? path)
         }
         let url = APIURL.join(base: creds.base.absoluteString, path: path)
         let userKey = (path == OneAPI.sendSMSPath || path == OneAPI.userLoginPath)

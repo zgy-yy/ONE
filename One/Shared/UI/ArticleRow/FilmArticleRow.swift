@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 发现「影视」：左 16:9 封面，右标题 / 收藏·喜欢 / 日期。
+/// 发现「影视」：左 16:9 封面，右标题 / 作者 / 收藏·喜欢 / 日期。
 struct FilmArticleRow: View {
     let article: ArticleSummary
     var showsDate: Bool = true
@@ -25,21 +25,22 @@ struct FilmArticleRow: View {
                     .layoutPriority(1)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
 
+                if let author = article.author?.nonEmpty {
+                    Text(author)
+                        .font(ArticleRowTypography.summary)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
                 Spacer(minLength: 0)
 
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 14) {
-                        Image(systemName: "bookmark")
-                        if let likes = article.likeNumber {
-                            MetaIconText.likes(likes)
-                        }
-                    }
+                    ArticleCollectLikeMeta(article: article)
                     if showsDate {
                         ArticleDateText(publishedAt: article.publishedAt)
                     }
                 }
                 .font(ArticleRowTypography.meta)
-                .foregroundStyle(.secondary)
             }
             .matchCoverHeight(width: coverWidth)
         }

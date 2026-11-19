@@ -28,14 +28,21 @@ struct ArticleDetail: Decodable, Identifiable {
     let vol: Int?
     let size: String?
     let quality: String?
-    let likeNumber: Int?
-    let collectionNumber: Int?
+    var likeNumber: Int?
+    var collectionNumber: Int?
     let views: Int?
     let downloadCount: Int?
     let shareNumber: Int?
     /// 评论数：主字段 `reply_counts`，兼容若干旧名。
     let commentNumber: Int?
+    /// 仅 `0` / `1`：是否已喜欢（可本地切换）。
+    var isLike: Int?
+    /// 仅 `0` / `1`：是否已收藏（可本地切换）。
+    var isCollected: Int?
     let tagList: [ArticleDetailTag]?
+
+    var isLiked: Bool { isLike == 1 }
+    var hasCollected: Bool { isCollected == 1 }
 
     var displayTitle: String {
         if let title, !title.isEmpty { return title }
@@ -83,6 +90,8 @@ struct ArticleDetail: Decodable, Identifiable {
         case commentNumber = "comment_number"
         case commentNum = "comment_num"
         case commentCount = "comment_count"
+        case isLike = "is_like"
+        case isCollected = "is_collected"
         case tagList = "tag_list"
     }
 
@@ -116,6 +125,8 @@ struct ArticleDetail: Decodable, Identifiable {
         views = JSONFlex.int(c, .views)
         downloadCount = JSONFlex.int(c, .downloadCount)
         shareNumber = JSONFlex.int(c, .shareNumber)
+        isLike = JSONFlex.int(c, .isLike)
+        isCollected = JSONFlex.int(c, .isCollected)
         tagList = try c.decodeIfPresent([ArticleDetailTag].self, forKey: .tagList)
         commentNumber =
             JSONFlex.int(c, .replyCounts)

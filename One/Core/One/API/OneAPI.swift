@@ -9,6 +9,10 @@ nonisolated enum OneAPI {
     static let articleHotWordsPath = "article/getHotWords"
     static let articleDayPath = "article/day"
     static let detailPath = "article/detail"
+    /// 仅用于选 token：拉播放地址时固定 `token_one`（实际请求路径仍是 `detailPath`）。
+    static let detailPlayTokenPath = "article/detail#play"
+    static let articleLikePath = "article/like"
+    static let articleCollectPath = "article/collect"
     static let actorMainNavigationsPath = "actor/getMainNavigations"
     static let actorMainNavigationActorsPath = "actor/getMainNavigationActors"
     static let actorNewActorsPath = "actor/getNewActors"

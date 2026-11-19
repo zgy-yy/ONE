@@ -1,37 +1,69 @@
 import Foundation
 
-/// 标准文章详情的展示配置（阅读 / 写真漫画 / 电台 / 点播影视）。
+/// 标准文章详情的展示配置（按内容类型预设，初学者改 UI 只动这里）。
 struct ArticleDetailStyle: Hashable {
     var placeholderAspect: CGFloat
     var showsPlay: Bool
     var showsPreview: Bool
     var showsTags: Bool
     var showsDownloadCount: Bool
+    /// 日期放在「发行」右侧（影视 / 电台）。
+    var dateBesidePublisher: Bool
+    /// 演员靠左、发行靠右（点播）。
+    var castSpreadEdges: Bool
+    /// 日期放在「精彩预览」标题左侧（点播）。
+    var dateInPreviewHeader: Bool
 
-    /// 阅读：方图占位；无播放 / 预览 / 下载数。
+    /// 阅读。
     static let reading = ArticleDetailStyle(
-        placeholderAspect: CoverAspect.square,
-        showsPlay: false,
-        showsPreview: false,
-        showsTags: true,
-        showsDownloadCount: false
+        aspect: CoverAspect.square,
+        play: false,
+        preview: false,
+        download: false
     )
 
-    /// 写真 / 漫画章节、电台：无播放 / 预览。
-    static let content = ArticleDetailStyle(
-        placeholderAspect: CoverAspect.landscape,
-        showsPlay: false,
-        showsPreview: false,
-        showsTags: true,
-        showsDownloadCount: true
+    /// 写真 / 漫画章节。
+    static let content = ArticleDetailStyle(play: false, preview: false)
+
+    /// 电台：日期在发行右侧。
+    static let radio = ArticleDetailStyle(
+        play: false,
+        preview: false,
+        dateBesidePublisher: true
     )
 
-    /// 点播 / 影视：完整播放与预览。
+    /// 影视：可播、无预览、日期在发行右侧。
+    static let film = ArticleDetailStyle(
+        play: true,
+        preview: false,
+        dateBesidePublisher: true
+    )
+
+    /// 点播：可播 + 预览；演员/发行分两侧；日期在预览标题左。
     static let media = ArticleDetailStyle(
-        placeholderAspect: CoverAspect.landscape,
-        showsPlay: true,
-        showsPreview: true,
-        showsTags: true,
-        showsDownloadCount: true
+        play: true,
+        preview: true,
+        castSpreadEdges: true,
+        dateInPreviewHeader: true
     )
+
+    private init(
+        aspect: CGFloat = CoverAspect.landscape,
+        play: Bool,
+        preview: Bool,
+        tags: Bool = true,
+        download: Bool = true,
+        dateBesidePublisher: Bool = false,
+        castSpreadEdges: Bool = false,
+        dateInPreviewHeader: Bool = false
+    ) {
+        self.placeholderAspect = aspect
+        self.showsPlay = play
+        self.showsPreview = preview
+        self.showsTags = tags
+        self.showsDownloadCount = download
+        self.dateBesidePublisher = dateBesidePublisher
+        self.castSpreadEdges = castSpreadEdges
+        self.dateInPreviewHeader = dateInPreviewHeader
+    }
 }

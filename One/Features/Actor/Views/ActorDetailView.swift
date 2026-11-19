@@ -89,6 +89,17 @@ struct ActorDetailView: View {
                 ForEach(nameRows, id: \.label) { row in
                     nameRow(icon: row.icon, label: row.label, value: row.value)
                 }
+                if let detail = session.detail {
+                    HStack(spacing: 6) {
+                        Image(systemName: detail.hasCollected ? "bookmark.fill" : "bookmark")
+                            .symbolRenderingMode(.monochrome)
+                            .foregroundStyle(detail.hasCollected ? Color.orange : Color.secondary)
+                        Text(detail.hasCollected ? "已收藏" : "未收藏")
+                            .font(.subheadline)
+                            .foregroundStyle(detail.hasCollected ? Color.primary : Color.secondary)
+                    }
+                    .padding(.top, 2)
+                }
                 infoLines
             }
         }

@@ -24,7 +24,8 @@ enum ArticleRowForModel {
         case ContentCategory.ModelID.vod:
             VodArticleRow(article: article, showsDate: showsDate)
         case ContentCategory.ModelID.series:
-            SeriesChapterRow(chapter: article.asSeriesChapter, showsDate: showsDate)
+            // 首页日更里写真 / 漫画是单篇，不用系列章节行。
+            ReadingArticleRow(article: article, showsDate: showsDate)
         default:
             VodArticleRow(article: article, showsDate: showsDate)
         }

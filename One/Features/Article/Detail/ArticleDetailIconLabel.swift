@@ -6,21 +6,26 @@ struct ArticleDetailIconLabel: View {
     let systemImage: String
     let text: String
     var emphasized = false
+    /// 已喜欢 / 已收藏：图标用实心 + 橙色。
+    var active = false
 
     var body: some View {
         HStack(spacing: 5) {
             Image(systemName: systemImage)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.tertiary)
-                .frame(width: 14)
+                .font(.body.weight(.semibold))
+                .symbolRenderingMode(.monochrome)
+                .foregroundStyle(active ? Color.orange : Color.secondary)
+                .frame(width: 18, alignment: .center)
+
             if let prefix {
                 Text(prefix)
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
+
             Text(text)
                 .font(emphasized ? .subheadline.weight(.medium) : .subheadline)
-                .foregroundStyle(emphasized ? .primary : .secondary)
+                .foregroundStyle(emphasized ? Color.primary : Color.secondary)
                 .lineLimit(2)
         }
     }

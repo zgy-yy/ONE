@@ -30,14 +30,13 @@ struct ReadingArticleRow: View {
 
                 HStack(spacing: 8) {
                     if let author = article.author?.nonEmpty {
-                        Text(author).lineLimit(1)
+                        Text(author)
+                            .lineLimit(1)
+                            .foregroundStyle(.secondary)
                     }
-                    if let likes = article.likeNumber {
-                        MetaIconText.likes(likes)
-                    }
+                    ArticleCollectLikeMeta(article: article)
                 }
                 .font(ArticleRowTypography.meta)
-                .foregroundStyle(.secondary)
 
                 if showsDate {
                     ArticleDateText(publishedAt: article.publishedAt)

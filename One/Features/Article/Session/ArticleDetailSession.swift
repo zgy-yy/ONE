@@ -1,17 +1,18 @@
 import Foundation
 import Observation
 
-/// 文章详情 Session：拉详情、拼播放地址、管评论分页。
+/// 文章详情 Session：业务详情 + 播放地址 + 评论 + 喜欢/收藏。
+///
+/// 喜欢/收藏走 `ArticleReactionStore`，与列表 Row 共享状态。
 @MainActor
 @Observable
 final class ArticleDetailSession {
     private(set) var detail: ArticleDetail?
     private(set) var playURL: URL?
-    /// 页底展示用：全部拼接地址（已去重）。
     private(set) var playURLEntries: [ArticlePlayURL.Entry] = []
     private(set) var isLoading = false
     private(set) var error: String?
-
+    private(set) var isReacting = false
     private(set) var comments = PagedListState<CommentItem>(pageSize: 10)
 
     var commentSort: CommentSort = .createdAt {
@@ -22,6 +23,7 @@ final class ArticleDetailSession {
     }
 
     private var loadedArticleID: Int?
+    private var reactions: ArticleReactionStore { .shared }
 
     func load(articleID: Int) async {
         if loadedArticleID != articleID {
@@ -30,7 +32,7 @@ final class ArticleDetailSession {
             loadedArticleID = articleID
         }
 
-        // 同篇已成功加载则跳过（从播放页返回不重复刷）。
+        // 同篇已成功则跳过（从播放页返回不重复刷）。
         if detail?.id == articleID, error == nil { return }
         guard !isLoading else { return }
 
@@ -42,18 +44,21 @@ final class ArticleDetailSession {
         defer { isLoading = false }
 
         do {
-            let article = try await OneClient.articleDetail(articleID: articleID)
-            let entries = ArticlePlayURL.allEntries(
-                detail: article,
-                apiBase: OneSession.shared.baseURL
-            )
+            // 业务详情（用户 token）与播放详情（token_one + dn）并行。
+            async let business = OneClient.articleDetail(articleID: articleID)
+            async let play = OneClient.articleDetailForPlay(articleID: articleID)
+
+            var article = try await business
+            reactions.merge(into: &article)
             detail = article
-            playURLEntries = entries
-            playURL = entries.first.flatMap { URL(string: $0.url) }
+            applyPlayURLs(from: (try? await play) ?? article)
         } catch {
             self.error = error.localizedDescription
         }
     }
+
+    func toggleLike() async { await toggleReaction(.like) }
+    func toggleCollect() async { await toggleReaction(.collect) }
 
     func loadComments(force: Bool = false) async {
         guard let articleID = loadedArticleID ?? detail?.id else { return }
@@ -95,6 +100,25 @@ final class ArticleDetailSession {
             type: CommentTargetType.article,
             parent: comment
         )
+    }
+
+    private func toggleReaction(_ kind: ArticleReactionStore.Kind) async {
+        guard var article = detail, !isReacting else { return }
+        isReacting = true
+        defer { isReacting = false }
+
+        await reactions.toggle(kind, articleID: article.id, seed: .init(article))
+        reactions.apply(to: &article)
+        detail = article
+    }
+
+    private func applyPlayURLs(from article: ArticleDetail) {
+        let entries = ArticlePlayURL.allEntries(
+            detail: article,
+            apiBase: OneSession.shared.baseURL
+        )
+        playURLEntries = entries
+        playURL = entries.first.flatMap { URL(string: $0.url) }
     }
 
     private func fetchComments(articleID: Int, page: Int) async throws -> [CommentItem] {

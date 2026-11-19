@@ -1,34 +1,24 @@
 import SwiftUI
 
-/// 详情可滚动正文（元信息 → 可选预览/标签 → 正文）。
+/// 详情可滚动正文：元信息 → 预览/评论 → 标签 → HTML。
 struct ArticleDetailBodyView: View {
     let detail: ArticleDetail?
     let summary: ArticleSummary
+    var style: ArticleDetailStyle = .media
     var canPlay: Bool = false
-    var showsPreview: Bool = true
-    var showsTags: Bool = true
-    var showsDownloadCount: Bool = true
     var onPlay: (() -> Void)?
     var onCommentsTap: (() -> Void)?
+    var onCollect: (() -> Void)?
+    var onLike: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             metaSection
 
             if let detail {
-                if showsPreview {
-                    if !detail.galleryPaths.isEmpty || onCommentsTap != nil {
-                        ArticleMultiplePicGallery(
-                            paths: detail.galleryPaths,
-                            commentCount: detail.commentNumber,
-                            onCommentsTap: onCommentsTap
-                        )
-                    }
-                } else if let onCommentsTap {
-                    commentsEntry(count: detail.commentNumber, action: onCommentsTap)
-                }
+                previewOrComments(detail)
 
-                if showsTags, !detail.displayTags.isEmpty {
+                if style.showsTags, !detail.displayTags.isEmpty {
                     ArticleDetailTagList(tags: detail.displayTags)
                 }
 
@@ -45,9 +35,11 @@ struct ArticleDetailBodyView: View {
         if let detail {
             ArticleDetailMetaSection(
                 detail: detail,
+                style: style,
                 canPlay: canPlay,
-                showsDownloadCount: showsDownloadCount,
-                onPlay: onPlay
+                onPlay: onPlay,
+                onCollect: onCollect,
+                onLike: onLike
             )
         } else {
             VStack(alignment: .leading, spacing: 6) {
@@ -67,20 +59,34 @@ struct ArticleDetailBodyView: View {
         }
     }
 
-    private func commentsEntry(count: Int?, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 5) {
-                Image(systemName: "bubble.left.and.bubble.right")
-                Text("评论")
-                Text(ArticleFormat.shortCount(count ?? 0))
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-                Spacer(minLength: 0)
+    @ViewBuilder
+    private func previewOrComments(_ detail: ArticleDetail) -> some View {
+        if style.showsPreview {
+            if !detail.galleryPaths.isEmpty || onCommentsTap != nil {
+                ArticleMultiplePicGallery(
+                    paths: detail.galleryPaths,
+                    commentCount: detail.commentNumber,
+                    onCommentsTap: onCommentsTap,
+                    headerDate: style.dateInPreviewHeader
+                        ? ArticleFormat.dateOnly(from: detail.publishedAt)
+                        : nil
+                )
             }
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(.primary)
+        } else if let onCommentsTap {
+            Button(action: onCommentsTap) {
+                HStack(spacing: 5) {
+                    Image(systemName: "bubble.left.and.bubble.right")
+                    Text("评论")
+                    Text(ArticleFormat.shortCount(detail.commentNumber ?? 0))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
+                }
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.primary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("评论 \(detail.commentNumber ?? 0)")
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("评论 \(count ?? 0)")
     }
 }

@@ -51,6 +51,43 @@ struct GraphicArticleDetailView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
+
+            collectLikeRow(detail: detail)
         }
+    }
+
+    @ViewBuilder
+    private func collectLikeRow(detail: ArticleDetail?) -> some View {
+        let collected = detail?.hasCollected ?? article.hasCollected
+        let liked = detail?.isLiked ?? article.isLiked
+        let collectCount = detail?.collectionNumber ?? article.collectionNumber
+        let likeCount = detail?.likeNumber ?? article.likeNumber
+
+        HStack(spacing: 20) {
+            Button {
+                Task { await session.toggleCollect() }
+            } label: {
+                ArticleDetailIconLabel(
+                    systemImage: collected ? "bookmark.fill" : "bookmark",
+                    text: ArticleFormat.shortCount(collectCount ?? 0),
+                    active: collected
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(session.detail == nil || session.isReacting)
+
+            Button {
+                Task { await session.toggleLike() }
+            } label: {
+                ArticleDetailIconLabel(
+                    systemImage: liked ? "heart.fill" : "heart",
+                    text: ArticleFormat.shortCount(likeCount ?? 0),
+                    active: liked
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(session.detail == nil || session.isReacting)
+        }
+        .padding(.top, 4)
     }
 }

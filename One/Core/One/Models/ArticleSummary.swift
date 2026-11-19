@@ -17,10 +17,18 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
     let coin: Int?
     let originalCoin: Int?
     let likeNumber: Int?
+    let collectionNumber: Int?
+    /// 仅 `0` / `1`：是否已喜欢。
+    let isLike: Int?
+    /// 仅 `0` / `1`：是否已收藏。
+    let isCollected: Int?
     /// 时长文案，如 `129分钟`。
     let length: String?
     /// 分卷 / 集数（接口 `vol`）。
     let vol: Int?
+
+    var isLiked: Bool { isLike == 1 }
+    var hasCollected: Bool { isCollected == 1 }
 
     var displayTitle: String {
         if let title, !title.isEmpty { return title }
@@ -29,19 +37,6 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
 
     /// `model_id == 4` 时进系列详情（发现 / 搜索）；首页日更仍打开单篇。
     var opensAsSeries: Bool { modelID == ContentCategory.ModelID.series }
-
-    var asSeriesChapter: SeriesChapter {
-        SeriesChapter(
-            id: id,
-            title: title,
-            thumb: thumb,
-            thumbnail: thumbnail,
-            author: author,
-            description: summary,
-            publishedAt: publishedAt,
-            likeNumber: likeNumber
-        )
-    }
 
     var asSeriesSummary: SeriesSummary {
         SeriesSummary(
@@ -65,6 +60,9 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
         coin: Int? = nil,
         originalCoin: Int? = nil,
         likeNumber: Int? = nil,
+        collectionNumber: Int? = nil,
+        isLike: Int? = nil,
+        isCollected: Int? = nil,
         length: String? = nil,
         vol: Int? = nil,
         thumbnail: String? = nil,
@@ -84,6 +82,9 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
         self.coin = coin
         self.originalCoin = originalCoin
         self.likeNumber = likeNumber
+        self.collectionNumber = collectionNumber
+        self.isLike = isLike
+        self.isCollected = isCollected
         self.length = length
         self.vol = vol
     }
@@ -95,6 +96,9 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
         case summary = "description"
         case originalCoin = "original_coin"
         case likeNumber = "like_number"
+        case collectionNumber = "collection_number"
+        case isLike = "is_like"
+        case isCollected = "is_collected"
         case seriesCategory = "series_category"
         case seriesID = "series_id"
     }
@@ -114,6 +118,9 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
         coin = JSONFlex.int(c, .coin)
         originalCoin = JSONFlex.int(c, .originalCoin)
         likeNumber = JSONFlex.int(c, .likeNumber)
+        collectionNumber = JSONFlex.int(c, .collectionNumber)
+        isLike = JSONFlex.int(c, .isLike)
+        isCollected = JSONFlex.int(c, .isCollected)
         length = JSONFlex.string(c, .length)
         vol = JSONFlex.int(c, .vol)
     }

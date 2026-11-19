@@ -54,15 +54,11 @@ struct RadioArticleRow: View {
                 Text(author).lineLimit(1)
             }
             Spacer(minLength: 0)
-            Image(systemName: "bookmark")
-            if let likes = article.likeNumber {
-                MetaIconText.likes(likes)
-            }
+            ArticleCollectLikeMeta(article: article)
             if showsDate, let date = ArticleFormat.dateOnly(from: article.publishedAt) {
-                Text(date)
+                Text(date).foregroundStyle(.secondary)
             }
         }
         .font(ArticleRowTypography.meta)
-        .foregroundStyle(.secondary)
     }
 }

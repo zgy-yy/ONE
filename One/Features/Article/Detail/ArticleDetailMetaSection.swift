@@ -3,9 +3,11 @@ import SwiftUI
 /// 封面下方的固定元信息（片名、播放、价格、演职员、规格、统计）。
 struct ArticleDetailMetaSection: View {
     let detail: ArticleDetail
+    var style: ArticleDetailStyle = .media
     var canPlay: Bool = false
-    var showsDownloadCount: Bool = true
     var onPlay: (() -> Void)?
+    var onCollect: (() -> Void)?
+    var onLike: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -26,9 +28,19 @@ struct ArticleDetailMetaSection: View {
             }
 
             DetailPriceNumberRow(detail: detail)
-            DetailCastRow(detail: detail)
+            DetailCastRow(
+                detail: detail,
+                showsDate: style.dateBesidePublisher,
+                spreadEdges: style.castSpreadEdges
+            )
             DetailVideoSpecsRow(detail: detail)
-            DetailMetricsRow(detail: detail, showsDownloadCount: showsDownloadCount)
+            DetailMetricsRow(
+                detail: detail,
+                showsDownloadCount: style.showsDownloadCount,
+                showsDate: !style.dateBesidePublisher && !style.dateInPreviewHeader,
+                onCollect: onCollect,
+                onLike: onLike
+            )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -80,24 +92,34 @@ private struct DetailPriceNumberRow: View {
     }
 }
 
-// MARK: - 演员 + 发行
+// MARK: - 演员 + 发行（影视：日期在发行右；点播：演员/发行分两侧）
 
 private struct DetailCastRow: View {
     let detail: ArticleDetail
+    var showsDate = false
+    var spreadEdges = false
 
     var body: some View {
         let actor = ArticleFormat.nonEmpty(detail.actor)
         let author = ArticleFormat.nonEmpty(detail.author)
+        let date = showsDate ? ArticleFormat.dateOnly(from: detail.publishedAt) : nil
 
-        if actor != nil || author != nil {
+        if actor != nil || author != nil || date != nil {
             HStack(alignment: .center, spacing: 12) {
                 if let actor {
                     ArticleDetailIconLabel(prefix: "演员", systemImage: "person.fill", text: actor, emphasized: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .frame(maxWidth: spreadEdges ? .infinity : nil, alignment: .leading)
                 }
                 if let author {
                     ArticleDetailIconLabel(prefix: "发行", systemImage: "building.2.fill", text: author)
-                        .frame(maxWidth: .infinity, alignment: actor == nil ? .leading : .trailing)
+                        .frame(
+                            maxWidth: spreadEdges ? .infinity : nil,
+                            alignment: spreadEdges ? .trailing : .leading
+                        )
+                }
+                if let date {
+                    Spacer(minLength: 8)
+                    ArticleDetailIconLabel(systemImage: "calendar", text: date)
                 }
             }
         }
@@ -132,39 +154,67 @@ private struct DetailVideoSpecsRow: View {
     }
 }
 
-// MARK: - 日期 / 收藏 / 下载 / 分享
+// MARK: - 日期 / 收藏 / 喜欢 / 下载 / 分享
 
 private struct DetailMetricsRow: View {
     let detail: ArticleDetail
     var showsDownloadCount: Bool = true
-
-    private var items: [(icon: String, text: String)] {
-        var list: [(String, String)] = []
-        if let date = ArticleFormat.dateOnly(from: detail.publishedAt) {
-            list.append(("calendar", date))
-        }
-        if let n = detail.collectionNumber {
-            list.append(("heart", ArticleFormat.shortCount(n)))
-        }
-        if showsDownloadCount, let n = detail.downloadCount {
-            list.append(("arrow.down.circle", ArticleFormat.shortCount(n)))
-        }
-        if let n = detail.shareNumber {
-            list.append(("square.and.arrow.up", ArticleFormat.shortCount(n)))
-        }
-        return list
-    }
+    var showsDate: Bool = true
+    var onCollect: (() -> Void)?
+    var onLike: (() -> Void)?
 
     var body: some View {
-        if !items.isEmpty {
-            HStack(spacing: 20) {
-                ForEach(Array(items.enumerated()), id: \.offset) { _, item in
-                    ArticleDetailIconLabel(systemImage: item.icon, text: item.text)
-                        .monospacedDigit()
-                }
+        HStack(spacing: 20) {
+            if showsDate, let date = ArticleFormat.dateOnly(from: detail.publishedAt) {
+                ArticleDetailIconLabel(systemImage: "calendar", text: date)
             }
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
+
+            reactionButton(
+                systemImage: detail.hasCollected ? "bookmark.fill" : "bookmark",
+                text: ArticleFormat.shortCount(detail.collectionNumber ?? 0),
+                active: detail.hasCollected,
+                action: onCollect
+            )
+
+            reactionButton(
+                systemImage: detail.isLiked ? "heart.fill" : "heart",
+                text: ArticleFormat.shortCount(detail.likeNumber ?? 0),
+                active: detail.isLiked,
+                action: onLike
+            )
+
+            if showsDownloadCount, let n = detail.downloadCount {
+                ArticleDetailIconLabel(
+                    systemImage: "arrow.down.circle",
+                    text: ArticleFormat.shortCount(n)
+                )
+                .monospacedDigit()
+            }
+
+            if let n = detail.shareNumber {
+                ArticleDetailIconLabel(
+                    systemImage: "square.and.arrow.up",
+                    text: ArticleFormat.shortCount(n)
+                )
+                .monospacedDigit()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func reactionButton(
+        systemImage: String,
+        text: String,
+        active: Bool,
+        action: (() -> Void)?
+    ) -> some View {
+        let label = ArticleDetailIconLabel(systemImage: systemImage, text: text, active: active)
+            .monospacedDigit()
+        if let action {
+            Button(action: action) { label }
+                .buttonStyle(.plain)
+        } else {
+            label
         }
     }
 }
