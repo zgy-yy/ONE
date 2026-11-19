@@ -15,9 +15,9 @@ struct FilmArticleRow: View {
             )
             .frame(width: coverWidth)
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(article.displayTitle)
-                    .font(.body.weight(.semibold))
+                    .font(ArticleRowTypography.title)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
                     // 与 Spacer 抢高度时优先保两行，避免被压成一行。
@@ -30,17 +30,15 @@ struct FilmArticleRow: View {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 14) {
                         Image(systemName: "bookmark")
-                            .onTapGesture(perform: ArticleRowActions.favorite)
                         if let likes = article.likeNumber {
                             MetaIconText.likes(likes)
-                                .onTapGesture(perform: ArticleRowActions.like)
                         }
                     }
                     if showsDate {
-                        ArticleDateText(publishedAt: article.publishedAt, font: .subheadline)
+                        ArticleDateText(publishedAt: article.publishedAt)
                     }
                 }
-                .font(.subheadline)
+                .font(ArticleRowTypography.meta)
                 .foregroundStyle(.secondary)
             }
             .matchCoverHeight(width: coverWidth)

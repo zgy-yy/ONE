@@ -18,8 +18,8 @@
  Shared/           跨 Feature 复用（无业务 API）
    Models/         公用领域类型（ContentCategory、按月分页 MonthPagedFeed 等）
    Theme/          通用 UI 壳（loading、占满屏等）
-   HTML/           HTML 富文本 + 内嵌图/GIF 渲染
-   Image/          one_img 拉取与解密（OneRemoteImage）
+   HTML/           HTML 富文本 + 内嵌图渲染
+   Image/          one_img 拉取解密、GIF 解码播放
    Media/          点播音频会话等播放辅助
    Navigation/     主导航骨架
  */

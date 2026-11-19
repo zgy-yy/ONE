@@ -34,14 +34,13 @@ struct RadioArticleRow: View {
         .overlay(alignment: .bottom) {
             HStack(spacing: 10) {
                 Text(article.displayTitle)
-                    .font(.body.weight(.semibold))
+                    .font(ArticleRowTypography.title)
                     .foregroundStyle(.white)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Image(systemName: "play.circle.fill")
                     .font(.title2)
                     .foregroundStyle(.white)
-                    .onTapGesture(perform: ArticleRowActions.play)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
@@ -56,16 +55,14 @@ struct RadioArticleRow: View {
             }
             Spacer(minLength: 0)
             Image(systemName: "bookmark")
-                .onTapGesture(perform: ArticleRowActions.favorite)
             if let likes = article.likeNumber {
                 MetaIconText.likes(likes)
-                    .onTapGesture(perform: ArticleRowActions.like)
             }
             if showsDate, let date = ArticleFormat.dateOnly(from: article.publishedAt) {
                 Text(date)
             }
         }
-        .font(.subheadline)
+        .font(ArticleRowTypography.meta)
         .foregroundStyle(.secondary)
     }
 }

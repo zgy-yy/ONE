@@ -43,7 +43,7 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
         return "ID \(id)"
     }
 
-    /// 首页 / 列表里 `model_id == 4` 的写真、漫画。
+    /// 发现 / 搜索等：`model_id == 4` 的写真、漫画进系列详情；首页日更则直接打开单篇。
     var opensAsSeries: Bool { modelID == ContentCategory.ModelID.series }
 
     /// 转成系列章节行数据（与发现系列详情章节列表同一套 UI）。

@@ -33,11 +33,8 @@ struct HomeDayPage: View {
                         showsDate: false,
                         showsDescription: true
                     )
-                        .libraryNavigation(
-                            isSeries: article.opensAsSeries,
-                            article: article,
-                            series: article.asSeriesSummary
-                        )
+                        // 首页日更条目本身就是单篇（含图文 / 写真章节），直接进详情，不进系列列表。
+                        .hiddenNavigationLink(value: article)
                         .styledListRow()
                         // 首页略宽：左右留白小于通用列表。
                         .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8))

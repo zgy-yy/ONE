@@ -11,14 +11,14 @@ struct SeriesChapterRow: View {
             OneCoverImage(path: chapter.imagePath)
                 .frame(width: coverWidth)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(chapter.displayTitle)
-                    .font(.subheadline.weight(.medium))
+                    .font(ArticleRowTypography.title)
                     .lineLimit(2)
 
                 if let description = chapter.description?.nonEmpty {
                     Text(description)
-                        .font(.caption)
+                        .font(ArticleRowTypography.summary)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                 }
@@ -35,7 +35,7 @@ struct SeriesChapterRow: View {
                                 MetaIconText.likes(likes)
                             }
                         }
-                        .font(.caption)
+                        .font(ArticleRowTypography.summary)
                         .foregroundStyle(.secondary)
                     }
 

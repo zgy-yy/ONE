@@ -4,6 +4,7 @@ import SwiftUI
 struct ArticleDetailMetaSection: View {
     let detail: ArticleDetail
     var canPlay: Bool = false
+    var showsDownloadCount: Bool = true
     var onPlay: (() -> Void)?
 
     var body: some View {
@@ -27,7 +28,7 @@ struct ArticleDetailMetaSection: View {
             DetailPriceNumberRow(detail: detail)
             DetailCastRow(detail: detail)
             DetailVideoSpecsRow(detail: detail)
-            DetailMetricsRow(detail: detail)
+            DetailMetricsRow(detail: detail, showsDownloadCount: showsDownloadCount)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -135,6 +136,7 @@ private struct DetailVideoSpecsRow: View {
 
 private struct DetailMetricsRow: View {
     let detail: ArticleDetail
+    var showsDownloadCount: Bool = true
 
     private var items: [(icon: String, text: String)] {
         var list: [(String, String)] = []
@@ -144,7 +146,7 @@ private struct DetailMetricsRow: View {
         if let n = detail.collectionNumber {
             list.append(("heart", ArticleFormat.shortCount(n)))
         }
-        if let n = detail.downloadCount {
+        if showsDownloadCount, let n = detail.downloadCount {
             list.append(("arrow.down.circle", ArticleFormat.shortCount(n)))
         }
         if let n = detail.shareNumber {

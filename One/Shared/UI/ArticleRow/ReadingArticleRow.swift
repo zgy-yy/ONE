@@ -15,15 +15,15 @@ struct ReadingArticleRow: View {
             )
             .frame(width: coverWidth)
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(article.displayTitle)
-                    .font(.body.weight(.semibold))
+                    .font(ArticleRowTypography.title)
                     .lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 if let summary = article.summary?.nonEmpty {
                     Text(summary)
-                        .font(.caption)
+                        .font(ArticleRowTypography.summary)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                 }
@@ -36,7 +36,7 @@ struct ReadingArticleRow: View {
                         MetaIconText.likes(likes)
                     }
                 }
-                .font(.subheadline)
+                .font(ArticleRowTypography.meta)
                 .foregroundStyle(.secondary)
 
                 if showsDate {

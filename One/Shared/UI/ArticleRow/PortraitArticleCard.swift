@@ -24,15 +24,15 @@ struct PortraitArticleCard: View {
                 aspectRatio: CoverAspect.portrait,
                 cornerRadius: cornerRadius
             )
-            line(article.displayTitle, font: .caption.weight(.medium), color: .primary, limit: 2)
+            line(article.displayTitle, font: ArticleRowTypography.cardTitle, color: .primary, limit: 2)
             if showsDescription, let summary = article.summary?.nonEmpty {
-                line(summary, font: .caption2, color: .secondary, limit: 2)
+                line(summary, font: ArticleRowTypography.metaSmall, color: .secondary, limit: 2)
             }
             if let author = article.author?.nonEmpty {
-                line(author, font: .caption2, color: .secondary, limit: 1)
+                line(author, font: ArticleRowTypography.metaSmall, color: .secondary, limit: 1)
             }
             if showsDate {
-                ArticleDateText(publishedAt: article.publishedAt, font: .caption2)
+                ArticleDateText(publishedAt: article.publishedAt, font: ArticleRowTypography.metaSmall)
                     .frame(maxWidth: .infinity, alignment: frameAlignment)
             }
         }

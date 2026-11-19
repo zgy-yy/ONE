@@ -25,7 +25,7 @@ struct VodArticleRow: View {
         .overlay(alignment: .bottom) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(article.displayTitle)
-                    .font(.body.weight(.semibold))
+                    .font(ArticleRowTypography.title)
                     .foregroundStyle(.white)
                     .lineLimit(2)
 
@@ -38,7 +38,7 @@ struct VodArticleRow: View {
                             MetaIconText(systemImage: "clock", text: length)
                         }
                     }
-                    .font(.caption)
+                    .font(ArticleRowTypography.summary)
                     .foregroundStyle(.white.opacity(0.85))
                 }
             }
@@ -54,16 +54,14 @@ struct VodArticleRow: View {
             priceBlock
             Spacer(minLength: 0)
             Image(systemName: "bookmark")
-                .onTapGesture(perform: ArticleRowActions.favorite)
             if let likes = article.likeNumber {
                 MetaIconText.likes(likes)
-                    .onTapGesture(perform: ArticleRowActions.like)
             }
             if showsDate, let date = ArticleFormat.dateOnly(from: article.publishedAt) {
                 Text(date).foregroundStyle(.secondary)
             }
         }
-        .font(.subheadline)
+        .font(ArticleRowTypography.meta)
     }
 
     @ViewBuilder

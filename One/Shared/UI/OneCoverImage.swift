@@ -28,7 +28,13 @@ struct OneCoverImage: View {
     @ViewBuilder
     private var coverContent: some View {
         if let payload, payload.isGIF {
-            GIFImageView(data: payload.data, contentMode: .scaleAspectFill, fillsContainer: true)
+            // 列表封面下采样到约 3× 屏宽量级，降低多 GIF 同屏内存。
+            GIFImageView(
+                data: payload.data,
+                contentMode: .scaleAspectFill,
+                fillsContainer: true,
+                maxPixelSize: 960
+            )
         } else if let data = payload?.data, let image = UIImage(data: data) {
             Image(uiImage: image).resizable().scaledToFill()
         } else {

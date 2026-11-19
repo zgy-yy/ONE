@@ -12,23 +12,23 @@ struct SeriesRow: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(item.displayTitle)
-                    .font(.body.weight(.medium))
+                    .font(ArticleRowTypography.title)
                     .lineLimit(2)
 
                 if let author = item.author?.nonEmpty {
                     Text(author)
-                        .font(.caption)
+                        .font(ArticleRowTypography.summary)
                         .foregroundStyle(.secondary)
                 }
 
                 HStack(spacing: 10) {
                     Text(item.statusText)
-                        .font(.caption2)
+                        .font(ArticleRowTypography.metaSmall)
                         .foregroundStyle(item.isFinished ? Color.secondary : Color.accentColor)
 
                     if let raw = item.likeTotal?.nonEmpty {
                         MetaIconText.likesText(raw)
-                            .font(.caption2)
+                            .font(ArticleRowTypography.metaSmall)
                             .foregroundStyle(.tertiary)
                     }
                 }

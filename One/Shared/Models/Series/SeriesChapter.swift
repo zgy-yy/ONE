@@ -30,7 +30,7 @@ struct SeriesChapter: Decodable, Identifiable, Hashable {
             thumb: thumb,
             author: author,
             publishedAt: publishedAt,
-            modelID: nil,
+            modelID: ContentCategory.ModelID.series,
             summary: description,
             likeNumber: likeNumber,
             thumbnail: thumbnail
