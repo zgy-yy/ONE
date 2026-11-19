@@ -23,7 +23,8 @@ enum OneCrypto {
     static let uuid = "9b1a29f0-cf81-11f1-92c4-114a8eafec4b"
     static let signSalt = "m4n2hjPeYWkD6tFpqKF^3HO^h24P@idT"
     static let appVersion = "2.6.4"
-    static let platform = "6"
+    /// `3`：详情里 HLS 多为 getM3u8（拼 API 域名）；`6`：多为 encry 路径（需解密）。
+    static let platform = "3"
 
     private static let aesKey = Data("l*bv%Ziq000Biaog".utf8)
     private static let aesIV = Data("8597506002939249".utf8)

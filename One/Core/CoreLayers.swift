@@ -1,27 +1,24 @@
 /*
- Core 网络分层（主流 Feature + Clean 简化版）
+ 项目分层（主流 iOS：Feature + 薄 Core）
 
- Network/        传输：HTTP、加解密原语、URL 拼接、响应解密协议
- Tokens/         启动壳：选线 → splash → JWT / CDN（无 UI）
-   Configuration  域名列表
-   Client         无状态 API 调用（TokensClient）
-   Session        @Observable 内存状态（TokensSession）
-   Models         Codable 模型
-   Crypto         请求头、响应解密、CDN 解析
- One/            业务 ONE：选线 → 加密 POST → 点播等接口
-   同上 Client / Session / Models / API / Configuration / Crypto
+ App/            入口（OneApp、ContentView）
+ Features/       按业务分文件夹（Home / Discover / Article …）
+   Views         界面
+   Session       @Observable 状态与请求编排
+   Models        仅本 Feature 用的模型
+ Shared/         多 Feature 共用（UI、导航、图片、评论模型…）
+ Core/
+   Network/      HTTP 传输
+   Tokens/       启动壳：选线、JWT、CDN
+   One/
+     Client/     OneClient（传输）+ 业务 API 文件（ArticleAPI / UserAPI …）
+     Models/     接口模型（一文一类型，便于查找）
+     Crypto/     签名与加解密
 
- 调用链：Feature Session → OneClient / TokensClient → HTTPClient
+ 调用链（记住这一条即可）：
+   View → Feature Session → OneClient / TokensClient → HTTPClient
 
- Features 不直接写 URL、不加解密细节；ONE 凭证由 OneClient 内部取。
-
- Shared/           跨 Feature 复用（无业务 API）
-   Models/         公用领域类型（ContentCategory、按月分页 MonthPagedFeed 等）
-   Theme/          通用 UI 壳（loading、占满屏等）
-   HTML/           HTML 富文本 + 内嵌图渲染
-   Image/          one_img 拉取解密、GIF 解码播放
-   Media/          点播音频会话等播放辅助
-   Navigation/     主导航骨架
+ 不要：在 View 里拼 URL、写加解密、直接依赖其它 Feature 的私有模型。
  */
 
 import Foundation

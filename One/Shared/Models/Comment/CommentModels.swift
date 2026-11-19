@@ -1,6 +1,6 @@
 import Foundation
 
-/// `comment/listV254` 评论项（含图片与楼中楼回复）。
+/// 评论模型（文章 / 演员详情共用）。
 struct CommentItem: Decodable, Identifiable, Hashable {
     let id: Int
     let author: String?

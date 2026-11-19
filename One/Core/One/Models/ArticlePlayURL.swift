@@ -1,34 +1,58 @@
 import Foundation
 
-/// 从 detail 挑选默认播放相对路径（与 one-web `pickDefaultPlayPath` 优先级一致）。
+/// 把详情里的相对路径拼成可播放的绝对 URL。
+///
+/// 规则（与业务约定一致）：
+/// 1. `video_hls_h265` / `video_hls` → 拼当前 API 主机（`OneTargets` 选线结果）
+/// 2. `video_file` / `video` / `preview_video` → 拼 mp4 CDN
+/// 3. 播放时取列表第一项；页底可展示全部（相同 URL 只保留一条）
 enum ArticlePlayURL {
-    /// 点播视频 CDN 前缀（拼在 `video_file` / `video_hls` 等相对路径前）。
+    /// 一条已拼接的地址（字段名 + URL）。
+    struct Entry: Identifiable, Hashable {
+        var id: String { url }
+        let field: String
+        let url: String
+    }
+
+    /// mp4 CDN。
     static let videoCDNBase = "https://pwavddl.t556wzr.com"
+    /// 详情接口参数 `dn`。
+    static let detailVideoDN = "https://pwavd123.phd3wfh.com/"
 
-    static func defaultPath(in detail: ArticleDetail) -> String? {
-        for candidate in [
-            detail.videoFile,
-            detail.videoHls,
-            detail.video,
-            detail.previewVideo,
-        ] {
-            if let trimmed = trimmed(candidate) { return trimmed }
+    /// 全部可用地址：按优先级排列，相同 URL 只保留一条。播放器取 `first`。
+    static func allEntries(detail: ArticleDetail, apiBase: URL?) -> [Entry] {
+        let api = apiHost(from: apiBase) ?? OneTargets.hostBases.first ?? videoCDNBase
+
+        // 顺序即播放优先级
+        var sources: [(field: String, path: String?, base: String)] = [
+            ("video_hls_h265", detail.videoHlsH265, api),
+            ("video_hls", detail.videoHls, api),
+            ("video_file", detail.videoFile, videoCDNBase),
+            ("video", detail.video, videoCDNBase),
+            ("preview_video", detail.previewVideo, videoCDNBase),
+        ]
+        for (index, item) in (detail.videos ?? []).enumerated() {
+            sources.append(("videos[\(index)]", item.videoFile, videoCDNBase))
         }
-        for item in detail.videos ?? [] {
-            if let trimmed = trimmed(item.videoFile) { return trimmed }
+
+        var seen = Set<String>()
+        var result: [Entry] = []
+        for source in sources {
+            guard let path = source.path?.nonEmpty else { continue }
+            let absolute = OneCDN.join(base: source.base, path: path)
+            guard !absolute.isEmpty, URL(string: absolute) != nil else { continue }
+            guard seen.insert(absolute).inserted else { continue }
+            result.append(Entry(field: source.field, url: absolute))
         }
-        return nil
+        return result
     }
 
-    static func resolvedURL(detail: ArticleDetail, videoCDN: String?) -> URL? {
-        guard let path = defaultPath(in: detail) else { return nil }
-        let joined = OneCDN.join(base: videoCDN ?? videoCDNBase, path: path)
-        return URL(string: joined)
-    }
-
-    private static func trimmed(_ value: String?) -> String? {
-        guard let value else { return nil }
-        let s = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        return s.isEmpty ? nil : s
+    /// `https://api.xxx.com/v2.5/` → `https://api.xxx.com`
+    static func apiHost(from apiBase: URL?) -> String? {
+        guard let apiBase, let scheme = apiBase.scheme, let host = apiBase.host else { return nil }
+        if let port = apiBase.port {
+            return "\(scheme)://\(host):\(port)"
+        }
+        return "\(scheme)://\(host)"
     }
 }

@@ -85,7 +85,7 @@ private struct SearchHotWordsSection: View {
     private var hotWordsBody: some View {
         if session.isLoadingHotWords, session.hotWords.isEmpty {
             ProgressView("加载热词…")
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .center)
         } else if let error = session.hotWordsError, session.hotWords.isEmpty {
             AppUI.loadFailure(message: error) {
                 Task { await session.loadHotWords(force: true) }

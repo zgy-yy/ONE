@@ -1,18 +1,19 @@
 import Foundation
 import Observation
 
-/// 负责拉取一篇稿件的详情、播放地址，以及评论列表。
+/// 文章详情 Session：拉详情、拼播放地址、管评论分页。
 @MainActor
 @Observable
 final class ArticleDetailSession {
     private(set) var detail: ArticleDetail?
     private(set) var playURL: URL?
+    /// 页底展示用：全部拼接地址（已去重）。
+    private(set) var playURLEntries: [ArticlePlayURL.Entry] = []
     private(set) var isLoading = false
     private(set) var error: String?
 
     private(set) var comments = PagedListState<CommentItem>(pageSize: 10)
 
-    /// 评论排序：最新 `created_at` / 最热 `likes`。
     var commentSort: CommentSort = .createdAt {
         didSet {
             guard oldValue != commentSort else { return }
@@ -22,14 +23,6 @@ final class ArticleDetailSession {
 
     private var loadedArticleID: Int?
 
-    /// 播放页旋转返回可能导致详情 View 重建；用静态缓存避免重复打接口。
-    private static var cache: [Int: Cached] = [:]
-
-    private struct Cached {
-        let detail: ArticleDetail
-        let playURL: URL?
-    }
-
     func load(articleID: Int) async {
         if loadedArticleID != articleID {
             comments.reset()
@@ -37,13 +30,7 @@ final class ArticleDetailSession {
             loadedArticleID = articleID
         }
 
-        if let cached = Self.cache[articleID] {
-            detail = cached.detail
-            playURL = cached.playURL
-                ?? ArticlePlayURL.resolvedURL(detail: cached.detail, videoCDN: TokensSession.shared.oneVideoCDN)
-            error = nil
-            return
-        }
+        // 同篇已成功加载则跳过（从播放页返回不重复刷）。
         if detail?.id == articleID, error == nil { return }
         guard !isLoading else { return }
 
@@ -51,15 +38,18 @@ final class ArticleDetailSession {
         error = nil
         detail = nil
         playURL = nil
+        playURLEntries = []
         defer { isLoading = false }
 
-        // detail 固定走 token_one（见 TokensSession.oneToken / OneCredentials）
         do {
             let article = try await OneClient.articleDetail(articleID: articleID)
-            let url = ArticlePlayURL.resolvedURL(detail: article, videoCDN: TokensSession.shared.oneVideoCDN)
+            let entries = ArticlePlayURL.allEntries(
+                detail: article,
+                apiBase: OneSession.shared.baseURL
+            )
             detail = article
-            playURL = url
-            Self.cache[articleID] = Cached(detail: article, playURL: url)
+            playURLEntries = entries
+            playURL = entries.first.flatMap { URL(string: $0.url) }
         } catch {
             self.error = error.localizedDescription
         }
@@ -98,6 +88,15 @@ final class ArticleDetailSession {
         }
     }
 
+    func loadReplies(for comment: CommentItem) async -> [CommentItem] {
+        guard let articleID = loadedArticleID ?? detail?.id else { return comment.replies }
+        return await OneClient.commentReplies(
+            targetID: articleID,
+            type: CommentTargetType.article,
+            parent: comment
+        )
+    }
+
     private func fetchComments(articleID: Int, page: Int) async throws -> [CommentItem] {
         try await OneClient.commentList(
             targetID: articleID,
@@ -105,15 +104,6 @@ final class ArticleDetailSession {
             page: page,
             size: 10,
             sorting: commentSort.rawValue
-        )
-    }
-
-    func loadReplies(for comment: CommentItem) async -> [CommentItem] {
-        guard let articleID = loadedArticleID ?? detail?.id else { return comment.replies }
-        return await OneClient.commentReplies(
-            targetID: articleID,
-            type: CommentTargetType.article,
-            parent: comment
         )
     }
 }

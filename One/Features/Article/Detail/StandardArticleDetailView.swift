@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 标准文章详情（阅读 / 写真漫画 / 电台 / 点播影视）：封面 + 正文配置 + 评论 sheet。
+/// 标准文章详情（阅读 / 写真漫画 / 电台 / 点播影视）。
 struct StandardArticleDetailView: View {
     let article: ArticleSummary
     let style: ArticleDetailStyle
@@ -21,17 +21,23 @@ struct StandardArticleDetailView: View {
                     showsPreview: style.showsPreview,
                     showsTags: style.showsTags,
                     showsDownloadCount: style.showsDownloadCount,
-                    onPlay: style.showsPlay
-                        ? { if let url = session.playURL { ArticleVideoPresenter.present(url: url) } }
-                        : nil,
+                    onPlay: playAction,
                     onCommentsTap: { showsComments = true }
                 )
                 .padding(.horizontal)
                 .padding(.vertical, 16)
+
+                ArticlePlayURLFooter(entries: session.playURLEntries)
+                    .padding(.horizontal)
             }
         }
         .sheet(isPresented: $showsComments) {
             ArticleCommentsSheet(session: session, isPresented: $showsComments)
         }
+    }
+
+    private var playAction: (() -> Void)? {
+        guard style.showsPlay, let url = session.playURL else { return nil }
+        return { ArticleVideoPresenter.present(url: url) }
     }
 }

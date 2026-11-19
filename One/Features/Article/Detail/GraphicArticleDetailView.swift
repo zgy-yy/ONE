@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 图文详情：竖封面 → 标题 / 简介 / 作者 → 页内评论。
+/// 图文详情：竖封面 → 标题 / 简介 / 作者 → 评论。
 struct GraphicArticleDetailView: View {
     let article: ArticleSummary
 
@@ -19,7 +19,9 @@ struct GraphicArticleDetailView: View {
 
                 ArticleDetailCommentsSection(session: session)
                     .padding(.horizontal, 16)
-                    .padding(.bottom, 24)
+
+                ArticlePlayURLFooter(entries: session.playURLEntries)
+                    .padding(.horizontal, 16)
             }
             .task(id: article.id) {
                 await session.loadComments()
@@ -42,7 +44,6 @@ struct GraphicArticleDetailView: View {
                 Text(description)
                     .font(.body)
                     .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             if let author {
