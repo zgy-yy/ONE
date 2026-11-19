@@ -30,11 +30,16 @@ struct ArticleDetailCommentsSection: View {
             ) {
                 LazyVStack(alignment: .leading, spacing: 12) {
                     ForEach(session.comments.items) { comment in
-                        CommentRow(comment: comment)
-                            .onAppear {
-                                guard session.comments.items.isLastItem(comment) else { return }
-                                Task { await session.loadMoreComments() }
+                        CommentRow(
+                            comment: comment,
+                            loadReplies: { parent in
+                                await session.loadReplies(for: parent)
                             }
+                        )
+                        .onAppear {
+                            guard session.comments.items.isLastItem(comment) else { return }
+                            Task { await session.loadMoreComments() }
+                        }
                     }
                     AppUI.loadMoreFooter(
                         loadingMore: session.comments.isLoadingMore,

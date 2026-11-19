@@ -358,7 +358,12 @@ struct ActorDetailView: View {
         ) {
             LazyVStack(alignment: .leading, spacing: 14) {
                 ForEach(session.comments.items) { comment in
-                    CommentRow(comment: comment)
+                    CommentRow(
+                        comment: comment,
+                        loadReplies: { parent in
+                            await session.loadReplies(for: parent, actorID: actor.id)
+                        }
+                    )
                         .onAppear {
                             guard session.comments.items.isLastItem(comment) else { return }
                             Task { await session.loadMore(.comments, actorID: actor.id) }

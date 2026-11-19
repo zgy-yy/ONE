@@ -107,4 +107,13 @@ final class ArticleDetailSession {
             sorting: commentSort.rawValue
         )
     }
+
+    func loadReplies(for comment: CommentItem) async -> [CommentItem] {
+        guard let articleID = loadedArticleID ?? detail?.id else { return comment.replies }
+        return await OneClient.commentReplies(
+            targetID: articleID,
+            type: CommentTargetType.article,
+            parent: comment
+        )
+    }
 }

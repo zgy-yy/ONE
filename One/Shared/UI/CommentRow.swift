@@ -1,15 +1,32 @@
 import SwiftUI
 
-/// 评论列表单行（文章详情 / 演员详情共用）：头像、正文、配图、楼中楼回复。
+/// 评论行：主楼 / 回复缩进区分；默认 3 条回复，可展开；支持最新 / 最热。
 struct CommentRow: View {
     let comment: CommentItem
-    /// 是否为楼中楼样式（缩进、字号略小）。
     var isReply: Bool = false
+    var loadReplies: ((CommentItem) async -> [CommentItem])? = nil
 
-    @State private var viewerIndex: Int?
+    @State private var showsViewer = false
     @State private var viewerSelection = 0
+    @State private var showAll = false
+    @State private var replySort: CommentSort = .likes
+    @State private var fetchedReplies: [CommentItem]?
+    @State private var isLoadingReplies = false
 
-    private let imageColumns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 3)
+    private let replyIndent: CGFloat = 36
+    private let previewCount = 3
+
+    private var replies: [CommentItem] {
+        (fetchedReplies ?? comment.replies).sorted(by: replySort)
+    }
+
+    private var visibleReplies: [CommentItem] {
+        showAll ? replies : Array(replies.prefix(previewCount))
+    }
+
+    private var replyTotal: Int {
+        max(comment.replyTotal, replies.count)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: isReply ? 6 : 8) {
@@ -25,17 +42,14 @@ struct CommentRow: View {
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
-            repliesBlock
+            if !isReply, replyTotal > 0 {
+                repliesBlock
+            }
         }
         .padding(.vertical, isReply ? 6 : 8)
-        .fullScreenCover(isPresented: Binding(
-            get: { viewerIndex != nil },
-            set: { if !$0 { viewerIndex = nil } }
-        )) {
-            FullscreenImageViewer(
-                paths: comment.viewerImagePaths,
-                selection: $viewerSelection
-            )
+        .padding(.leading, isReply ? replyIndent : 0)
+        .fullScreenCover(isPresented: $showsViewer) {
+            FullscreenImageViewer(paths: comment.viewerImagePaths, selection: $viewerSelection)
         }
     }
 
@@ -58,10 +72,11 @@ struct CommentRow: View {
     private var imageGrid: some View {
         let paths = comment.displayImagePaths
         if !paths.isEmpty {
-            LazyVGrid(columns: imageColumns, spacing: 6) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 3), spacing: 6) {
                 ForEach(Array(paths.enumerated()), id: \.offset) { index, path in
                     Button {
-                        openViewer(at: index)
+                        viewerSelection = index
+                        showsViewer = true
                     } label: {
                         CommentImageThumb(path: path)
                     }
@@ -71,34 +86,59 @@ struct CommentRow: View {
         }
     }
 
-    private func openViewer(at index: Int) {
-        let paths = comment.viewerImagePaths
-        guard !paths.isEmpty else { return }
-        let clamped = min(max(index, 0), paths.count - 1)
-        viewerSelection = clamped
-        viewerIndex = clamped
+    private var repliesBlock: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Spacer(minLength: 0)
+                CommentSortPicker(sort: $replySort, compact: true)
+            }
+            .padding(.leading, replyIndent)
+
+            if isLoadingReplies, visibleReplies.isEmpty {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+            }
+
+            ForEach(visibleReplies) { reply in
+                CommentRow(comment: reply, isReply: true)
+            }
+
+            if replyTotal > previewCount {
+                Button {
+                    showAll.toggle()
+                    if showAll, replies.count < comment.replyTotal {
+                        Task { await refreshReplies() }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        if isLoadingReplies { ProgressView().controlSize(.mini) }
+                        Text(showAll ? "收起回复" : "查看全部 \(replyTotal) 条回复")
+                        Image(systemName: showAll ? "chevron.up" : "chevron.down")
+                            .font(.caption2.weight(.semibold))
+                    }
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .padding(.leading, replyIndent)
+            }
+        }
+        .padding(.top, 2)
     }
 
-    @ViewBuilder
-    private var repliesBlock: some View {
-        if !comment.replies.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(comment.replies) { reply in
-                    CommentRow(comment: reply, isReply: true)
-                }
-            }
-            .padding(.top, 4)
-        } else if let count = comment.replyCount, count > 0 {
-            Text("\(count) 条回复")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
+    @MainActor
+    private func refreshReplies() async {
+        guard let loadReplies, !isLoadingReplies else { return }
+        isLoadingReplies = true
+        defer { isLoadingReplies = false }
+        let loaded = await loadReplies(comment)
+        if loaded.count > replies.count { fetchedReplies = loaded }
     }
 }
 
 private struct CommentImageThumb: View {
     let path: String
-
     @State private var uiImage: UIImage?
 
     var body: some View {
@@ -106,9 +146,7 @@ private struct CommentImageThumb: View {
             .aspectRatio(1, contentMode: .fit)
             .overlay {
                 if let uiImage {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .scaledToFill()
+                    Image(uiImage: uiImage).resizable().scaledToFill()
                 } else {
                     ZStack {
                         Color(.tertiarySystemFill)
@@ -118,8 +156,6 @@ private struct CommentImageThumb: View {
             }
             .clipped()
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .task(id: path) {
-                uiImage = await OneRemoteImage.load(path: path)
-            }
+            .task(id: path) { uiImage = await OneRemoteImage.load(path: path) }
     }
 }

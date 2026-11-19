@@ -3,6 +3,7 @@ import SwiftUI
 /// 评论排序：最新 / 最热。
 struct CommentSortPicker: View {
     @Binding var sort: CommentSort
+    var compact: Bool = false
 
     var body: some View {
         Picker("评论排序", selection: $sort) {
@@ -11,7 +12,7 @@ struct CommentSortPicker: View {
             }
         }
         .pickerStyle(.segmented)
-        .frame(maxWidth: 168)
-        .accessibilityLabel("评论排序")
+        .controlSize(compact ? .mini : .regular)
+        .frame(width: compact ? 108 : 168)
     }
 }

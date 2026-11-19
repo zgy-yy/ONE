@@ -57,6 +57,8 @@ struct CommentItem: Decodable, Identifiable, Hashable {
         return displayImagePaths
     }
 
+    var replyTotal: Int { max(replyCount ?? 0, replies.count) }
+
     enum CodingKeys: String, CodingKey {
         case id, author, text, likes, avatar, images, replies
         case createdAt = "created_at"
@@ -135,7 +137,29 @@ private struct CommentImageObject: Decodable {
     }
 }
 
-/// `comment/listV254` 的 `data`。
+/// `listV254` 的 `data` 为 `{ list }`；旧版 `comment/list` 的 `data` 可能直接是数组。
 struct CommentListPayload: Decodable {
     let list: [CommentItem]?
+
+    init(from decoder: Decoder) throws {
+        if let items = try? decoder.singleValueContainer().decode([CommentItem].self) {
+            list = items
+            return
+        }
+        let keyed = try decoder.container(keyedBy: CodingKeys.self)
+        list = try keyed.decodeIfPresent([CommentItem].self, forKey: .list)
+    }
+
+    private enum CodingKeys: String, CodingKey { case list }
+}
+
+extension [CommentItem] {
+    func sorted(by sort: CommentSort) -> [CommentItem] {
+        switch sort {
+        case .likes:
+            sorted { ($0.likes ?? 0) > ($1.likes ?? 0) }
+        case .createdAt:
+            sorted { ($0.createdAt ?? "") > ($1.createdAt ?? "") }
+        }
+    }
 }

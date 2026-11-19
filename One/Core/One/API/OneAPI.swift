@@ -1,7 +1,7 @@
 import Foundation
 
-/// ONE 业务接口路径与响应约定。
-enum OneAPI {
+/// ONE 业务接口路径与响应约定（纯常量，供非隔离的 `OneClient` 使用）。
+nonisolated enum OneAPI {
     /// 相对 `OneTargets.bases`（拼接后为含 `v2.5` 的基址）。
     static let demandTagListPath = "navigation/getDemandTagList"
     static let discoveryPath = "article/discovery"
@@ -17,6 +17,8 @@ enum OneAPI {
     static let actorArticlesPath = "actor/getActorArticles"
     static let actorPhotosPath = "actor/getActorPhotos"
     static let commentListPath = "comment/listV254"
+    /// 旧版列表：展开楼中楼时用，会带回主楼下全部回复。
+    static let commentListFullPath = "comment/list"
     static let seriesAlbumListPath = "series/album/list"
     static let seriesMangaListPath = "series/manga/list"
     static let seriesChaptersPath = "series/chapters"

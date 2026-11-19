@@ -173,4 +173,12 @@ final class ActorDetailSession {
             size: size
         )
     }
+
+    func loadReplies(for comment: CommentItem, actorID: Int) async -> [CommentItem] {
+        await OneClient.commentReplies(
+            targetID: actorID,
+            type: CommentTargetType.actor,
+            parent: comment
+        )
+    }
 }
