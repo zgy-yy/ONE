@@ -4,6 +4,20 @@ import SwiftUI
 struct MainTabView: View {
     @State private var showsSearch = false
 
+    private func openSearch(_ request: OpenSearchRequest) {
+        let session = SearchSession.shared
+        if let keyword = request.keyword {
+            let text = keyword.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !text.isEmpty {
+                let category = request.category ?? session.category
+                session.openSearch(keyword: text, category: category)
+            }
+        } else if let category = request.category {
+            session.category = category
+        }
+        showsSearch = true
+    }
+
     var body: some View {
         TabView {
             SwiftUI.Tab("首页", systemImage: "house.fill") {
@@ -23,7 +37,7 @@ struct MainTabView: View {
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
-        .environment(\.openSearch) { showsSearch = true }
+        .environment(\.openSearch, openSearch)
         .searchCardSheet(isPresented: $showsSearch)
     }
 }

@@ -52,6 +52,20 @@ final class SearchSession {
         submit()
     }
 
+    /// 从详情标签等入口：关键词 + 分类一次到位，避免 `category` `didSet` 用旧词多请求一次。
+    func openSearch(keyword: String, category: ContentCategory) {
+        let text = keyword.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        draftKeyword = text
+        committedKeyword = text
+        if self.category != category {
+            self.category = category
+        } else {
+            results.reset()
+            Task { await load(force: true) }
+        }
+    }
+
     func submit() {
         let keyword = draftKeyword.trimmingCharacters(in: .whitespacesAndNewlines)
         committedKeyword = keyword

@@ -19,7 +19,13 @@ struct ArticleDetailBodyView: View {
                 previewOrComments(detail)
 
                 if style.showsTags, !detail.displayTags.isEmpty {
-                    ArticleDetailTagList(tags: detail.displayTags)
+                    ArticleDetailTagList(
+                        tags: detail.displayTags,
+                        category: ContentCategory.forSearch(
+                            modelID: summary.modelID,
+                            seriesCategory: summary.seriesCategory
+                        )
+                    )
                 }
 
                 if let html = detail.displayBody {

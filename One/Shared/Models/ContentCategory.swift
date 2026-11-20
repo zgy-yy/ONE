@@ -91,4 +91,23 @@ enum ContentCategory: String, CaseIterable, Identifiable, Hashable {
         default: nil
         }
     }
+
+    /// 文章 `model_id` / `series_category` → 搜索顶栏分类。
+    static func forSearch(modelID: Int?, seriesCategory: Int?) -> ContentCategory {
+        guard let modelID else { return .all }
+        switch modelID {
+        case ModelID.graphic: return .graphic
+        case ModelID.reading: return .reading
+        case ModelID.film: return .film
+        case ModelID.radio: return .radio
+        case ModelID.vod: return .vod
+        case ModelID.series:
+            switch seriesCategory {
+            case 1: return .album
+            case 2: return .manga
+            default: return .all
+            }
+        default: return .all
+        }
+    }
 }

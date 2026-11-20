@@ -6,14 +6,17 @@ enum ArticleRowForModel {
     static func view(
         for article: ArticleSummary,
         showsDate: Bool = true,
-        showsDescription: Bool = false
+        showsDescription: Bool = false,
+        homeGraphicTypography: Bool = false
     ) -> some View {
         switch article.modelID {
         case ContentCategory.ModelID.graphic:
             PortraitArticleCard(
                 article: article,
                 showsDate: showsDate,
-                showsDescription: showsDescription
+                showsDescription: showsDescription,
+                titleFont: homeGraphicTypography ? ArticleRowTypography.filmTitle : ArticleRowTypography.cardTitle,
+                collectLikeFont: homeGraphicTypography ? ArticleRowTypography.meta : ArticleRowTypography.metaSmall
             )
         case ContentCategory.ModelID.reading:
             ReadingArticleRow(article: article, showsDate: showsDate)

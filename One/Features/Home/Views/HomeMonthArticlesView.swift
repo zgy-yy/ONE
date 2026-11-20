@@ -116,6 +116,11 @@ struct HomeMonthArticlesView: View {
     }
 
     private func articleCard(_ article: ArticleSummary) -> some View {
-        PortraitArticleCard(article: article, showsDate: false)
+        PortraitArticleCard(
+            article: article,
+            showsDate: false,
+            titleFont: ArticleRowTypography.filmTitle,
+            collectLikeFont: ArticleRowTypography.meta
+        )
     }
 }

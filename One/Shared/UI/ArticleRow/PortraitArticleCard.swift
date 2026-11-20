@@ -8,6 +8,9 @@ struct PortraitArticleCard: View {
     var cornerRadius: CGFloat = 8
     var showsDate: Bool = true
     var showsDescription: Bool = false
+    /// 默认竖图网格；首页图文与 `FilmArticleRow` 对齐。
+    var titleFont: Font = ArticleRowTypography.cardTitle
+    var collectLikeFont: Font = ArticleRowTypography.metaSmall
 
     private var stackAlignment: HorizontalAlignment {
         textAlignment == .center ? .center : .leading
@@ -24,7 +27,7 @@ struct PortraitArticleCard: View {
                 aspectRatio: CoverAspect.portrait,
                 cornerRadius: cornerRadius
             )
-            line(article.displayTitle, font: ArticleRowTypography.cardTitle, color: .primary, limit: 2)
+            line(article.displayTitle, font: titleFont, color: .primary, limit: 2)
             if showsDescription, let summary = article.summary?.nonEmpty {
                 line(summary, font: ArticleRowTypography.metaSmall, color: .secondary, limit: 2)
             }
@@ -32,7 +35,7 @@ struct PortraitArticleCard: View {
                 line(author, font: ArticleRowTypography.metaSmall, color: .secondary, limit: 1)
             }
             ArticleCollectLikeMeta(article: article)
-                .font(ArticleRowTypography.metaSmall)
+                .font(collectLikeFont)
                 .frame(maxWidth: .infinity, alignment: frameAlignment)
             if showsDate {
                 ArticleDateText(publishedAt: article.publishedAt, font: ArticleRowTypography.metaSmall)

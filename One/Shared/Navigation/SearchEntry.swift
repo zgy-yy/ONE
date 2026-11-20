@@ -1,12 +1,20 @@
 import SwiftUI
 
+/// 打开搜索 sheet；带 `keyword` 时提交搜索，带 `category` 时同步顶栏分类。
+struct OpenSearchRequest: Equatable {
+    var keyword: String?
+    var category: ContentCategory?
+
+    static let browse = OpenSearchRequest(keyword: nil, category: nil)
+}
+
 /// 打开全局搜索（由 `MainTabView` 注入）。
 private struct OpenSearchKey: EnvironmentKey {
-    static let defaultValue: () -> Void = {}
+    static let defaultValue: (OpenSearchRequest) -> Void = { _ in }
 }
 
 extension EnvironmentValues {
-    var openSearch: () -> Void {
+    var openSearch: (OpenSearchRequest) -> Void {
         get { self[OpenSearchKey.self] }
         set { self[OpenSearchKey.self] = newValue }
     }
@@ -17,7 +25,7 @@ struct SearchBarButton: View {
     @Environment(\.openSearch) private var openSearch
 
     var body: some View {
-        Button(action: openSearch) {
+        Button(action: { openSearch(.browse) }) {
             Image(systemName: "magnifyingglass")
                 .font(.body.weight(.semibold))
                 .foregroundStyle(.primary)

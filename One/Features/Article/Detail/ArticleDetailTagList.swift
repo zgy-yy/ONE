@@ -3,11 +3,18 @@ import SwiftUI
 /// 精彩预览下方的 `tag_list`：按文字自适应宽度，自动换行。
 struct ArticleDetailTagList: View {
     let tags: [ArticleDetailTag]
+    var category: ContentCategory = .all
+    @Environment(\.openSearch) private var openSearch
 
     var body: some View {
         FlowLayout(spacing: 8, lineSpacing: 8) {
             ForEach(tags) { tag in
-                TagChip(title: tag.displayName)
+                Button {
+                    openSearch(OpenSearchRequest(keyword: tag.displayName, category: category))
+                } label: {
+                    TagChip(title: tag.displayName)
+                }
+                .buttonStyle(.plain)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
