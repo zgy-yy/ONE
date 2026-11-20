@@ -1,12 +1,11 @@
 import SwiftUI
 
-/// 按月分段文章列表：下拉刷新、月份滚动锚定、触底加载更多。
+/// 按月分段文章列表：月份滚动锚定、触底加载更多（下拉刷新由外层 `.refreshable`）。
 struct MonthPagedArticleList<SectionBody: View>: View {
     let sections: [ArticleMonthSection]
     let publishedAt: String
     let loadingMore: Bool
     let exhausted: Bool
-    let onRefresh: @Sendable () async -> Void
     /// 锚定月不在当前分区里时（需 force 重载）。
     let onAnchorMonthMissing: () -> Void
     @ViewBuilder var sectionBody: (ArticleMonthSection) -> SectionBody
@@ -26,7 +25,7 @@ struct MonthPagedArticleList<SectionBody: View>: View {
                     AppUI.listLoadMoreFooter(loadingMore: loadingMore, exhausted: exhausted)
                 }
             }
-            .plainContentList(onRefresh: onRefresh)
+            .plainContentList()
             .onChange(of: publishedAt) { _, month in
                 if sections.contains(where: { $0.month == month }) {
                     scrollToMonth(month, proxy: proxy)

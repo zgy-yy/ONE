@@ -11,6 +11,10 @@ final class VodSession {
     private(set) var isLoading = false
     private(set) var lastError: String?
 
+    private var articleFeeds: [Int: MonthPagedFeed] = [:]
+    /// 下拉刷新中：`refreshable` 被取消后仍需保持整页 loading，直到 detached 内 `loadArticles` 结束。
+    private var articlePullRefreshing: Set<Int> = []
+    private let articlePageSize = 20
     /// 顶栏锚定/跳转月份；已有分区时由列表滚动，否则重载。
     var listPublishedAt: String = MonthYear.now.apiString
 
@@ -26,8 +30,7 @@ final class VodSession {
         listSort.rawValue
     }
 
-    private var articleFeeds: [Int: MonthPagedFeed] = [:]
-    private let articlePageSize = 20
+
 
     private init() {}
 
@@ -66,7 +69,7 @@ final class VodSession {
     }
 
     func isLoadingArticles(tagID: Int) -> Bool {
-        articleFeeds[tagID]?.isLoading == true
+        articlePullRefreshing.contains(tagID) || articleFeeds[tagID]?.isLoading == true
     }
 
     func isLoadingMoreArticles(tagID: Int) -> Bool {
@@ -77,15 +80,19 @@ final class VodSession {
         articleFeeds[tagID]?.showsEndFooter == true
     }
 
+    func pullToRefreshArticles(for tagID: Int) async {
+        articlePullRefreshing.insert(tagID)
+        await Task.detached { @MainActor in
+            defer { VodSession.shared.articlePullRefreshing.remove(tagID) }
+            await VodSession.shared.loadArticles(for: tagID, force: true)
+        }.value
+    }
+
     func loadArticles(for tagID: Int, force: Bool = false) async {
-        var feed = articleFeeds[tagID] ?? MonthPagedFeed(pageSize: articlePageSize)
+        let feed = articleFeed(for: tagID)
         let sort = listSort.rawValue
         let size = articlePageSize
-        await feed.runLoad(
-            force: force,
-            anchorMonth: listPublishedAt,
-            publish: { articleFeeds[tagID] = $0 }
-        ) { month, page, _ in
+        await feed.runLoad(force: force, anchorMonth: listPublishedAt) { month, page, _ in
             try await OneClient.articleDiscovery(
                 modelID: ContentCategory.ModelID.vod,
                 publishedAt: month,
@@ -98,10 +105,10 @@ final class VodSession {
     }
 
     func loadMoreArticles(for tagID: Int) async {
-        guard var feed = articleFeeds[tagID] else { return }
+        guard let feed = articleFeeds[tagID] else { return }
         let sort = listSort.rawValue
         let size = articlePageSize
-        await feed.runLoadMore(publish: { articleFeeds[tagID] = $0 }) { month, page, _ in
+        await feed.runLoadMore { month, page, _ in
             try await OneClient.articleDiscovery(
                 modelID: ContentCategory.ModelID.vod,
                 publishedAt: month,
@@ -111,5 +118,12 @@ final class VodSession {
                 demandTagID: tagID
             )
         }
+    }
+
+    private func articleFeed(for tagID: Int) -> MonthPagedFeed {
+        if let feed = articleFeeds[tagID] { return feed }
+        let feed = MonthPagedFeed(pageSize: articlePageSize)
+        articleFeeds[tagID] = feed
+        return feed
     }
 }

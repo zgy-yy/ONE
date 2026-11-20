@@ -24,11 +24,26 @@ final class HomeSession {
     private var caches: [String: HomeDayCache] = [:]
     /// 正在请求中的日期，避免翻页时 `onChange` 与 `.task` 重复打接口。
     private var inFlight: Set<String> = []
+    /// 日列表下拉刷新（`refreshable` 取消后仍保持 loading）。
+    private var dayPullRefreshing: Set<String> = []
 
     private init() {}
 
     func cache(for day: DayDate) -> HomeDayCache {
         caches[day.apiString] ?? HomeDayCache()
+    }
+
+    func isDayPullRefreshing(_ day: DayDate) -> Bool {
+        dayPullRefreshing.contains(day.apiString)
+    }
+
+    func pullToRefresh(_ day: DayDate) async {
+        let key = day.apiString
+        dayPullRefreshing.insert(key)
+        await Task.detached { @MainActor in
+            defer { HomeSession.shared.dayPullRefreshing.remove(key) }
+            await HomeSession.shared.load(day, force: true)
+        }.value
     }
 
     /// 跳到指定日（月份列表点选后回到首页用）；超出滑动窗口时夹到最近可滑日期。
@@ -86,7 +101,14 @@ final class HomeSession {
             cache.error = nil
             caches[key] = cache
         } catch {
-            // 以最新缓存为准，避免覆盖并发 force 的结果
+            if error.isRequestCancellation {
+                if !dayPullRefreshing.contains(key) {
+                    var latest = caches[key] ?? cache
+                    latest.isLoading = false
+                    caches[key] = latest
+                }
+                return
+            }
             var latest = caches[key] ?? cache
             latest.isLoading = false
             latest.error = error.localizedDescription

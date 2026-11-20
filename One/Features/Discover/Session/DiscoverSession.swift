@@ -43,6 +43,7 @@ final class DiscoverSession {
     }
 
     private var articleFeeds: [ContentCategory: MonthPagedFeed] = [:]
+    private var articlePullRefreshing: Set<ContentCategory> = []
     private var seriesFeeds: [String: PagedListState<SeriesSummary>] = [:]
     private let pageSize = 20
 
@@ -59,7 +60,15 @@ final class DiscoverSession {
     }
 
     func isLoadingArticles(_ channel: ContentCategory) -> Bool {
-        articleFeeds[channel]?.isLoading == true
+        articlePullRefreshing.contains(channel) || articleFeeds[channel]?.isLoading == true
+    }
+
+    func pullToRefreshArticles(channel: ContentCategory) async {
+        articlePullRefreshing.insert(channel)
+        await Task.detached { @MainActor in
+            defer { DiscoverSession.shared.articlePullRefreshing.remove(channel) }
+            await DiscoverSession.shared.loadArticles(channel: channel, force: true)
+        }.value
     }
 
     func isLoadingMoreArticles(_ channel: ContentCategory) -> Bool {
@@ -72,14 +81,10 @@ final class DiscoverSession {
 
     func loadArticles(channel: ContentCategory, force: Bool = false) async {
         guard let modelID = channel.articleModelID else { return }
-        var feed = articleFeeds[channel] ?? MonthPagedFeed(pageSize: pageSize)
+        let feed = articleFeed(for: channel)
         let sort = listSort.rawValue
         let size = pageSize
-        await feed.runLoad(
-            force: force,
-            anchorMonth: listPublishedAt,
-            publish: { articleFeeds[channel] = $0 }
-        ) { month, page, _ in
+        await feed.runLoad(force: force, anchorMonth: listPublishedAt) { month, page, _ in
             try await OneClient.articleDiscovery(
                 modelID: modelID,
                 publishedAt: month,
@@ -92,10 +97,10 @@ final class DiscoverSession {
 
     func loadMoreArticles(channel: ContentCategory) async {
         guard let modelID = channel.articleModelID else { return }
-        guard var feed = articleFeeds[channel] else { return }
+        guard let feed = articleFeeds[channel] else { return }
         let sort = listSort.rawValue
         let size = pageSize
-        await feed.runLoadMore(publish: { articleFeeds[channel] = $0 }) { month, page, _ in
+        await feed.runLoadMore { month, page, _ in
             try await OneClient.articleDiscovery(
                 modelID: modelID,
                 publishedAt: month,
@@ -104,6 +109,13 @@ final class DiscoverSession {
                 size: size
             )
         }
+    }
+
+    private func articleFeed(for channel: ContentCategory) -> MonthPagedFeed {
+        if let feed = articleFeeds[channel] { return feed }
+        let feed = MonthPagedFeed(pageSize: pageSize)
+        articleFeeds[channel] = feed
+        return feed
     }
 
     // MARK: - 系列

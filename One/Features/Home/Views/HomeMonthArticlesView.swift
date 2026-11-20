@@ -15,17 +15,24 @@ struct HomeMonthArticlesView: View {
         _session = State(initialValue: HomeMonthSession(monthAPIString: day.monthAPIString))
     }
 
+    private var hasNoContent: Bool {
+        !session.hasContent
+    }
+
     var body: some View {
         AsyncPage(
             isLoading: session.isLoading,
             error: session.error,
-            isEmpty: !session.hasContent,
+            isEmpty: hasNoContent,
             loadingTitle: "加载\(day.monthDisplayTitle)…",
             emptyIcon: "calendar",
             emptyTitle: "暂无内容",
             retry: { Task { await session.load(force: true) } }
         ) {
             articleGrid
+        }
+        .refreshable {
+            await session.pullToRefresh()
         }
         .toolbar(.visible, for: .navigationBar)
         .navigationBarTitleDisplayMode(.inline)
@@ -62,9 +69,6 @@ struct HomeMonthArticlesView: View {
             }
             .padding(.horizontal, 8)
             .padding(.bottom, 16)
-        }
-        .refreshable {
-            await session.load(force: true)
         }
     }
 

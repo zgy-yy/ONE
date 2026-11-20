@@ -32,7 +32,6 @@ struct TagPane: View {
                 publishedAt: session.listPublishedAt,
                 loadingMore: session.isLoadingMoreArticles(tagID: tagID),
                 exhausted: session.showsArticlesEndFooter(tagID: tagID),
-                onRefresh: { await session.loadArticles(for: tagID, force: true) },
                 onAnchorMonthMissing: {
                     Task { await session.loadArticles(for: tagID, force: true) }
                 }
@@ -52,6 +51,14 @@ struct TagPane: View {
                 ArticleDetailView(article: article)
             }
         }
+        .refreshable {
+            await session.pullToRefreshArticles(for: tagID)
+        }
         .task(id: listLoadToken) { await session.loadArticles(for: tagID) }
+        .onChange(of: session.listPublishedAt) { _, month in
+            // 空态不挂载 MonthPagedArticleList，须在此按新锚定月重载。
+            guard hasNoArticles || !sections.contains(where: { $0.month == month }) else { return }
+            Task { await session.loadArticles(for: tagID, force: true) }
+        }
     }
 }

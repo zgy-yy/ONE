@@ -8,13 +8,14 @@ final class HomeMonthSession {
     let anchorMonth: String
 
     private var feed = MonthPagedFeed(pageSize: 20)
+    private(set) var isPullRefreshing = false
 
     init(monthAPIString: String) {
         self.anchorMonth = monthAPIString
     }
 
     var sections: [ArticleMonthSection] { feed.sections }
-    var isLoading: Bool { feed.isLoading }
+    var isLoading: Bool { isPullRefreshing || feed.isLoading }
     var isLoadingMore: Bool { feed.isLoadingMore }
     var error: String? { feed.error }
     var loaded: Bool { feed.loaded }
@@ -24,13 +25,16 @@ final class HomeMonthSession {
         !sections.isEmpty && sections.contains { !$0.articles.isEmpty }
     }
 
+    func pullToRefresh() async {
+        isPullRefreshing = true
+        await Task.detached { @MainActor in
+            defer { self.isPullRefreshing = false }
+            await self.load(force: true)
+        }.value
+    }
+
     func load(force: Bool = false) async {
-        var next = feed
-        await next.runLoad(
-            force: force,
-            anchorMonth: anchorMonth,
-            publish: { feed = $0 }
-        ) { month, page, _ in
+        await feed.runLoad(force: force, anchorMonth: anchorMonth) { month, page, _ in
             try await OneClient.articleDiscovery(
                 modelID: ContentCategory.ModelID.graphic,
                 publishedAt: month,
@@ -42,8 +46,7 @@ final class HomeMonthSession {
     }
 
     func loadMore() async {
-        var next = feed
-        await next.runLoadMore(publish: { feed = $0 }) { month, page, _ in
+        await feed.runLoadMore { month, page, _ in
             try await OneClient.articleDiscovery(
                 modelID: ContentCategory.ModelID.graphic,
                 publishedAt: month,

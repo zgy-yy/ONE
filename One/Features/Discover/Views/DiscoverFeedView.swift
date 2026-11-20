@@ -54,7 +54,6 @@ struct DiscoverFeedView: View {
                 publishedAt: session.listPublishedAt,
                 loadingMore: session.isLoadingMoreArticles(channel),
                 exhausted: session.showsArticlesEndFooter(channel),
-                onRefresh: { await session.loadArticles(channel: channel, force: true) },
                 onAnchorMonthMissing: {
                     Task { await session.loadArticles(channel: channel, force: true) }
                 }
@@ -77,6 +76,13 @@ struct DiscoverFeedView: View {
             .navigationDestination(item: $articleDestination) { article in
                 ArticleDetailView(article: article)
             }
+        }
+        .refreshable {
+            await session.pullToRefreshArticles(channel: channel)
+        }
+        .onChange(of: session.listPublishedAt) { _, month in
+            guard hasNoArticles || !sections.contains(where: { $0.month == month }) else { return }
+            Task { await session.loadArticles(channel: channel, force: true) }
         }
     }
 

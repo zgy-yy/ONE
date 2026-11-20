@@ -13,7 +13,9 @@ struct HomeDayPage: View {
 
     /// 尚未成功加载、也没有错误时，一律当 loading（避免先闪「暂无内容」）。
     private var showsLoading: Bool {
-        cache.isLoading || (!cache.loaded && cache.error == nil)
+        session.isDayPullRefreshing(day)
+            || cache.isLoading
+            || (!cache.loaded && cache.error == nil)
     }
 
     var body: some View {
@@ -40,9 +42,10 @@ struct HomeDayPage: View {
                         .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8))
                 }
             }
-            .plainContentList {
-                await session.load(day, force: true)
-            }
+            .plainContentList()
+        }
+        .refreshable {
+            await session.pullToRefresh(day)
         }
         .task(id: day.apiString) {
             session.prepareLoad(day)
