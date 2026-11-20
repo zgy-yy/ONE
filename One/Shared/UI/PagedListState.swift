@@ -31,12 +31,17 @@ struct PagedListState<Item: Identifiable> where Item.ID: Hashable {
     }
 
     /// 开始首屏加载；返回 `false` 表示应跳过。
+    ///
+    /// `force` 且已有数据时保留 `items`，避免卸掉 List 导致下拉刷新请求被取消。
     mutating func beginLoad(force: Bool) -> Bool {
         if force {
-            loaded = false
-            items = []
+            guard !isLoading, !isLoadingMore else { return false }
             nextPage = 1
             exhausted = false
+            loaded = false
+            isLoading = true
+            error = nil
+            return true
         }
         guard !isLoading, !loaded else { return false }
         isLoading = true
@@ -54,10 +59,11 @@ struct PagedListState<Item: Identifiable> where Item.ID: Hashable {
         isLoading = false
     }
 
-    /// 首屏失败：保存错误文案，结束 loading。
-    mutating func failLoad(_ message: String) {
-        error = message
+    /// 首屏失败：保存错误文案，结束 loading。已有列表时忽略取消。
+    mutating func failLoad(_ error: Error) {
         isLoading = false
+        if error.isRequestCancellation, !items.isEmpty { return }
+        self.error = error.localizedDescription
     }
 
     /// 开始加载更多；返回当前页码，`nil` 表示应跳过。

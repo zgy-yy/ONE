@@ -24,6 +24,7 @@ struct MyLikesView: View {
             emptyIcon: "heart.slash",
             emptyTitle: "暂无喜欢",
             retry: { Task { await session.loadLikes(force: true) } },
+            onRefresh: { await session.loadLikes(force: true) },
             loadMore: {},
             row: likeRow
         )

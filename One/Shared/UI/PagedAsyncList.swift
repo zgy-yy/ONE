@@ -7,6 +7,7 @@ struct PagedAsyncList<Item: Identifiable, Row: View>: View where Item.ID: Hashab
     var emptyIcon: String = "circle.slash"
     var emptyTitle: String = "无内容"
     let retry: () -> Void
+    var onRefresh: (() async -> Void)? = nil
     let loadMore: () -> Void
     @ViewBuilder var row: (Item) -> Row
 
@@ -20,20 +21,30 @@ struct PagedAsyncList<Item: Identifiable, Row: View>: View where Item.ID: Hashab
             emptyTitle: emptyTitle,
             retry: retry
         ) {
-            List {
-                ForEach(state.items) { item in
-                    row(item)
-                        .onAppear {
-                            guard state.items.isLastItem(item) else { return }
-                            loadMore()
-                        }
-                }
-                AppUI.listLoadMoreFooter(
-                    loadingMore: state.isLoadingMore,
-                    exhausted: state.exhausted
-                )
+            contentList
+        }
+    }
+
+    @ViewBuilder
+    private var contentList: some View {
+        let list = List {
+            ForEach(state.items) { item in
+                row(item)
+                    .onAppear {
+                        guard state.items.isLastItem(item) else { return }
+                        loadMore()
+                    }
             }
-            .plainContentList()
+            AppUI.listLoadMoreFooter(
+                loadingMore: state.isLoadingMore,
+                exhausted: state.exhausted
+            )
+        }
+
+        if let onRefresh {
+            list.plainContentList(onRefresh: onRefresh)
+        } else {
+            list.plainContentList()
         }
     }
 }

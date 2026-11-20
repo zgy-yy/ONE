@@ -58,6 +58,7 @@ struct MyFavoritesView: View {
             emptyIcon: "star.slash",
             emptyTitle: "暂无收藏",
             retry: { Task { await session.loadFavorites(force: true) } },
+            onRefresh: { await session.loadFavorites(force: true) },
             loadMore: { Task { await session.loadMoreFavorites() } },
             row: favoriteRow
         )

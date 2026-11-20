@@ -21,8 +21,9 @@ final class VodSession {
         }
     }
 
-    var articleFeedKey: String {
-        "\(listPublishedAt)-\(listSort.rawValue)"
+    /// 供 `.task(id:)`：仅排序变化需整表重载；月份由列表滚动或 force 锚定。
+    var articleListTaskKey: String {
+        listSort.rawValue
     }
 
     private var articleFeeds: [Int: MonthPagedFeed] = [:]
@@ -78,15 +79,13 @@ final class VodSession {
 
     func loadArticles(for tagID: Int, force: Bool = false) async {
         var feed = articleFeeds[tagID] ?? MonthPagedFeed(pageSize: articlePageSize)
-        guard feed.beginLoad(force: force) else {
-            articleFeeds[tagID] = feed
-            return
-        }
-        articleFeeds[tagID] = feed
-
         let sort = listSort.rawValue
         let size = articlePageSize
-        await feed.performLoad(anchorMonth: listPublishedAt) { month, page, _ in
+        await feed.runLoad(
+            force: force,
+            anchorMonth: listPublishedAt,
+            publish: { articleFeeds[tagID] = $0 }
+        ) { month, page, _ in
             try await OneClient.articleDiscovery(
                 modelID: ContentCategory.ModelID.vod,
                 publishedAt: month,
@@ -96,20 +95,13 @@ final class VodSession {
                 demandTagID: tagID
             )
         }
-        articleFeeds[tagID] = feed
     }
 
     func loadMoreArticles(for tagID: Int) async {
         guard var feed = articleFeeds[tagID] else { return }
-        guard feed.beginLoadMore() else {
-            articleFeeds[tagID] = feed
-            return
-        }
-        articleFeeds[tagID] = feed
-
         let sort = listSort.rawValue
         let size = articlePageSize
-        await feed.performLoadMore { month, page, _ in
+        await feed.runLoadMore(publish: { articleFeeds[tagID] = $0 }) { month, page, _ in
             try await OneClient.articleDiscovery(
                 modelID: ContentCategory.ModelID.vod,
                 publishedAt: month,
@@ -119,6 +111,5 @@ final class VodSession {
                 demandTagID: tagID
             )
         }
-        articleFeeds[tagID] = feed
     }
 }

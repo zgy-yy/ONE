@@ -8,8 +8,10 @@ struct TagPane: View {
     private var tagID: Int { tag.id }
     private var sections: [ArticleMonthSection] { session.articleSections(for: tagID) }
 
+    @State private var articleDestination: ArticleSummary?
+
     private var listLoadToken: String {
-        "\(tagID)-\(session.articleFeedKey)"
+        "\(tagID)-\(session.articleListTaskKey)"
     }
 
     private var hasNoArticles: Bool {
@@ -25,59 +27,31 @@ struct TagPane: View {
             emptyTitle: "无内容",
             retry: { Task { await session.loadArticles(for: tagID, force: true) } }
         ) {
-            articleList
-        }
-        .task(id: listLoadToken) { await session.loadArticles(for: tagID) }
-    }
-
-    private var articleList: some View {
-        ScrollViewReader { proxy in
-            List {
-                ForEach(sections) { section in
-                    Section {
-                        ForEach(section.articles) { article in
-                            VodArticleRow(article: article)
-                                .hiddenNavigationLink(value: article)
-                                .styledListRow()
-                                .onAppear {
-                                    guard sections.isTailArticle(article, in: section) else { return }
-                                    Task { await session.loadMoreArticles(for: tagID) }
-                                }
-                        }
-                    } header: {
-                        ArticleMonthSectionHeader(monthAPIString: section.month)
-                            .id(section.month)
-                    }
-                }
-                Section {
-                    listFooter
-                }
-            }
-            .plainContentList()
-            .onChange(of: session.listPublishedAt) { _, month in
-                // 仅月份筛选变化时跳转；下滑加载更多不要滚回顶部。
-                if sections.contains(where: { $0.month == month }) {
-                    scrollToMonth(month, proxy: proxy)
-                } else {
+            MonthPagedArticleList(
+                sections: sections,
+                publishedAt: session.listPublishedAt,
+                loadingMore: session.isLoadingMoreArticles(tagID: tagID),
+                exhausted: session.showsArticlesEndFooter(tagID: tagID),
+                onRefresh: { await session.loadArticles(for: tagID, force: true) },
+                onAnchorMonthMissing: {
                     Task { await session.loadArticles(for: tagID, force: true) }
                 }
+            ) { section in
+                ForEach(section.articles) { article in
+                    VodArticleRow(article: article)
+                        .styledListRow()
+                        .contentShape(Rectangle())
+                        .onTapGesture { articleDestination = article }
+                        .onAppear {
+                            guard sections.isTailArticle(article, in: section) else { return }
+                            Task { await session.loadMoreArticles(for: tagID) }
+                        }
+                }
+            }
+            .navigationDestination(item: $articleDestination) { article in
+                ArticleDetailView(article: article)
             }
         }
-    }
-
-    private func scrollToMonth(_ month: String, proxy: ScrollViewProxy) {
-        guard sections.contains(where: { $0.month == month }) else { return }
-        Task { @MainActor in
-            withAnimation(.easeInOut(duration: 0.25)) {
-                proxy.scrollTo(month, anchor: .top)
-            }
-        }
-    }
-
-    private var listFooter: some View {
-        AppUI.listLoadMoreFooter(
-            loadingMore: session.isLoadingMoreArticles(tagID: tagID),
-            exhausted: session.showsArticlesEndFooter(tagID: tagID)
-        )
+        .task(id: listLoadToken) { await session.loadArticles(for: tagID) }
     }
 }

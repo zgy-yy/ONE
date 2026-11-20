@@ -40,7 +40,9 @@ struct HomeDayPage: View {
                         .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8))
                 }
             }
-            .plainContentList()
+            .plainContentList {
+                await session.load(day, force: true)
+            }
         }
         .task(id: day.apiString) {
             session.prepareLoad(day)

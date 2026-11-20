@@ -101,6 +101,12 @@ extension View {
             .listSectionSpacing(8)
     }
 
+    /// `plainContentList` + 下拉刷新。
+    func plainContentList(onRefresh: @escaping @Sendable () async -> Void) -> some View {
+        plainContentList()
+            .refreshable(action: onRefresh)
+    }
+
     /// 整行可点、无右侧箭头的 `NavigationLink`（适合自定义列表行）。
     ///
     /// `NavigationLink` 藏在 background，List 不会画系统 disclosure 箭头。

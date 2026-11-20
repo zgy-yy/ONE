@@ -73,7 +73,7 @@ final class ArticleDetailSession {
             feed.finishLoad(try await fetchComments(articleID: articleID, page: 1))
             comments = feed
         } catch {
-            feed.failLoad(error.localizedDescription)
+            feed.failLoad(error)
             comments = feed
         }
     }

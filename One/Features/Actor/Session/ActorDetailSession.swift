@@ -127,7 +127,7 @@ final class ActorDetailSession {
             self[keyPath: keyPath] = state
         } catch {
             var state = self[keyPath: keyPath]
-            state.failLoad(error.localizedDescription)
+            state.failLoad(error)
             self[keyPath: keyPath] = state
         }
     }

@@ -85,7 +85,7 @@ final class SearchSession {
             feed.finishLoad(list)
             results = feed
         } catch {
-            feed.failLoad(error.localizedDescription)
+            feed.failLoad(error)
             results = feed
         }
     }

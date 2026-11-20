@@ -42,6 +42,7 @@ struct SearchView: View {
                 emptyIcon: "magnifyingglass",
                 emptyTitle: "无结果",
                 retry: { Task { await session.load(force: true) } },
+                onRefresh: { await session.load(force: true) },
                 loadMore: { Task { await session.loadMore() } },
                 row: resultRow
             )

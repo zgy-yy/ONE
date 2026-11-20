@@ -63,6 +63,9 @@ struct HomeMonthArticlesView: View {
             .padding(.horizontal, 8)
             .padding(.bottom, 16)
         }
+        .refreshable {
+            await session.load(force: true)
+        }
     }
 
     /// 两列用固定 `HStack` 行，避免 `LazyVGrid` 预取导致中段回跳。

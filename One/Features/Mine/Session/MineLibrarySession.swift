@@ -64,7 +64,7 @@ final class MineLibrarySession {
             feed.finishLoad(payload.items, hasMore: payload.hasMore)
             likes = feed
         } catch {
-            feed.failLoad(error.localizedDescription)
+            feed.failLoad(error)
             likes = feed
         }
     }
@@ -101,7 +101,7 @@ final class MineLibrarySession {
             feed.finishLoad(payload.items, hasMore: payload.canLoadMore)
             favorites = feed
         } catch {
-            feed.failLoad(error.localizedDescription)
+            feed.failLoad(error)
             favorites = feed
         }
     }

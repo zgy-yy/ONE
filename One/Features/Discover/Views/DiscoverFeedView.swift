@@ -4,13 +4,13 @@ import SwiftUI
 struct DiscoverFeedView: View {
     let channel: ContentCategory
     @Bindable private var session = DiscoverSession.shared
-    /// 图文两列同行不能挂两个 `NavigationLink`（List 会一起点开），用单项跳转。
-    @State private var graphicDestination: ArticleSummary?
+    /// List 行用显式跳转（避免切换月份后背景 `NavigationLink` 失效）。
+    @State private var articleDestination: ArticleSummary?
 
     private var loadToken: String {
         channel.isSeries
             ? "\(channel.rawValue)-\(session.seriesFeedKey)"
-            : "\(channel.rawValue)-\(session.articleFeedKey)"
+            : "\(channel.rawValue)-\(session.articleListTaskKey)"
     }
 
     var body: some View {
@@ -49,51 +49,33 @@ struct DiscoverFeedView: View {
             emptyTitle: "无内容",
             retry: { Task { await session.loadArticles(channel: channel, force: true) } }
         ) {
-            articleList
-        }
-    }
-
-    private var articleList: some View {
-        ScrollViewReader { proxy in
-            List {
-                ForEach(sections) { section in
-                    Section {
-                        if channel == .graphic {
-                            graphicRows(section)
-                        } else {
-                            ForEach(section.articles) { article in
-                                articleRow(article)
-                                    .hiddenNavigationLink(value: article)
-                                    .styledListRow()
-                                    .onAppear {
-                                        guard sections.isTailArticle(article, in: section) else { return }
-                                        Task { await session.loadMoreArticles(channel: channel) }
-                                    }
-                            }
-                        }
-                    } header: {
-                        ArticleMonthSectionHeader(monthAPIString: section.month)
-                            .id(section.month)
-                    }
-                }
-                Section {
-                    AppUI.listLoadMoreFooter(
-                        loadingMore: session.isLoadingMoreArticles(channel),
-                        exhausted: session.showsArticlesEndFooter(channel)
-                    )
-                }
-            }
-            .plainContentList()
-            .navigationDestination(item: $graphicDestination) { article in
-                ArticleDetailView(article: article)
-            }
-            .onChange(of: session.listPublishedAt) { _, month in
-                // 锚定月已在列表里则滚过去；否则按新锚定月重载
-                if sections.contains(where: { $0.month == month }) {
-                    scrollToMonth(month, proxy: proxy)
-                } else {
+            MonthPagedArticleList(
+                sections: sections,
+                publishedAt: session.listPublishedAt,
+                loadingMore: session.isLoadingMoreArticles(channel),
+                exhausted: session.showsArticlesEndFooter(channel),
+                onRefresh: { await session.loadArticles(channel: channel, force: true) },
+                onAnchorMonthMissing: {
                     Task { await session.loadArticles(channel: channel, force: true) }
                 }
+            ) { section in
+                if channel == .graphic {
+                    graphicRows(section)
+                } else {
+                    ForEach(section.articles) { article in
+                        articleRow(article)
+                            .styledListRow()
+                            .contentShape(Rectangle())
+                            .onTapGesture { articleDestination = article }
+                            .onAppear {
+                                guard sections.isTailArticle(article, in: section) else { return }
+                                Task { await session.loadMoreArticles(channel: channel) }
+                            }
+                    }
+                }
+            }
+            .navigationDestination(item: $articleDestination) { article in
+                ArticleDetailView(article: article)
             }
         }
     }
@@ -108,7 +90,7 @@ struct DiscoverFeedView: View {
                         .padding(.vertical, 2)
                         .frame(maxWidth: .infinity, alignment: .top)
                         .contentShape(Rectangle())
-                        .onTapGesture { graphicDestination = article }
+                        .onTapGesture { articleDestination = article }
                         .onAppear {
                             guard sections.isTailArticle(article, in: section) else { return }
                             Task { await session.loadMoreArticles(channel: channel) }
@@ -134,15 +116,6 @@ struct DiscoverFeedView: View {
             RadioArticleRow(article: article)
         default:
             VodArticleRow(article: article, aspectRatio: channel.coverAspect)
-        }
-    }
-
-    private func scrollToMonth(_ month: String, proxy: ScrollViewProxy) {
-        guard sections.contains(where: { $0.month == month }) else { return }
-        Task { @MainActor in
-            withAnimation(.easeInOut(duration: 0.25)) {
-                proxy.scrollTo(month, anchor: .top)
-            }
         }
     }
 
@@ -176,7 +149,9 @@ struct DiscoverFeedView: View {
                     exhausted: session.showsSeriesEndFooter(channel)
                 )
             }
-            .plainContentList()
+            .plainContentList {
+                await session.loadSeries(channel: channel, force: true)
+            }
         }
     }
 }

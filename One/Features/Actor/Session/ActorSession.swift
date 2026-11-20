@@ -138,7 +138,7 @@ final class ActorSession {
             if append { feed.finishLoadMore(list) } else { feed.finishLoad(list) }
             feeds[key] = feed
         } catch {
-            if append { feed.cancelLoadMore() } else { feed.failLoad(error.localizedDescription) }
+            if append { feed.cancelLoadMore() } else { feed.failLoad(error) }
             feeds[key] = feed
         }
     }

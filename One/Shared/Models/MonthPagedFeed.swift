@@ -11,6 +11,9 @@ struct MonthPagedFeed {
     private(set) var isLoadingMore = false
     var pageSize: Int
 
+    /// 有旧数据时先保留列表，等首包返回再整表替换（避免卸掉 List 取消 refreshable）。
+    private var replaceAfterFetch = false
+
     private let maxEmptyMonthHops = 36
 
     init(pageSize: Int = 20) {
@@ -33,13 +36,25 @@ struct MonthPagedFeed {
         state.reset()
         isLoading = false
         isLoadingMore = false
+        replaceAfterFetch = false
     }
 
     mutating func beginLoad(force: Bool = false) -> Bool {
-        if force { clear() }
+        if force {
+            // 已有内容：保留 sections，AsyncPage 继续显示 List，下拉刷新任务不被取消。
+            if !state.sections.isEmpty {
+                guard !isLoading, !isLoadingMore else { return false }
+                isLoading = true
+                state.error = nil
+                replaceAfterFetch = true
+                return true
+            }
+            clear()
+        }
         guard !isLoading, !loaded else { return false }
         isLoading = true
         state.reset()
+        replaceAfterFetch = false
         return true
     }
 
@@ -67,6 +82,35 @@ struct MonthPagedFeed {
         await run(next, fetch: fetch)
     }
 
+    /// Session 用：`begin` 后立刻 `publish`（让 UI 看到 loading），`perform` 后再 `publish`。
+    mutating func runLoad(
+        force: Bool,
+        anchorMonth: String,
+        publish: (MonthPagedFeed) -> Void,
+        fetch: PageFetch
+    ) async {
+        guard beginLoad(force: force) else {
+            publish(self)
+            return
+        }
+        publish(self)
+        await performLoad(anchorMonth: anchorMonth, fetch: fetch)
+        publish(self)
+    }
+
+    mutating func runLoadMore(
+        publish: (MonthPagedFeed) -> Void,
+        fetch: PageFetch
+    ) async {
+        guard beginLoadMore() else {
+            publish(self)
+            return
+        }
+        publish(self)
+        await performLoadMore(fetch: fetch)
+        publish(self)
+    }
+
     private mutating func run(_ first: MonthPageRequest, fetch: PageFetch) async {
         await fetchPage(first, fetch: fetch)
         var hops = 0
@@ -81,6 +125,11 @@ struct MonthPagedFeed {
     private mutating func fetchPage(_ request: MonthPageRequest, fetch: PageFetch) async {
         do {
             let list = try await fetch(request.month, request.page, request.newSection)
+            if Task.isCancelled { return }
+            if replaceAfterFetch {
+                state.reset()
+                replaceAfterFetch = false
+            }
             state.mergePage(
                 month: request.month,
                 list: list,
@@ -89,7 +138,11 @@ struct MonthPagedFeed {
                 newSection: request.newSection
             )
         } catch {
-            if request.page == 1, request.newSection {
+            if error.isRequestCancellation {
+                replaceAfterFetch = false
+                return
+            }
+            if request.page == 1, request.newSection, state.sections.isEmpty {
                 state.recordError(error.localizedDescription)
             }
         }

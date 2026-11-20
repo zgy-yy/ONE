@@ -60,6 +60,9 @@ struct ActorGridPane: View {
             )
             .padding(.bottom, 16)
         }
+        .refreshable {
+            await session.loadActors(selection: selection, force: true)
+        }
     }
 
     private func actorCell(_ actor: ActorSummary) -> some View {

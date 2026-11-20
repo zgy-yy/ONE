@@ -32,9 +32,9 @@ final class DiscoverSession {
         }
     }
 
-    /// 文章列表缓存 key（供 View `.task(id:)` 使用）。
-    var articleFeedKey: String {
-        "\(listPublishedAt)-\(listSort.rawValue)"
+    /// 文章列表缓存 key（供 View `.task(id:)` 使用）；月份不参与，避免切换日期取消任务。
+    var articleListTaskKey: String {
+        listSort.rawValue
     }
 
     /// 系列列表缓存 key。
@@ -73,15 +73,13 @@ final class DiscoverSession {
     func loadArticles(channel: ContentCategory, force: Bool = false) async {
         guard let modelID = channel.articleModelID else { return }
         var feed = articleFeeds[channel] ?? MonthPagedFeed(pageSize: pageSize)
-        guard feed.beginLoad(force: force) else {
-            articleFeeds[channel] = feed
-            return
-        }
-        articleFeeds[channel] = feed
-
         let sort = listSort.rawValue
         let size = pageSize
-        await feed.performLoad(anchorMonth: listPublishedAt) { month, page, _ in
+        await feed.runLoad(
+            force: force,
+            anchorMonth: listPublishedAt,
+            publish: { articleFeeds[channel] = $0 }
+        ) { month, page, _ in
             try await OneClient.articleDiscovery(
                 modelID: modelID,
                 publishedAt: month,
@@ -90,21 +88,14 @@ final class DiscoverSession {
                 size: size
             )
         }
-        articleFeeds[channel] = feed
     }
 
     func loadMoreArticles(channel: ContentCategory) async {
         guard let modelID = channel.articleModelID else { return }
         guard var feed = articleFeeds[channel] else { return }
-        guard feed.beginLoadMore() else {
-            articleFeeds[channel] = feed
-            return
-        }
-        articleFeeds[channel] = feed
-
         let sort = listSort.rawValue
         let size = pageSize
-        await feed.performLoadMore { month, page, _ in
+        await feed.runLoadMore(publish: { articleFeeds[channel] = $0 }) { month, page, _ in
             try await OneClient.articleDiscovery(
                 modelID: modelID,
                 publishedAt: month,
@@ -113,7 +104,6 @@ final class DiscoverSession {
                 size: size
             )
         }
-        articleFeeds[channel] = feed
     }
 
     // MARK: - 系列
@@ -153,7 +143,7 @@ final class DiscoverSession {
             feed.finishLoad(try await fetchSeries(channel: channel, page: 1))
             seriesFeeds[key] = feed
         } catch {
-            feed.failLoad(error.localizedDescription)
+            feed.failLoad(error)
             seriesFeeds[key] = feed
         }
     }
