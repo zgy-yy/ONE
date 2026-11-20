@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 发现「阅读」：左方封面，右标题 / 简介 / 作者 / 喜欢 / 日期。
+/// 发现「阅读」：左方封面，右标题 / 作者·日期 / 喜欢。
 struct ReadingArticleRow: View {
     let article: ArticleSummary
     var showsDate: Bool = true
@@ -17,30 +17,30 @@ struct ReadingArticleRow: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(article.displayTitle)
-                    .font(ArticleRowTypography.title)
+                    .font(ArticleRowTypography.filmTitle)
                     .lineLimit(2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                if let summary = article.summary?.nonEmpty {
-                    Text(summary)
-                        .font(ArticleRowTypography.summary)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .layoutPriority(1)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
 
                 HStack(spacing: 8) {
                     if let author = article.author?.nonEmpty {
                         Text(author)
-                            .lineLimit(1)
                             .foregroundStyle(.secondary)
+                            .lineLimit(1)
                     }
-                    ArticleCollectLikeMeta(article: article)
+                    Spacer(minLength: 0)
+                    if showsDate {
+                        ArticleDateText(publishedAt: article.publishedAt)
+                    }
                 }
-                .font(ArticleRowTypography.meta)
+                .font(ArticleRowTypography.summary)
 
-                if showsDate {
-                    ArticleDateText(publishedAt: article.publishedAt)
-                }
+                Spacer(minLength: 0)
+
+                ArticleCollectLikeMeta(article: article)
+                    .font(ArticleRowTypography.meta)
             }
             .matchCoverHeight(width: coverWidth, aspect: CoverAspect.square)
         }

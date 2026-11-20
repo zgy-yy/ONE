@@ -55,7 +55,7 @@ struct HomeMonthArticlesView: View {
                     Section {
                         sectionRows(section)
                     } header: {
-                        ArticleMonthSectionHeader(monthAPIString: section.month, pinned: true)
+                        ArticleMonthSectionHeader(monthAPIString: section.month, stickyChrome: true)
                     }
                 }
 

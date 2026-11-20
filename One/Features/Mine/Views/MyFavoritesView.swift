@@ -65,15 +65,13 @@ struct MyFavoritesView: View {
     }
 
     private func favoriteRow(_ item: FavoriteItem) -> some View {
-        LibraryRow(
-            title: item.displayTitle,
-            author: item.author ?? item.contentType,
-            imagePath: item.imagePath,
-            subtitle: item.collectTime,
-            coverAspectRatio: item.modelID == ContentCategory.ModelID.graphic
-                ? CoverAspect.portrait
-                : CoverAspect.landscape
-        )
+        Group {
+            if item.isSeries {
+                SeriesRow(item: item.asSeriesSummary)
+            } else {
+                ArticleRowForModel.view(for: item.asArticleSummary)
+            }
+        }
         .libraryNavigation(
             isSeries: item.isSeries,
             article: item.asArticleSummary,

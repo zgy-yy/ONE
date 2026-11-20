@@ -17,7 +17,7 @@ struct FilmArticleRow: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(article.displayTitle)
-                    .font(ArticleRowTypography.title)
+                    .font(ArticleRowTypography.filmTitle)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
                     // 与 Spacer 抢高度时优先保两行，避免被压成一行。
@@ -25,22 +25,23 @@ struct FilmArticleRow: View {
                     .layoutPriority(1)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
 
-                if let author = article.author?.nonEmpty {
-                    Text(author)
-                        .font(ArticleRowTypography.summary)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-
-                Spacer(minLength: 0)
-
-                VStack(alignment: .leading, spacing: 6) {
-                    ArticleCollectLikeMeta(article: article)
+                HStack(spacing: 8) {
+                    if let author = article.author?.nonEmpty {
+                        Text(author)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
                     if showsDate {
                         ArticleDateText(publishedAt: article.publishedAt)
                     }
                 }
-                .font(ArticleRowTypography.meta)
+                .font(ArticleRowTypography.summary)
+
+                Spacer(minLength: 0)
+
+                ArticleCollectLikeMeta(article: article)
+                    .font(ArticleRowTypography.meta)
             }
             .matchCoverHeight(width: coverWidth)
         }

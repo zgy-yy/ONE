@@ -11,7 +11,7 @@ struct SearchView: View {
                 .navigationTitle("搜索")
                 .navigationBarTitleDisplayMode(.inline)
                 .searchable(
-                    text: $session.draftKeyword,
+                    text: searchFieldBinding,
                     placement: .navigationBarDrawer(displayMode: .always),
                     prompt: "输入关键词"
                 )
@@ -29,6 +29,19 @@ struct SearchView: View {
                 .libraryDetailDestinations()
                 .task { await session.loadHotWordsIfNeeded() }
         }
+    }
+
+    private var searchFieldBinding: Binding<String> {
+        Binding(
+            get: { session.draftKeyword },
+            set: { newValue in
+                if newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    session.clearResults()
+                } else {
+                    session.draftKeyword = newValue
+                }
+            }
+        )
     }
 
     @ViewBuilder
@@ -50,13 +63,8 @@ struct SearchView: View {
     }
 
     private func resultRow(_ item: SearchHit) -> some View {
-        LibraryRow(
-            title: item.displayTitle,
-            author: item.subtitle,
-            imagePath: item.imagePath,
-            coverAspectRatio: session.category.coverAspect
-        )
-        .libraryNavigation(
+        SearchResultRow(hit: item)
+            .libraryNavigation(
             isSeries: session.category.isSeries || item.opensAsSeries,
             article: item.asArticleSummary,
             series: item.asSeriesSummary

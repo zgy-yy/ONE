@@ -4,6 +4,8 @@ import SwiftUI
 enum ArticleRowTypography {
     /// 主标题（信息列 / 封面叠字）。
     static let title: Font = .body.weight(.medium)
+    /// 影视行右侧标题（比 `title` 略小）。
+    static let filmTitle: Font = .subheadline.weight(.medium)
     /// 竖图卡片标题。
     static let cardTitle: Font = .caption.weight(.medium)
     /// 简介。

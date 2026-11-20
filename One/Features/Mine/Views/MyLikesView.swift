@@ -31,16 +31,8 @@ struct MyLikesView: View {
     }
 
     private func likeRow(_ item: UserLikeItem) -> some View {
-        LibraryRow(
-            title: item.displayTitle,
-            author: item.author,
-            imagePath: item.imagePath,
-            subtitle: item.publishedAt,
-            coverAspectRatio: item.modelID == ContentCategory.ModelID.graphic
-                ? CoverAspect.portrait
-                : CoverAspect.landscape
-        )
-        .hiddenNavigationLink(value: item.asArticleSummary)
-        .styledListRow()
+        ArticleRowForModel.view(for: item.asArticleSummary)
+            .hiddenNavigationLink(value: item.asArticleSummary)
+            .styledListRow()
     }
 }

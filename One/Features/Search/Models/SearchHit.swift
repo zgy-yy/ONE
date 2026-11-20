@@ -8,6 +8,7 @@ struct SearchHit: Decodable, Identifiable, Hashable {
     let thumbnail: String?
     let title: String?
     let subtitle: String?
+    let publishedAt: String?
 
     var displayTitle: String {
         title?.nonEmpty ?? "内容 \(id)"
@@ -16,6 +17,9 @@ struct SearchHit: Decodable, Identifiable, Hashable {
     var imagePath: String? {
         ImagePath.preferred(thumb: thumb, thumbnail: thumbnail)
     }
+
+    /// 接口 `subtitle` 一般为作者。
+    var author: String? { subtitle }
 
     /// 搜索里写真 / 漫画条目的 `model_id`。
     var opensAsSeries: Bool { modelID == ContentCategory.ModelID.series }
@@ -26,7 +30,7 @@ struct SearchHit: Decodable, Identifiable, Hashable {
             title: title,
             thumb: imagePath,
             author: subtitle,
-            publishedAt: nil,
+            publishedAt: publishedAt,
             modelID: modelID,
             summary: subtitle
         )
@@ -45,5 +49,6 @@ struct SearchHit: Decodable, Identifiable, Hashable {
     enum CodingKeys: String, CodingKey {
         case id, thumb, thumbnail, title, subtitle
         case modelID = "model_id"
+        case publishedAt = "published_at"
     }
 }

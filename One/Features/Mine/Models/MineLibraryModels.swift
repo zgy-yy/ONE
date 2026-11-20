@@ -98,8 +98,8 @@ struct FavoriteItem: Decodable, Identifiable, Hashable {
             id: id,
             title: title,
             thumb: thumb,
-            author: author,
-            publishedAt: nil,
+            author: author ?? contentType,
+            publishedAt: collectTime,
             modelID: modelID,
             summary: nil
         )

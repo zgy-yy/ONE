@@ -63,7 +63,7 @@ struct ArticleMultiplePicGallery: View {
 
     private var centerHeader: some View {
         HStack(spacing: 8) {
-            Text("精彩预览")
+            Text("预览")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
 
