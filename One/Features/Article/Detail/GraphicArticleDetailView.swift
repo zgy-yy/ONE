@@ -79,7 +79,7 @@ struct GraphicArticleDetailView: View {
                     Task { await session.toggleCollect() }
                 } label: {
                     ArticleDetailIconLabel(
-                        systemImage: collected ? "bookmark.fill" : "bookmark",
+                        systemImage: collected ? ArticleDetailSymbol.collectOn : ArticleDetailSymbol.collect,
                         text: ArticleFormat.shortCount(collectCount ?? 0),
                         active: collected
                     )
@@ -91,7 +91,7 @@ struct GraphicArticleDetailView: View {
                     Task { await session.toggleLike() }
                 } label: {
                     ArticleDetailIconLabel(
-                        systemImage: liked ? "heart.fill" : "heart",
+                        systemImage: liked ? ArticleDetailSymbol.likeOn : ArticleDetailSymbol.like,
                         text: ArticleFormat.shortCount(likeCount ?? 0),
                         active: liked
                     )

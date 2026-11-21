@@ -45,8 +45,8 @@ final class ArticleDetailSession {
 
             var article = try await business
             reactions.merge(into: &article)
-            detail = article
             applyPlayURLs(from: (try? await play) ?? article)
+            detail = article
         } catch {
             self.error = error.localizedDescription
         }

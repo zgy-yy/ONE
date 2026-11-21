@@ -8,9 +8,12 @@ struct ArticleDetailMetaSection: View {
     var onPlay: (() -> Void)?
     var onCollect: (() -> Void)?
     var onLike: (() -> Void)?
+    var onCommentsTap: (() -> Void)?
+
+    private let rowSpacing: CGFloat = 12
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: rowSpacing) {
             Text(detail.displayVideoName)
                 .font(.title2.weight(.semibold))
 
@@ -31,15 +34,21 @@ struct ArticleDetailMetaSection: View {
             DetailCastRow(
                 detail: detail,
                 showsDate: style.dateBesidePublisher,
+                dateBeforePublisher: style.dateBeforePublisher,
+                volumeBesidePublisher: style.volumeBesidePublisher,
                 spreadEdges: style.castSpreadEdges
             )
-            DetailVideoSpecsRow(detail: detail)
+            DetailVideoSpecsRow(detail: detail, evenDistribution: style.evenVideoSpecs)
             DetailMetricsRow(
                 detail: detail,
                 showsDownloadCount: style.showsDownloadCount,
-                showsDate: !style.dateBesidePublisher && !style.dateInPreviewHeader,
+                showsDate: !style.dateBesidePublisher && !style.dateInPreviewHeader && !style.dateBeforePublisher,
+                splitEngagementRows: style.splitEngagementRows,
+                spreadDownloadEngagement: style.spreadDownloadEngagement,
+                commentsInMetricsRow: style.commentsInMetricsRow,
                 onCollect: onCollect,
-                onLike: onLike
+                onLike: onLike,
+                onCommentsTap: onCommentsTap
             )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -92,37 +101,96 @@ private struct DetailPriceNumberRow: View {
     }
 }
 
-// MARK: - 演员 + 发行（影视：日期在发行右；点播：演员/发行分两侧）
+// MARK: - 演员 + 出品
 
 private struct DetailCastRow: View {
     let detail: ArticleDetail
     var showsDate = false
+    var dateBeforePublisher = false
+    var volumeBesidePublisher = false
     var spreadEdges = false
 
     var body: some View {
         let actor = ArticleFormat.nonEmpty(detail.actor)
         let author = ArticleFormat.nonEmpty(detail.author)
-        let date = showsDate ? ArticleFormat.dateOnly(from: detail.publishedAt) : nil
+        let publisherDate = showsDate ? ArticleFormat.dateOnly(from: detail.publishedAt) : nil
+        let leadingDate = dateBeforePublisher ? ArticleFormat.dateOnly(from: detail.publishedAt) : nil
+        let vol = volumeBesidePublisher ? detail.vol : nil
 
-        if actor != nil || author != nil || date != nil {
-            HStack(alignment: .center, spacing: 12) {
-                if let actor {
-                    ArticleDetailIconLabel(prefix: "演员", systemImage: "person.fill", text: actor, emphasized: true)
-                        .frame(maxWidth: spreadEdges ? .infinity : nil, alignment: .leading)
-                }
-                if let author {
-                    ArticleDetailIconLabel(prefix: "发行", systemImage: "building.2.fill", text: author)
-                        .frame(
-                            maxWidth: spreadEdges ? .infinity : nil,
-                            alignment: spreadEdges ? .trailing : .leading
-                        )
-                }
-                if let date {
-                    Spacer(minLength: 8)
-                    ArticleDetailIconLabel(systemImage: "calendar", text: date)
+        if volumeBesidePublisher {
+            filmCastBlock(actor: actor, author: author, vol: vol)
+        } else if dateBeforePublisher {
+            contentCastBlock(actor: actor, author: author, date: leadingDate)
+        } else if actor != nil || author != nil || publisherDate != nil {
+            defaultCastRow(actor: actor, author: author, date: publisherDate)
+        }
+    }
+
+    @ViewBuilder
+    private func contentCastBlock(actor: String?, author: String?, date: String?) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if let actor {
+                ArticleDetailIconLabel.actor(actor)
+            }
+            if date != nil || author != nil {
+                HStack(alignment: .center, spacing: 12) {
+                    if let date {
+                        dateLabel(date)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    if let author {
+                        ArticleDetailIconLabel.publisher(author)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                    }
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private func filmCastBlock(actor: String?, author: String?, vol: Int?) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if let actor {
+                ArticleDetailIconLabel.actor(actor)
+            }
+            if vol != nil || author != nil {
+                HStack(alignment: .center, spacing: 12) {
+                    if let vol {
+                        ArticleDetailIconLabel.volumeIssue(vol)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    if let author {
+                        ArticleDetailIconLabel.publisher(author)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func defaultCastRow(actor: String?, author: String?, date: String?) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            if let actor {
+                ArticleDetailIconLabel.actor(actor)
+                    .frame(maxWidth: spreadEdges ? .infinity : nil, alignment: .leading)
+            }
+            if let author {
+                ArticleDetailIconLabel.publisher(author)
+                    .frame(
+                        maxWidth: spreadEdges ? .infinity : nil,
+                        alignment: spreadEdges ? .trailing : .leading
+                    )
+            }
+            if let date {
+                Spacer(minLength: 8)
+                dateLabel(date)
+            }
+        }
+    }
+
+    private func dateLabel(_ date: String) -> some View {
+        ArticleDetailIconLabel(systemImage: ArticleDetailSymbol.date, text: date)
     }
 }
 
@@ -130,75 +198,155 @@ private struct DetailCastRow: View {
 
 private struct DetailVideoSpecsRow: View {
     let detail: ArticleDetail
+    var evenDistribution = false
 
     private var items: [(icon: String, text: String)] {
         var list: [(String, String)] = []
-        if let v = ArticleFormat.nonEmpty(detail.length) { list.append(("clock", v)) }
-        if let v = ArticleFormat.nonEmpty(detail.size) { list.append(("internaldrive", v)) }
-        if let v = ArticleFormat.nonEmpty(detail.quality) { list.append(("4k.tv", v)) }
+        if let v = ArticleFormat.nonEmpty(detail.length) { list.append((ArticleDetailSymbol.duration, v)) }
+        if let v = ArticleFormat.nonEmpty(detail.size) { list.append((ArticleDetailSymbol.fileSize, v)) }
+        if let v = ArticleFormat.nonEmpty(detail.quality) { list.append((ArticleDetailSymbol.quality, v)) }
         return list
     }
 
     var body: some View {
         if !items.isEmpty {
-            HStack(spacing: 16) {
+            HStack(spacing: evenDistribution ? 0 : 16) {
                 ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                     ArticleDetailIconLabel(systemImage: item.icon, text: item.text)
+                        .frame(maxWidth: evenDistribution ? .infinity : nil, alignment: .center)
                 }
             }
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
             .lineLimit(1)
             .minimumScaleFactor(0.85)
         }
     }
 }
 
-// MARK: - 日期 / 收藏 / 喜欢 / 下载 / 分享
+// MARK: - 互动与统计
 
 private struct DetailMetricsRow: View {
     let detail: ArticleDetail
     var showsDownloadCount: Bool = true
     var showsDate: Bool = true
+    var splitEngagementRows = false
+    var spreadDownloadEngagement = false
+    var commentsInMetricsRow = false
     var onCollect: (() -> Void)?
     var onLike: (() -> Void)?
+    var onCommentsTap: (() -> Void)?
 
     var body: some View {
+        if splitEngagementRows {
+            VStack(alignment: .leading, spacing: 10) {
+                filmStatsRow
+                filmEngagementRow
+            }
+        } else if spreadDownloadEngagement {
+            vodMetricsRow
+        } else if commentsInMetricsRow {
+            contentEngagementRow
+        } else {
+            inlineMetricsRow
+        }
+    }
+
+    @ViewBuilder
+    private var contentEngagementRow: some View {
         HStack(spacing: 20) {
-            if showsDate, let date = ArticleFormat.dateOnly(from: detail.publishedAt) {
-                ArticleDetailIconLabel(systemImage: "calendar", text: date)
-            }
-
-            reactionButton(
-                systemImage: detail.hasCollected ? "bookmark.fill" : "bookmark",
-                text: ArticleFormat.shortCount(detail.collectionNumber ?? 0),
-                active: detail.hasCollected,
-                action: onCollect
-            )
-
-            reactionButton(
-                systemImage: detail.isLiked ? "heart.fill" : "heart",
-                text: ArticleFormat.shortCount(detail.likeNumber ?? 0),
-                active: detail.isLiked,
-                action: onLike
-            )
-
-            if showsDownloadCount, let n = detail.downloadCount {
-                ArticleDetailIconLabel(
-                    systemImage: "arrow.down.circle",
-                    text: ArticleFormat.shortCount(n)
-                )
-                .monospacedDigit()
-            }
-
-            if let n = detail.shareNumber {
-                ArticleDetailIconLabel(
-                    systemImage: "square.and.arrow.up",
-                    text: ArticleFormat.shortCount(n)
-                )
-                .monospacedDigit()
+            collectButton
+            likeButton
+            if let onCommentsTap {
+                ArticleDetailCommentButton(count: detail.commentNumber ?? 0, action: onCommentsTap)
             }
         }
+    }
+
+    private var vodMetricsRow: some View {
+        HStack(alignment: .center, spacing: 12) {
+            HStack(spacing: 16) {
+                if showsDownloadCount, let n = detail.downloadCount {
+                    statLabel(ArticleDetailSymbol.download, count: n)
+                }
+                if let n = detail.shareNumber {
+                    statLabel(ArticleDetailSymbol.share, count: n)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            HStack(spacing: 20) {
+                collectButton
+                likeButton
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+    }
+
+    private var inlineMetricsRow: some View {
+        HStack(spacing: 20) {
+            if showsDate, let date = ArticleFormat.dateOnly(from: detail.publishedAt) {
+                ArticleDetailIconLabel(systemImage: ArticleDetailSymbol.date, text: date)
+            }
+            collectButton
+            likeButton
+            if showsDownloadCount, let n = detail.downloadCount {
+                statLabel(ArticleDetailSymbol.download, count: n)
+            }
+            if let n = detail.shareNumber {
+                statLabel(ArticleDetailSymbol.share, count: n)
+            }
+        }
+    }
+
+    private var filmStatsRow: some View {
+        HStack(spacing: 16) {
+            if let date = ArticleFormat.dateOnly(from: detail.publishedAt) {
+                ArticleDetailIconLabel(systemImage: ArticleDetailSymbol.date, text: date)
+            }
+            Spacer(minLength: 8)
+            if showsDownloadCount, let n = detail.downloadCount {
+                statLabel(ArticleDetailSymbol.download, count: n)
+            }
+            if let n = detail.shareNumber {
+                statLabel(ArticleDetailSymbol.share, count: n)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var filmEngagementRow: some View {
+        HStack(spacing: 20) {
+            collectButton
+            likeButton
+            Spacer(minLength: 0)
+            if let onCommentsTap {
+                ArticleDetailCommentButton(count: detail.commentNumber ?? 0, action: onCommentsTap)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var collectButton: some View {
+        reactionButton(
+            systemImage: detail.hasCollected ? ArticleDetailSymbol.collectOn : ArticleDetailSymbol.collect,
+            text: ArticleFormat.shortCount(detail.collectionNumber ?? 0),
+            active: detail.hasCollected,
+            action: onCollect
+        )
+    }
+
+    @ViewBuilder
+    private var likeButton: some View {
+        reactionButton(
+            systemImage: detail.isLiked ? ArticleDetailSymbol.likeOn : ArticleDetailSymbol.like,
+            text: ArticleFormat.shortCount(detail.likeNumber ?? 0),
+            active: detail.isLiked,
+            action: onLike
+        )
+    }
+
+    private func statLabel(_ symbol: String, count: Int) -> some View {
+        ArticleDetailIconLabel(systemImage: symbol, text: ArticleFormat.shortCount(count))
+            .monospacedDigit()
     }
 
     @ViewBuilder

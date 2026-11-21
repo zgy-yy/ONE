@@ -18,8 +18,8 @@ struct StandardArticleDetailView: View {
                     detail: session.detail,
                     summary: article,
                     style: style,
-                    canPlay: style.showsPlay && session.playURL != nil,
-                    onPlay: playAction,
+                    canPlay: session.playURL != nil,
+                    onPlay: style.showsPlay ? { startPlayback() } : nil,
                     onCommentsTap: { showsComments = true },
                     onCollect: { Task { await session.toggleCollect() } },
                     onLike: { Task { await session.toggleLike() } }
@@ -36,8 +36,8 @@ struct StandardArticleDetailView: View {
         }
     }
 
-    private var playAction: (() -> Void)? {
-        guard style.showsPlay, let url = session.playURL else { return nil }
-        return { ArticleVideoPresenter.present(url: url) }
+    private func startPlayback() {
+        guard let url = session.playURL else { return }
+        ArticleVideoPresenter.present(url: url)
     }
 }

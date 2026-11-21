@@ -45,7 +45,8 @@ struct ArticleDetailBodyView: View {
                 canPlay: canPlay,
                 onPlay: onPlay,
                 onCollect: onCollect,
-                onLike: onLike
+                onLike: onLike,
+                onCommentsTap: onCommentsTap
             )
         } else {
             VStack(alignment: .leading, spacing: 6) {
@@ -78,21 +79,11 @@ struct ArticleDetailBodyView: View {
                         : nil
                 )
             }
-        } else if let onCommentsTap {
-            Button(action: onCommentsTap) {
-                HStack(spacing: 5) {
-                    Image(systemName: "bubble.left.and.bubble.right")
-                    Text("评论")
-                    Text(ArticleFormat.shortCount(detail.commentNumber ?? 0))
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                    Spacer(minLength: 0)
-                }
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(.primary)
+        } else if let onCommentsTap, !style.splitEngagementRows, !style.commentsInMetricsRow {
+            HStack {
+                ArticleDetailCommentButton(count: detail.commentNumber ?? 0, action: onCommentsTap)
+                Spacer(minLength: 0)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("评论 \(detail.commentNumber ?? 0)")
         }
     }
 }

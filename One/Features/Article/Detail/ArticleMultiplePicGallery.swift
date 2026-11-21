@@ -57,7 +57,7 @@ struct ArticleMultiplePicGallery: View {
     @ViewBuilder
     private var leftHeader: some View {
         if let headerDate {
-            ArticleDetailIconLabel(systemImage: "calendar", text: headerDate)
+            ArticleDetailIconLabel(systemImage: ArticleDetailSymbol.date, text: headerDate)
         }
     }
 
@@ -79,19 +79,7 @@ struct ArticleMultiplePicGallery: View {
     @ViewBuilder
     private var rightHeader: some View {
         if let onCommentsTap {
-            Button(action: onCommentsTap) {
-                HStack(spacing: 5) {
-                    Image(systemName: "bubble.left.and.bubble.right")
-                    Text("评论")
-                    Text(ArticleFormat.shortCount(commentCount ?? 0))
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                }
-                .font(.subheadline.weight(.medium))
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.primary)
-            .accessibilityLabel("评论 \(commentCount ?? 0)")
+            ArticleDetailCommentButton(count: commentCount ?? 0, action: onCommentsTap)
         }
     }
 
