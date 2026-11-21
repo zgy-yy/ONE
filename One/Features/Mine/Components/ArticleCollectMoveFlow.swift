@@ -213,13 +213,12 @@ private struct CollectFolderMovePresentation: ViewModifier {
 // MARK: - 点击收藏
 
 /// 处理「点收藏」：未登录直接切换；已登录先入默认夹再弹移动提示。
+@MainActor
 enum ArticleCollectAction {
-    @MainActor
-    static func handle(
-        article: ArticleSummary,
-        library: MineLibrarySession = .shared,
-        reactions: ArticleReactionStore = .shared
-    ) async -> CollectFolderMoveContext? {
+    static func handle(article: ArticleSummary) async -> CollectFolderMoveContext? {
+        let library = MineLibrarySession.shared
+        let reactions = ArticleReactionStore.shared
+
         guard AuthSession.shared.isLoggedIn else {
             await reactions.toggle(.collect, articleID: article.id, seed: .init(article))
             return nil
