@@ -117,4 +117,19 @@ extension OneClient {
         )
         _ = try unwrap(envelope)
     }
+
+    /// 移动文章到收藏夹（`ids` / `item_ids` 与官网一致，逗号分隔）。
+    static func moveToCollectFolder(articleIDs: [Int], folderID: Int) async throws {
+        let joined = articleIDs.map(String.init).joined(separator: ",")
+        let envelope = try await post(
+            OneApiEnvelope<IgnoredJSON?>.self,
+            path: OneAPI.moveToCollectFolderPath,
+            data: [
+                "ids": joined,
+                "item_ids": joined,
+                "user_collect_folder_id": String(folderID),
+            ]
+        )
+        _ = try unwrap(envelope)
+    }
 }

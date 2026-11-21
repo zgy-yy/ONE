@@ -9,13 +9,10 @@ struct MineTabContent: View {
             root
                 .fillPage()
                 .toolbar(.hidden, for: .navigationBar)
-                .navigationDestination(for: MineLibraryPage.self) { page in
-                    switch page {
-                    case .likes: MyLikesView()
-                    case .favorites: MyFavoritesView()
-                    }
-                }
                 .libraryDetailDestinations()
+                .navigationDestination(for: CollectFolderRoute.self) {
+                    CollectFolderDetailView(route: $0)
+                }
         }
     }
 

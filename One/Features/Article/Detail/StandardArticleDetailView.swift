@@ -7,6 +7,7 @@ struct StandardArticleDetailView: View {
 
     @State private var session = ArticleDetailSession()
     @State private var showsComments = false
+    @State private var collectMoveContext: CollectFolderMoveContext?
 
     var body: some View {
         ArticleDetailChrome(article: article, session: session) {
@@ -21,7 +22,14 @@ struct StandardArticleDetailView: View {
                     canPlay: session.playURL != nil,
                     onPlay: style.showsPlay ? { startPlayback() } : nil,
                     onCommentsTap: { showsComments = true },
-                    onCollect: { Task { await session.toggleCollect() } },
+                    onCollect: {
+                        Task {
+                            collectMoveContext = await ArticleCollectAction.handle(article: article)
+                            if collectMoveContext == nil {
+                                session.syncReactionsFromStore()
+                            }
+                        }
+                    },
                     onLike: { Task { await session.toggleLike() } }
                 )
                 .padding(.horizontal)
@@ -33,6 +41,9 @@ struct StandardArticleDetailView: View {
         }
         .sheet(isPresented: $showsComments) {
             ArticleCommentsSheet(session: session, isPresented: $showsComments)
+        }
+        .articleCollectMoveFlow($collectMoveContext) {
+            session.syncReactionsFromStore()
         }
     }
 

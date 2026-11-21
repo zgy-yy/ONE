@@ -64,6 +64,16 @@ extension OneClient {
         return try unwrap(envelope) ?? []
     }
 
+    /// 新建收藏夹（body：`folder_name`）。
+    static func createCollectFolder(folderName: String) async throws {
+        let envelope = try await post(
+            OneApiEnvelope<IgnoredJSON?>.self,
+            path: OneAPI.createCollectFolderPath,
+            data: ["folder_name": folderName]
+        )
+        _ = try unwrap(envelope)
+    }
+
     static func favorites(
         modelID: Int,
         seriesCategory: Int = 0,
@@ -96,11 +106,4 @@ extension OneClient {
         return payload
     }
 
-    static func myRecordCounts() async throws -> MyRecordCounts {
-        let envelope = try await post(OneApiEnvelope<MyRecordCounts>.self, path: OneAPI.myRecordCountsPath, data: nil)
-        guard let counts = try unwrap(envelope) else {
-            throw OneClientError.apiRejected("记录为空")
-        }
-        return counts
-    }
 }

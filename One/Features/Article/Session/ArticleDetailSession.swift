@@ -53,7 +53,13 @@ final class ArticleDetailSession {
     }
 
     func toggleLike() async { await toggleReaction(.like) }
-    func toggleCollect() async { await toggleReaction(.collect) }
+
+    /// 收藏夹选择器关闭后，把 `ArticleReactionStore` 同步回详情。
+    func syncReactionsFromStore() {
+        guard var article = detail else { return }
+        reactions.apply(to: &article)
+        detail = article
+    }
 
     func reloadComments() async {
         comments.reset()

@@ -1,11 +1,13 @@
 import Foundation
 import Observation
 
-/// 我的喜欢 / 收藏数据。
+/// 我的喜欢 / 收藏数据（`MineLibrarySession.shared`）。
 @MainActor
 @Observable
 final class MineLibrarySession {
     static let shared = MineLibrarySession()
+
+    // MARK: - 筛选
 
     var likeCategory: ContentCategory = .all {
         didSet {
@@ -14,42 +16,37 @@ final class MineLibrarySession {
         }
     }
 
-    var favoriteCategory: ContentCategory = .all {
+    var folderSort = CollectFolderSort() {
         didSet {
-            guard oldValue != favoriteCategory else { return }
-            favorites.reset()
+            guard oldValue != folderSort else { return }
+            folders = []
         }
     }
 
-    var selectedFolderID: Int = 0 {
-        didSet {
-            guard oldValue != selectedFolderID else { return }
-            favorites.reset()
-        }
-    }
+    /// 当前打开的收藏夹（`my/favorites` 的 `user_collect_folder_id`）。
+    private(set) var selectedFolderID: Int = 0
+
+    // MARK: - 状态
 
     private(set) var likes = PagedListState<UserLikeItem>(pageSize: 50)
     private(set) var favorites = PagedListState<FavoriteItem>(pageSize: 20)
     private(set) var folders: [CollectFolder] = []
     private(set) var isLoadingFolders = false
     private(set) var foldersError: String?
-    private(set) var recordCounts: MyRecordCounts?
 
     private init() {}
 
-    /// 退出登录时清空缓存。
     func reset() {
         likeCategory = .all
-        favoriteCategory = .all
+        folderSort = CollectFolderSort()
         selectedFolderID = 0
         likes.reset()
         favorites.reset()
         folders = []
         foldersError = nil
-        recordCounts = nil
     }
 
-    // MARK: - Likes
+    // MARK: - 喜欢
 
     func loadLikes(force: Bool = false) async {
         var feed = likes
@@ -60,7 +57,10 @@ final class MineLibrarySession {
         likes = feed
 
         do {
-            let payload = try await fetchLikes()
+            let payload = try await OneClient.userLikeList(
+                modelID: likeCategory.modelID,
+                seriesCategory: likeCategory.seriesCategory
+            )
             feed.finishLoad(payload.items, hasMore: payload.hasMore)
             likes = feed
         } catch {
@@ -69,7 +69,25 @@ final class MineLibrarySession {
         }
     }
 
-    // MARK: - Folders / Favorites
+    func unlikeItem(_ item: UserLikeItem) async {
+        let summary = item.asArticleSummary
+        let seed = ArticleReactionStore.State(summary)
+        await ArticleReactionStore.shared.toggle(.like, articleID: summary.id, seed: seed)
+        guard !ArticleReactionStore.shared.displayState(for: summary).isLiked else { return }
+        var feed = likes
+        feed.removeAll { $0.id == item.id }
+        likes = feed
+    }
+
+    // MARK: - 收藏夹列表
+
+    var defaultCollectFolder: CollectFolder? {
+        folders.first(where: \.isDefault) ?? folders.first(where: { $0.id == 0 }) ?? folders.first
+    }
+
+    var defaultCollectFolderID: Int { defaultCollectFolder?.id ?? 0 }
+
+    var defaultCollectFolderName: String { defaultCollectFolder?.displayName ?? "默认收藏夹" }
 
     func loadFolders(force: Bool = false) async {
         if !force, !folders.isEmpty { return }
@@ -79,13 +97,38 @@ final class MineLibrarySession {
         defer { isLoadingFolders = false }
 
         do {
-            folders = try await OneClient.collectFolderList()
-            if !folders.contains(where: { $0.id == selectedFolderID }) {
-                selectedFolderID = folders.first?.id ?? 0
-            }
+            folders = try await OneClient.collectFolderList(
+                sortDim: folderSort.dimension.rawValue,
+                sortDesc: folderSort.sortDesc
+            )
         } catch {
             foldersError = error.localizedDescription
         }
+    }
+
+    func createCollectFolder(name: String) async throws {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            throw OneClientError.apiRejected("请输入收藏夹名称")
+        }
+        try await OneClient.createCollectFolder(folderName: trimmed)
+        await loadFolders(force: true)
+    }
+
+    // MARK: - 夹内收藏
+
+    /// 切换收藏夹时绑定 `folderID` 并清空缓存；同一夹重复进入（如从详情返回）不重置。
+    func enterFolder(id: Int) {
+        guard selectedFolderID != id else { return }
+        selectedFolderID = id
+        favorites.reset()
+    }
+
+    /// 取消收藏后从当前夹内列表移除（不整页刷新）。
+    func removeFavorite(articleID: Int) {
+        var feed = favorites
+        feed.removeAll { $0.id == articleID }
+        favorites = feed
     }
 
     func loadFavorites(force: Bool = false) async {
@@ -121,23 +164,10 @@ final class MineLibrarySession {
         }
     }
 
-    func loadRecordCounts() async {
-        recordCounts = try? await OneClient.myRecordCounts()
-    }
-
-    // MARK: - Private
-
-    private func fetchLikes() async throws -> UserLikeListPayload {
-        try await OneClient.userLikeList(
-            modelID: likeCategory.modelID,
-            seriesCategory: likeCategory.seriesCategory
-        )
-    }
-
     private func fetchFavorites(page: Int) async throws -> FavoritesPayload {
         try await OneClient.favorites(
-            modelID: favoriteCategory.modelID,
-            seriesCategory: favoriteCategory.seriesCategory,
+            modelID: ContentCategory.all.modelID,
+            seriesCategory: ContentCategory.all.seriesCategory,
             page: page,
             size: favorites.pageSize,
             folderID: selectedFolderID

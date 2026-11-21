@@ -5,6 +5,7 @@ struct GraphicArticleDetailView: View {
     let article: ArticleSummary
 
     @State private var session = ArticleDetailSession()
+    @State private var collectMoveContext: CollectFolderMoveContext?
 
     var body: some View {
         ArticleDetailChrome(article: article, session: session) {
@@ -26,6 +27,9 @@ struct GraphicArticleDetailView: View {
             .task(id: article.id) {
                 await session.loadComments()
             }
+        }
+        .articleCollectMoveFlow($collectMoveContext) {
+            session.syncReactionsFromStore()
         }
     }
 
@@ -76,7 +80,12 @@ struct GraphicArticleDetailView: View {
 
             HStack(spacing: 16) {
                 Button {
-                    Task { await session.toggleCollect() }
+                    Task {
+                        collectMoveContext = await ArticleCollectAction.handle(article: article)
+                        if collectMoveContext == nil {
+                            session.syncReactionsFromStore()
+                        }
+                    }
                 } label: {
                     ArticleDetailIconLabel(
                         systemImage: collected ? ArticleDetailSymbol.collectOn : ArticleDetailSymbol.collect,

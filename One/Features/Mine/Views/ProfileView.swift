@@ -1,92 +1,98 @@
 import SwiftUI
 
-/// 已登录用户资料 + 喜欢 / 收藏入口。
+/// 已登录「我的」：顶图 + 资料区 + 喜欢 / 收藏 Tab。
 struct ProfileView: View {
     let user: OneUser
     var onLogout: () -> Void
 
-    @Bindable private var library = MineLibrarySession.shared
+    @State private var libraryTab: LibraryTab = .likes
 
-    var body: some View {
-        List {
-            Section {
-                header
-                    .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 8, trailing: 16))
-                accountIcons
-                    .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 12, trailing: 12))
-            }
+    private let bannerHeight: CGFloat = 220
 
-            Section("内容") {
-                NavigationLink(value: MineLibraryPage.likes) {
-                    Label("喜欢", systemImage: "heart.fill")
-                }
-                NavigationLink(value: MineLibraryPage.favorites) {
-                    Label("收藏", systemImage: "star.fill")
-                }
-            }
-
-            if let loggedAt = user.loggedAt?.nonEmpty {
-                Section {
-                    HStack {
-                        Label("最近登录", systemImage: "clock")
-                        Spacer()
-                        Text(loggedAt)
-                            .foregroundStyle(.secondary)
-                    }
-                    .font(.subheadline)
-                }
-            }
-
-            Section {
-                Button("退出登录", role: .destructive, action: onLogout)
-            }
-        }
-        .task {
-            await library.loadRecordCounts()
-        }
+    private enum LibraryTab: String, CaseIterable, Identifiable {
+        case likes = "喜欢"
+        case favorites = "收藏"
+        var id: String { rawValue }
     }
 
-    private var header: some View {
+    var body: some View {
+        VStack(spacing: 0) {
+            profileBanner
+            userSection
+            libraryTabBar
+
+            Group {
+                switch libraryTab {
+                case .likes:
+                    MineLikesPanel()
+                case .favorites:
+                    MineFavoritesPanel()
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .background(Color(.systemGroupedBackground))
+        .ignoresSafeArea(edges: .top)
+    }
+
+    private var profileBanner: some View {
+        Image("ProfileTopBackground")
+            .resizable()
+            .scaledToFill()
+            .frame(maxWidth: .infinity)
+            .frame(height: bannerHeight)
+            .clipped()
+            .accessibilityHidden(true)
+    }
+
+    private var userSection: some View {
         HStack(spacing: 14) {
-            UserAvatarImage(path: user.avatarPath, size: 64)
+            UserAvatarImage(path: user.avatarPath, size: 56)
             VStack(alignment: .leading, spacing: 4) {
                 Text(user.displayName)
-                    .font(.title3.weight(.semibold))
+                    .font(.headline.weight(.semibold))
                 Text(user.displayMobile)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-            Spacer(minLength: 0)
-        }
-    }
-
-    /// 积分 / 钱包 / 等级 / VIP 做成一行图标。
-    private var accountIcons: some View {
-        HStack(spacing: 0) {
-            accountIcon(system: "bitcoinsign.circle.fill", title: "积分", value: "\(user.integral ?? 0)")
-            accountIcon(system: "yensign.circle.fill", title: "钱包", value: "\(user.wallet ?? 0)")
-            accountIcon(system: "flame.fill", title: "活跃", value: "\(user.activeLevel ?? 0)")
-            accountIcon(system: "crown.fill", title: "VIP", value: "\(user.vipLevel ?? 0)")
-            if let counts = library.recordCounts {
-                accountIcon(system: "gift.fill", title: "中奖", value: "\(counts.winRecordCount ?? 0)")
-            }
-        }
-    }
-
-    private func accountIcon(system: String, title: String, value: String) -> some View {
-        VStack(spacing: 6) {
-            Image(systemName: system)
-                .font(.title3)
-                .foregroundStyle(Color.accentColor)
-                .frame(height: 24)
-            Text(value)
-                .font(.subheadline.weight(.semibold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-            Text(title)
-                .font(.caption2)
+            Spacer(minLength: 8)
+            Button("退出", action: onLogout)
+                .font(.subheadline.weight(.medium))
                 .foregroundStyle(.secondary)
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
         .frame(maxWidth: .infinity)
+        .background(Color(.systemBackground))
     }
+
+    private var libraryTabBar: some View {
+        HStack(spacing: 0) {
+            ForEach(LibraryTab.allCases) { tab in
+                Button {
+                    libraryTab = tab
+                } label: {
+                    Text(tab.rawValue)
+                        .font(.subheadline.weight(libraryTab == tab ? .semibold : .regular))
+                        .foregroundStyle(libraryTab == tab ? Color.primary : Color.secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .overlay(alignment: .bottom) {
+                            if libraryTab == tab {
+                                Capsule()
+                                    .fill(Color.accentColor)
+                                    .frame(height: 2)
+                                    .padding(.horizontal, 24)
+                            }
+                        }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .background(Color(.systemBackground))
+        .overlay(alignment: .bottom) {
+            Divider()
+        }
+    }
+
 }

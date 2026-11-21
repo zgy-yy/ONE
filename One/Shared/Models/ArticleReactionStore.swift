@@ -110,4 +110,25 @@ final class ArticleReactionStore {
             print("[ArticleReaction] \(kind) failed id=\(articleID): \(error.localizedDescription)")
         }
     }
+
+    /// 收藏并移入指定夹：未收藏时先 `article/collect`，再 `moveToCollectFolder`。
+    func collectToFolder(articleID: Int, folderID: Int, seed: State) async throws {
+        if states[articleID] == nil {
+            states[articleID] = seed
+        }
+        guard !busyIDs.contains(articleID), var state = states[articleID] else { return }
+        busyIDs.insert(articleID)
+        defer { busyIDs.remove(articleID) }
+
+        if !state.hasCollected {
+            try await OneClient.articleCollect(articleID: articleID)
+        }
+        try await OneClient.moveToCollectFolder(articleIDs: [articleID], folderID: folderID)
+
+        if !state.hasCollected {
+            state.hasCollected = true
+            state.collectionNumber = max(0, state.collectionNumber + 1)
+        }
+        states[articleID] = state
+    }
 }

@@ -13,6 +13,7 @@ nonisolated enum OneAPI {
     static let detailPlayTokenPath = "article/detail#play"
     static let articleLikePath = "article/like"
     static let articleCollectPath = "article/collect"
+    static let moveToCollectFolderPath = "article/moveToCollectFolder"
     static let actorMainNavigationsPath = "actor/getMainNavigations"
     static let actorMainNavigationActorsPath = "actor/getMainNavigationActors"
     static let actorNewActorsPath = "actor/getNewActors"
@@ -30,8 +31,8 @@ nonisolated enum OneAPI {
     static let userLoginPath = "user/login"
     static let userLikeListPath = "my/getUserLikeList"
     static let collectFolderListPath = "my/getCollectFolderListByPage"
+    static let createCollectFolderPath = "my/createCollectFolder"
     static let favoritesPath = "my/favorites"
-    static let myRecordCountsPath = "demand_activity/myRecordCounts"
 
     static func isSuccess(code: Int?) -> Bool {
         code == 200 || code == 400

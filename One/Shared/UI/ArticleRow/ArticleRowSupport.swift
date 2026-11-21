@@ -136,8 +136,12 @@ struct ArticleCollectLikeMeta: View {
     var onDarkOverlay = false
     /// 收藏与喜欢之间的间距；窄卡片可改小避免挤换行。
     var itemSpacing: CGFloat = 12
+    /// 用户取消收藏后回调（如从收藏夹列表移除该项）。
+    var onUncollect: ((Int) -> Void)? = nil
 
     @Bindable private var reactions = ArticleReactionStore.shared
+
+    @State private var collectMoveContext: CollectFolderMoveContext?
 
     var body: some View {
         let state = reactions.displayState(for: article)
@@ -146,7 +150,13 @@ struct ArticleCollectLikeMeta: View {
 
         HStack(spacing: itemSpacing) {
             Button {
-                Task { await reactions.toggle(.collect, articleID: article.id, seed: seed) }
+                Task {
+                    let hadCollected = state.hasCollected
+                    collectMoveContext = await ArticleCollectAction.handle(article: article)
+                    if hadCollected, !reactions.displayState(for: article).hasCollected {
+                        onUncollect?(article.id)
+                    }
+                }
             } label: {
                 MetaIconText.collect(
                     count: state.collectionNumber,
@@ -156,7 +166,6 @@ struct ArticleCollectLikeMeta: View {
             }
             .buttonStyle(.plain)
             .disabled(busy)
-
             Button {
                 Task { await reactions.toggle(.like, articleID: article.id, seed: seed) }
             } label: {
@@ -170,6 +179,7 @@ struct ArticleCollectLikeMeta: View {
             .disabled(busy)
         }
         .fixedSize(horizontal: true, vertical: false)
+        .articleCollectMoveFlow($collectMoveContext)
     }
 }
 

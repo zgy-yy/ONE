@@ -87,4 +87,9 @@ struct PagedListState<Item: Identifiable> where Item.ID: Hashable {
     mutating func cancelLoadMore() {
         isLoadingMore = false
     }
+
+    /// 按条件移除条目（取消喜欢等）。
+    mutating func removeAll(where predicate: (Item) -> Bool) {
+        items.removeAll(where: predicate)
+    }
 }

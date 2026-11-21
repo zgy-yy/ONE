@@ -9,50 +9,46 @@ struct LoginView: View {
     @FocusState private var focusedField: Field?
 
     private let areaCode = "86"
+    /// 与官网 `img_me_visitor_bg` 比例接近（1125×978 取顶图区域）。
+    private let backgroundImageHeight: CGFloat = 300
 
     private enum Field {
         case mobile, code
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 28) {
-                header
-                formCard
-                loginButton
-                Text("未注册的手机号验证后将自动创建账号")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .frame(maxWidth: .infinity)
+        VStack(spacing: 0) {
+            loginImageBar
+
+            ScrollView {
+                VStack(spacing: 28) {
+                    formCard
+                    loginButton
+                    Text("未注册的手机号验证后将自动创建账号")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .frame(maxWidth: .infinity)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                .padding(.bottom, 24)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 36)
-            .padding(.bottom, 24)
+            .scrollDismissesKeyboard(.interactively)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color(.systemGroupedBackground))
         }
-        .scrollDismissesKeyboard(.interactively)
-        .background(pageBackground)
+        .ignoresSafeArea(edges: .top)
         .onTapGesture { focusedField = nil }
     }
 
-    private var header: some View {
-        VStack(spacing: 10) {
-            ZStack {
-                Circle()
-                    .fill(Color.accentColor.opacity(0.12))
-                    .frame(width: 88, height: 88)
-                Image(systemName: "person.crop.circle.fill")
-                    .font(.system(size: 52))
-                    .foregroundStyle(Color.accentColor)
-            }
-
-            Text("欢迎回来")
-                .font(.title.weight(.bold))
-
-            Text("使用手机号验证码登录 One")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
+    private var loginImageBar: some View {
+        Image("LoginBackground")
+            .resizable()
+            .scaledToFill()
+            .frame(maxWidth: .infinity)
+            .frame(height: backgroundImageHeight)
+            .clipped()
+            .accessibilityHidden(true)
     }
 
     private var formCard: some View {
@@ -120,11 +116,12 @@ struct LoginView: View {
                 Task { await auth.sendSMS(mobile: mobile, area: areaCode) }
             } label: {
                 Text(smsButtonTitle)
-                    .font(.caption.weight(.semibold))
-                    .frame(minWidth: 76, minHeight: 34)
+                    .font(.caption2.weight(.medium))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
             }
             .buttonStyle(.bordered)
-            .controlSize(.small)
+            .controlSize(.mini)
             .disabled(!canSendSMS)
         }
     }
@@ -150,19 +147,6 @@ struct LoginView: View {
         .controlSize(.small)
         .frame(maxWidth: .infinity)
         .disabled(!canLogin)
-    }
-
-    private var pageBackground: some View {
-        LinearGradient(
-            colors: [
-                Color(.systemBackground),
-                Color.accentColor.opacity(0.06),
-                Color(.systemGroupedBackground),
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .ignoresSafeArea()
     }
 
     private var canSendSMS: Bool {
