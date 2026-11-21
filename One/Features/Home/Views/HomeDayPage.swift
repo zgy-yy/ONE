@@ -30,12 +30,7 @@ struct HomeDayPage: View {
         ) {
             List {
                 ForEach(cache.articles) { article in
-                    ArticleRowForModel.view(
-                        for: article,
-                        showsDate: false,
-                        showsDescription: true,
-                        homeGraphicTypography: true
-                    )
+                    HomeArticleRow(article: article, showsDescription: true)
                         // 首页日更条目本身就是单篇（含图文 / 写真章节），直接进详情，不进系列列表。
                         .hiddenNavigationLink(value: article)
                         .styledListRow()

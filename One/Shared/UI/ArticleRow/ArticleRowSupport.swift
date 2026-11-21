@@ -16,6 +16,31 @@ enum ArticleRowTypography {
     static let metaSmall: Font = .caption2
     /// 日期。
     static let date: Font = .caption
+    /// 横图封面角标「第 N 期」。
+    static let coverVolume: Font = .system(size: 10, weight: .medium)
+}
+
+/// 横图封面左上角：品类图标 + 期数（影视 / 电台统一样式）。
+struct CoverCategoryVolumeBadge: View {
+    let systemImage: String
+    let vol: Int?
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 3) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.white)
+            if let vol {
+                Text("第\(vol)期")
+                    .font(ArticleRowTypography.coverVolume)
+                    .foregroundStyle(.white.opacity(0.88))
+            }
+        }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 4)
+        .background(.black.opacity(0.32), in: Capsule())
+        .padding(8)
+    }
 }
 
 /// 图标 + 文案，列表 meta 共用。
@@ -23,39 +48,54 @@ struct MetaIconText: View {
     let systemImage: String
     let text: String
     var active = false
+    /// 封面暗色渐变上：未点亮用白字，不用灰色。
+    var onDarkOverlay = false
 
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: systemImage)
                 .symbolRenderingMode(.monochrome)
-                .foregroundStyle(active ? Color.orange : Color.secondary)
+                .foregroundStyle(active ? Color.orange : inactiveColor)
             Text(text)
-                .foregroundStyle(active ? Color.primary : Color.secondary)
+                .lineLimit(1)
+                .foregroundStyle(active ? activeTextColor : inactiveColor)
         }
+        .fixedSize(horizontal: true, vertical: false)
     }
 
-    static func likes(_ count: Int, active: Bool = false) -> MetaIconText {
+    private var inactiveColor: Color {
+        onDarkOverlay ? Color.white.opacity(0.92) : Color.secondary
+    }
+
+    private var activeTextColor: Color {
+        onDarkOverlay ? Color.white : Color.primary
+    }
+
+    static func likes(_ count: Int, active: Bool = false, onDarkOverlay: Bool = false) -> MetaIconText {
         MetaIconText(
             systemImage: active ? "heart.fill" : "heart",
             text: ArticleFormat.shortCount(count),
-            active: active
+            active: active,
+            onDarkOverlay: onDarkOverlay
         )
     }
 
-    static func likesText(_ raw: String, active: Bool = false) -> MetaIconText {
+    static func likesText(_ raw: String, active: Bool = false, onDarkOverlay: Bool = false) -> MetaIconText {
         let text = Int(raw).map(ArticleFormat.shortCount) ?? raw
         return MetaIconText(
             systemImage: active ? "heart.fill" : "heart",
             text: text,
-            active: active
+            active: active,
+            onDarkOverlay: onDarkOverlay
         )
     }
 
-    static func collect(count: Int? = nil, active: Bool = false) -> MetaIconText {
+    static func collect(count: Int? = nil, active: Bool = false, onDarkOverlay: Bool = false) -> MetaIconText {
         MetaIconText(
             systemImage: active ? "bookmark.fill" : "bookmark",
             text: count.map(ArticleFormat.shortCount) ?? "",
-            active: active
+            active: active,
+            onDarkOverlay: onDarkOverlay
         )
     }
 }
@@ -63,7 +103,9 @@ struct MetaIconText: View {
 /// 列表卡片共用：收藏 + 喜欢；与详情共用 `ArticleReactionStore`。
 struct ArticleCollectLikeMeta: View {
     let article: ArticleSummary
-    var showsCollectCount = false
+    var onDarkOverlay = false
+    /// 收藏与喜欢之间的间距；窄卡片可改小避免挤换行。
+    var itemSpacing: CGFloat = 12
 
     @Bindable private var reactions = ArticleReactionStore.shared
 
@@ -72,17 +114,15 @@ struct ArticleCollectLikeMeta: View {
         let busy = reactions.isBusy(article.id)
         let seed = ArticleReactionStore.State(article)
 
-        HStack(spacing: 14) {
+        HStack(spacing: itemSpacing) {
             Button {
                 Task { await reactions.toggle(.collect, articleID: article.id, seed: seed) }
             } label: {
-                if showsCollectCount {
-                    MetaIconText.collect(count: state.collectionNumber, active: state.hasCollected)
-                } else {
-                    Image(systemName: state.hasCollected ? "bookmark.fill" : "bookmark")
-                        .symbolRenderingMode(.monochrome)
-                        .foregroundStyle(state.hasCollected ? Color.orange : Color.secondary)
-                }
+                MetaIconText.collect(
+                    count: state.collectionNumber,
+                    active: state.hasCollected,
+                    onDarkOverlay: onDarkOverlay
+                )
             }
             .buttonStyle(.plain)
             .disabled(busy)
@@ -90,11 +130,16 @@ struct ArticleCollectLikeMeta: View {
             Button {
                 Task { await reactions.toggle(.like, articleID: article.id, seed: seed) }
             } label: {
-                MetaIconText.likes(state.likeNumber, active: state.isLiked)
+                MetaIconText.likes(
+                    state.likeNumber,
+                    active: state.isLiked,
+                    onDarkOverlay: onDarkOverlay
+                )
             }
             .buttonStyle(.plain)
             .disabled(busy)
         }
+        .fixedSize(horizontal: true, vertical: false)
     }
 }
 

@@ -86,29 +86,21 @@ struct DiscoverFeedView: View {
         }
     }
 
-    /// 图文两列：每行两个竖图卡片。
+    /// 图文两列瀑布流（与首页月列表 `MasonryLayout` 一致）。
     private func graphicRows(_ section: ArticleMonthSection) -> some View {
-        let rows = section.articles.chunked(into: 2)
-        return ForEach(rows, id: \.rowID) { row in
-            HStack(alignment: .top, spacing: 10) {
-                ForEach(row) { article in
-                    PortraitArticleCard(article: article, textAlignment: .leading)
-                        .padding(.vertical, 2)
-                        .frame(maxWidth: .infinity, alignment: .top)
-                        .contentShape(Rectangle())
-                        .onTapGesture { articleDestination = article }
-                        .onAppear {
-                            guard sections.isTailArticle(article, in: section) else { return }
-                            Task { await session.loadMoreArticles(channel: channel) }
-                        }
-                }
-                if row.count == 1 {
-                    Color.clear
-                        .frame(maxWidth: .infinity)
-                }
+        MasonryLayout(columns: 2, spacing: 10) {
+            ForEach(section.articles) { article in
+                GraphicArticleCard(article: article, textAlignment: .leading)
+                    .padding(.vertical, 2)
+                    .contentShape(Rectangle())
+                    .onTapGesture { articleDestination = article }
+                    .onAppear {
+                        guard sections.isTailArticle(article, in: section) else { return }
+                        Task { await session.loadMoreArticles(channel: channel) }
+                    }
             }
-            .styledListRow()
         }
+        .styledListRow()
     }
 
     @ViewBuilder

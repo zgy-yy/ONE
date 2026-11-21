@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 点击首页日期后：竖图两列网格，按月分段，下滑加载更早月份。
+/// 点击首页日期后：竖图两列 Masonry，按月分段，下滑加载更早月份。
 /// 点击某一项回到首页对应发布日，而不是进文章详情。
 struct HomeMonthArticlesView: View {
     let day: DayDate
@@ -72,26 +72,16 @@ struct HomeMonthArticlesView: View {
         }
     }
 
-    /// 两列用固定 `HStack` 行，避免 `LazyVGrid` 预取导致中段回跳。
+    /// `MasonryLayout` 按卡片实测高度分列，避免预分列与 `HStack` 等高产生的空洞。
     private func sectionRows(_ section: ArticleMonthSection) -> some View {
-        let rows = section.articles.chunked(into: 2)
-        return VStack(spacing: gridSpacing) {
-            ForEach(rows, id: \.rowID) { row in
-                HStack(alignment: .top, spacing: gridSpacing) {
-                    ForEach(row) { article in
-                        Button {
-                            jumpToDay(for: article)
-                        } label: {
-                            articleCard(article)
-                        }
-                        .buttonStyle(.plain)
-                        .frame(maxWidth: .infinity, alignment: .top)
-                    }
-                    if row.count == 1 {
-                        Color.clear
-                            .frame(maxWidth: .infinity)
-                    }
+        MasonryLayout(columns: 2, spacing: gridSpacing) {
+            ForEach(section.articles) { article in
+                Button {
+                    jumpToDay(for: article)
+                } label: {
+                    articleCard(article)
                 }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -116,11 +106,6 @@ struct HomeMonthArticlesView: View {
     }
 
     private func articleCard(_ article: ArticleSummary) -> some View {
-        PortraitArticleCard(
-            article: article,
-            showsDate: false,
-            titleFont: ArticleRowTypography.filmTitle,
-            collectLikeFont: ArticleRowTypography.meta
-        )
+        HomeArticleCard(article: article)
     }
 }

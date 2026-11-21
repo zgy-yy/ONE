@@ -1,36 +1,24 @@
 import SwiftUI
 
-/// 按接口 `model_id` 选择列表行（首页日更等混合流）。
+/// 发现 / 搜索列表：按 `model_id` 选用对应 `*ArticleRow`（首页日更走 `HomeArticleRow`）。
 enum ArticleRowForModel {
     @ViewBuilder
-    static func view(
-        for article: ArticleSummary,
-        showsDate: Bool = true,
-        showsDescription: Bool = false,
-        homeGraphicTypography: Bool = false
-    ) -> some View {
+    static func view(for article: ArticleSummary) -> some View {
         switch article.modelID {
         case ContentCategory.ModelID.graphic:
-            PortraitArticleCard(
-                article: article,
-                showsDate: showsDate,
-                showsDescription: showsDescription,
-                titleFont: homeGraphicTypography ? ArticleRowTypography.filmTitle : ArticleRowTypography.cardTitle,
-                collectLikeFont: homeGraphicTypography ? ArticleRowTypography.meta : ArticleRowTypography.metaSmall
-            )
+            GraphicArticleCard(article: article)
         case ContentCategory.ModelID.reading:
-            ReadingArticleRow(article: article, showsDate: showsDate)
+            ReadingArticleRow(article: article)
         case ContentCategory.ModelID.film:
-            FilmArticleRow(article: article, showsDate: showsDate)
+            FilmArticleRow(article: article)
         case ContentCategory.ModelID.radio:
-            RadioArticleRow(article: article, showsDate: showsDate)
+            RadioArticleRow(article: article)
         case ContentCategory.ModelID.vod:
-            VodArticleRow(article: article, showsDate: showsDate)
+            VodArticleRow(article: article)
         case ContentCategory.ModelID.series:
-            // 首页日更里写真 / 漫画是单篇，不用系列章节行。
-            ReadingArticleRow(article: article, showsDate: showsDate)
+            ReadingArticleRow(article: article)
         default:
-            VodArticleRow(article: article, showsDate: showsDate)
+            VodArticleRow(article: article)
         }
     }
 }

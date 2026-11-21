@@ -1,14 +1,12 @@
 import SwiftUI
 
-/// 点播行：封面底标题（作者旁时长）；下方金额 / 收藏 / 喜欢 / 日期。
+/// 点播行：左上角期数；封面底标题与作者 / 时长 / 播放量；下为金额与互动。
 struct VodArticleRow: View {
     let article: ArticleSummary
     var aspectRatio: CGFloat = CoverAspect.landscape
-    var showsDate: Bool = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            // 封面（含 GIF）不抢手势，交给外层 `hiddenNavigationLink` 进详情。
             cover
                 .allowsHitTesting(false)
             metaBar
@@ -20,26 +18,20 @@ struct VodArticleRow: View {
         OneCoverImage(
             path: article.thumb,
             aspectRatio: aspectRatio,
-            cornerRadius: 8
+            cornerRadius: 0
         )
+        .overlay(alignment: .topLeading) {
+            CoverCategoryVolumeBadge(systemImage: "play.rectangle", vol: article.vol)
+        }
         .overlay(alignment: .bottom) {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(article.displayTitle)
                     .font(ArticleRowTypography.title)
                     .foregroundStyle(.white)
                     .lineLimit(2)
 
-                if article.author?.nonEmpty != nil || article.length?.nonEmpty != nil {
-                    HStack(spacing: 8) {
-                        if let author = article.author?.nonEmpty {
-                            Text(author).lineLimit(1)
-                        }
-                        if let length = article.length?.nonEmpty {
-                            MetaIconText(systemImage: "clock", text: length)
-                        }
-                    }
-                    .font(ArticleRowTypography.summary)
-                    .foregroundStyle(.white.opacity(0.85))
+                if showsSubtitleRow {
+                    coverSubtitleRow
                 }
             }
             .padding(.horizontal, 12)
@@ -47,6 +39,36 @@ struct VodArticleRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background { CoverBottomFade() }
         }
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var showsSubtitleRow: Bool {
+        article.author?.nonEmpty != nil
+            || article.length?.nonEmpty != nil
+            || article.views != nil
+    }
+
+    private var coverSubtitleRow: some View {
+        HStack(alignment: .center, spacing: 8) {
+            if let author = article.author?.nonEmpty {
+                Text(author)
+                    .foregroundStyle(.white.opacity(0.88))
+                    .lineLimit(1)
+            }
+            if let length = article.length?.nonEmpty {
+                MetaIconText(systemImage: "clock", text: length, onDarkOverlay: true)
+            }
+            Spacer(minLength: 0)
+            if let views = article.views {
+                HStack(spacing: 4) {
+                    Image(systemName: "eye")
+                    Text(ArticleFormat.shortCount(views))
+                }
+                .font(ArticleRowTypography.metaSmall)
+                .foregroundStyle(.white.opacity(0.9))
+            }
+        }
+        .font(ArticleRowTypography.summary)
     }
 
     private var metaBar: some View {
@@ -54,9 +76,7 @@ struct VodArticleRow: View {
             priceBlock
             Spacer(minLength: 0)
             ArticleCollectLikeMeta(article: article)
-            if showsDate, let date = ArticleFormat.dateOnly(from: article.publishedAt) {
-                Text(date).foregroundStyle(.secondary)
-            }
+            ArticleDateText(publishedAt: article.publishedAt)
         }
         .font(ArticleRowTypography.meta)
     }
@@ -78,4 +98,60 @@ struct VodArticleRow: View {
             }
         }
     }
+}
+
+#Preview("点播行") {
+    List {
+        VodArticleRow(article: VodArticleRowPreview.full)
+            .styledListRow()
+        VodArticleRow(article: VodArticleRowPreview.discount)
+            .styledListRow()
+    }
+    .plainContentList()
+}
+
+/// 预览用假数据（`thumb` 为公开 https 图）。
+private enum VodArticleRowPreview {
+    private static let coverA =
+        "https://images.unsplash.com/photo-1574267432645-b74e72d8b193?w=560&h=315&fit=crop"
+    private static let coverB =
+        "https://images.unsplash.com/photo-1485846230555-89fc4e4f964b?w=560&h=315&fit=crop"
+
+    static let full = ArticleSummary(
+        id: 9301,
+        title: "导演访谈 · 幕后纪录完整版",
+        thumb: coverA,
+        author: "Studio One",
+        publishedAt: "2024-04-12 20:00:00",
+        modelID: ContentCategory.ModelID.vod,
+        summary: nil,
+        coin: 12,
+        originalCoin: 18,
+        likeNumber: 640,
+        collectionNumber: 220,
+        views: 128_400,
+        isLike: 1,
+        isCollected: 0,
+        length: "129分钟",
+        vol: 7
+    )
+
+    static let discount = ArticleSummary(
+        id: 9302,
+        title: "短片选",
+        thumb: coverB,
+        author: "独立映像",
+        publishedAt: "2023-08-05",
+        modelID: ContentCategory.ModelID.vod,
+        summary: nil,
+        coin: 6,
+        originalCoin: nil,
+        likeNumber: 42,
+        collectionNumber: 8,
+        views: 9200,
+        isLike: 0,
+        isCollected: 1,
+        length: "24分钟",
+        vol: 2
+    )
 }

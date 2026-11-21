@@ -3,7 +3,6 @@ import SwiftUI
 /// 发现「电台」：封面标识 + 底栏标题播放；下方作者 / 收藏 / 喜欢 / 日期。
 struct RadioArticleRow: View {
     let article: ArticleSummary
-    var showsDate: Bool = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -17,19 +16,10 @@ struct RadioArticleRow: View {
         OneCoverImage(
             path: article.thumb,
             aspectRatio: CoverAspect.landscape,
-            cornerRadius: 8
+            cornerRadius: 0
         )
         .overlay(alignment: .topLeading) {
-            HStack(spacing: 4) {
-                Image(systemName: "radio")
-                if let vol = article.vol { Text("第\(vol)期") }
-            }
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
-            .background(.black.opacity(0.45), in: Capsule())
-            .padding(8)
+            CoverCategoryVolumeBadge(systemImage: "radio", vol: article.vol)
         }
         .overlay(alignment: .bottom) {
             HStack(spacing: 10) {
@@ -46,19 +36,68 @@ struct RadioArticleRow: View {
             .padding(.vertical, 10)
             .background { CoverBottomFade() }
         }
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private var metaRow: some View {
         HStack(spacing: 14) {
             if let author = article.author?.nonEmpty {
-                Text(author).lineLimit(1)
+                Text("主播 / \(author)")
+                    .font(ArticleRowTypography.meta)
+                    .lineLimit(1)
             }
             Spacer(minLength: 0)
-            ArticleCollectLikeMeta(article: article)
-            if showsDate, let date = ArticleFormat.dateOnly(from: article.publishedAt) {
-                Text(date).foregroundStyle(.secondary)
-            }
+            ArticleCollectLikeMeta(article: article, itemSpacing: 6)
+                .font(ArticleRowTypography.metaSmall)
+            ArticleDateText(publishedAt: article.publishedAt, font: ArticleRowTypography.metaSmall)
         }
-        .font(ArticleRowTypography.meta)
     }
+}
+
+#Preview("电台行") {
+    List {
+        RadioArticleRow(article: RadioArticleRowPreview.withVolume)
+            .styledListRow()
+        RadioArticleRow(article: RadioArticleRowPreview.compact)
+            .styledListRow()
+    }
+    .plainContentList()
+}
+
+/// 预览用假数据（`thumb` 为公开 https 图）。
+private enum RadioArticleRowPreview {
+    private static let coverA =
+        "https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=560&h=315&fit=crop"
+    private static let coverB =
+        "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=560&h=315&fit=crop"
+
+    static let withVolume = ArticleSummary(
+        id: 9101,
+        title: "午夜电台 · 城市漫步",
+        thumb: coverA,
+        author: "小林",
+        publishedAt: "2024-05-20 18:00:00",
+        modelID: ContentCategory.ModelID.radio,
+        summary: nil,
+        likeNumber: 3200,
+        collectionNumber: 512,
+        isLike: 1,
+        isCollected: 0,
+        vol: 128
+    )
+
+    static let compact = ArticleSummary(
+        id: 9102,
+        title: "短标题一期",
+        thumb: coverB,
+        author: "电台编辑部",
+        publishedAt: "2023-09-01",
+        modelID: ContentCategory.ModelID.radio,
+        summary: nil,
+        likeNumber: 88,
+        collectionNumber: nil,
+        isLike: 0,
+        isCollected: 1,
+        vol: 12
+    )
 }

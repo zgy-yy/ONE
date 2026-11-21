@@ -18,6 +18,8 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
     let originalCoin: Int?
     let likeNumber: Int?
     let collectionNumber: Int?
+    /// 播放量 / 浏览量（接口 `views`）。
+    let views: Int?
     /// 仅 `0` / `1`：是否已喜欢。
     let isLike: Int?
     /// 仅 `0` / `1`：是否已收藏。
@@ -61,6 +63,7 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
         originalCoin: Int? = nil,
         likeNumber: Int? = nil,
         collectionNumber: Int? = nil,
+        views: Int? = nil,
         isLike: Int? = nil,
         isCollected: Int? = nil,
         length: String? = nil,
@@ -83,6 +86,7 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
         self.originalCoin = originalCoin
         self.likeNumber = likeNumber
         self.collectionNumber = collectionNumber
+        self.views = views
         self.isLike = isLike
         self.isCollected = isCollected
         self.length = length
@@ -97,6 +101,7 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
         case originalCoin = "original_coin"
         case likeNumber = "like_number"
         case collectionNumber = "collection_number"
+        case views
         case isLike = "is_like"
         case isCollected = "is_collected"
         case seriesCategory = "series_category"
@@ -119,6 +124,7 @@ struct ArticleSummary: Decodable, Identifiable, Hashable {
         originalCoin = JSONFlex.int(c, .originalCoin)
         likeNumber = JSONFlex.int(c, .likeNumber)
         collectionNumber = JSONFlex.int(c, .collectionNumber)
+        views = JSONFlex.int(c, .views)
         isLike = JSONFlex.int(c, .isLike)
         isCollected = JSONFlex.int(c, .isCollected)
         length = JSONFlex.string(c, .length)

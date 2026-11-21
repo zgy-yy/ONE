@@ -41,6 +41,7 @@ extension View {
         let height = CoverAspect.height(width: width, aspect: aspect)
         return self
             .padding(.vertical, padding)
-            .frame(maxWidth: .infinity, minHeight: height, maxHeight: height, alignment: .topLeading)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .frame(height: height, alignment: .topLeading)
     }
 }
