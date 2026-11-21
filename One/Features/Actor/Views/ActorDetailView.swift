@@ -367,12 +367,12 @@ struct ActorDetailView: View {
             emptyTitle: "暂无评论",
             retry: { Task { await session.retry(.comments, actorID: actor.id) } }
         ) {
-            LazyVStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 14) {
                 ForEach(session.comments.items) { comment in
                     CommentRow(
                         comment: comment,
-                        loadReplies: { parent in
-                            await session.loadReplies(for: parent, actorID: actor.id)
+                        loadReplies: { parent, sort in
+                            await session.loadReplies(for: parent, sorting: sort)
                         }
                     )
                         .onAppear {

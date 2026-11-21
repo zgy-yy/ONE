@@ -21,8 +21,8 @@ nonisolated enum OneAPI {
     static let actorArticlesPath = "actor/getActorArticles"
     static let actorPhotosPath = "actor/getActorPhotos"
     static let commentListPath = "comment/listV254"
-    /// 旧版列表：展开楼中楼时用，会带回主楼下全部回复。
-    static let commentListFullPath = "comment/list"
+    /// 楼中楼全量：`comment_id` 为主楼 ID。
+    static let commentDetailWithGroupPath = "comment/detailWithGroup"
     static let seriesAlbumListPath = "series/album/list"
     static let seriesMangaListPath = "series/manga/list"
     static let seriesChaptersPath = "series/chapters"

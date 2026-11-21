@@ -18,7 +18,7 @@ struct CommentItem: Decodable, Identifiable, Hashable {
     let imagePaths: [String]
     /// 多图原图路径（与 `imagePaths` 一一对应；字符串数组时与缩略相同）
     let fullImagePaths: [String]
-    /// 楼中楼回复
+    /// 楼中楼回复（`listV254` 内嵌预览，最多约 3 条）
     let replies: [CommentItem]
 
     var displayAuthor: String {
@@ -85,7 +85,25 @@ struct CommentItem: Decodable, Identifiable, Hashable {
         let decoded = Self.decodeImagePaths(c)
         imagePaths = decoded.preferred
         fullImagePaths = decoded.full
-        replies = (try? c.decodeIfPresent([CommentItem].self, forKey: .replies)) ?? []
+        replies = Self.decodeReplyList(c)
+    }
+
+    /// 逐条解析楼中楼，避免单条脏数据导致整段 `replies` 变空。
+    private static func decodeReplyList(
+        _ c: KeyedDecodingContainer<CodingKeys>
+    ) -> [CommentItem] {
+        guard c.contains(.replies), var unkeyed = try? c.nestedUnkeyedContainer(forKey: .replies) else {
+            return []
+        }
+        var items: [CommentItem] = []
+        while !unkeyed.isAtEnd {
+            if let item = try? unkeyed.decode(CommentItem.self) {
+                items.append(item)
+            } else {
+                _ = try? unkeyed.decode(IgnoredJSON.self)
+            }
+        }
+        return items
     }
 
     private static func decodeImagePaths<K: CodingKey>(
@@ -137,17 +155,33 @@ private struct CommentImageObject: Decodable {
     }
 }
 
-/// `listV254` 的 `data` 为 `{ list }`；旧版 `comment/list` 的 `data` 可能直接是数组。
+/// 评论列表 `data`：`{ list }` 或直接为数组。
 struct CommentListPayload: Decodable {
     let list: [CommentItem]?
 
     init(from decoder: Decoder) throws {
-        if let items = try? decoder.singleValueContainer().decode([CommentItem].self) {
-            list = items
+        if var unkeyed = try? decoder.unkeyedContainer() {
+            list = Self.decodeLenientList(&unkeyed)
             return
         }
         let keyed = try decoder.container(keyedBy: CodingKeys.self)
-        list = try keyed.decodeIfPresent([CommentItem].self, forKey: .list)
+        if var listContainer = try? keyed.nestedUnkeyedContainer(forKey: .list) {
+            list = Self.decodeLenientList(&listContainer)
+        } else {
+            list = nil
+        }
+    }
+
+    private static func decodeLenientList(_ unkeyed: inout UnkeyedDecodingContainer) -> [CommentItem] {
+        var items: [CommentItem] = []
+        while !unkeyed.isAtEnd {
+            if let item = try? unkeyed.decode(CommentItem.self) {
+                items.append(item)
+            } else {
+                _ = try? unkeyed.decode(IgnoredJSON.self)
+            }
+        }
+        return items
     }
 
     private enum CodingKeys: String, CodingKey { case list }

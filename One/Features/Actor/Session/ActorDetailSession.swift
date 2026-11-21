@@ -174,11 +174,7 @@ final class ActorDetailSession {
         )
     }
 
-    func loadReplies(for comment: CommentItem, actorID: Int) async -> [CommentItem] {
-        await OneClient.commentReplies(
-            targetID: actorID,
-            type: CommentTargetType.actor,
-            parent: comment
-        )
+    func loadReplies(for comment: CommentItem, sorting: CommentSort = .likes) async -> [CommentItem] {
+        await OneClient.commentReplies(parent: comment, sorting: sorting.rawValue)
     }
 }

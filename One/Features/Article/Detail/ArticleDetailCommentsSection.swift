@@ -28,12 +28,12 @@ struct ArticleDetailCommentsSection: View {
                     Task { await session.loadComments(force: true) }
                 }
             ) {
-                LazyVStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 12) {
                     ForEach(session.comments.items) { comment in
                         CommentRow(
                             comment: comment,
-                            loadReplies: { parent in
-                                await session.loadReplies(for: parent)
+                            loadReplies: { parent, sort in
+                                await session.loadReplies(for: parent, sorting: sort)
                             }
                         )
                         .onAppear {
@@ -48,8 +48,9 @@ struct ArticleDetailCommentsSection: View {
                 }
             }
         }
-        .onChange(of: session.commentSort) { _, _ in
-            Task { await session.loadComments(force: true) }
+        .onChange(of: session.commentSort) { old, new in
+            guard old != new else { return }
+            Task { await session.reloadComments() }
         }
     }
 }

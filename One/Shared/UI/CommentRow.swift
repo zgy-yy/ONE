@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// 评论行：主楼 / 回复缩进区分；默认 3 条回复，可展开；支持最新 / 最热。
+/// 评论行：主楼 / 回复缩进区分；默认 3 条回复，可展开；楼中楼支持最新 / 最热。
 struct CommentRow: View {
     let comment: CommentItem
     var isReply: Bool = false
-    var loadReplies: ((CommentItem) async -> [CommentItem])? = nil
+    var loadReplies: ((CommentItem, CommentSort) async -> [CommentItem])? = nil
 
     @State private var showsViewer = false
     @State private var viewerSelection = 0
@@ -13,23 +13,23 @@ struct CommentRow: View {
     @State private var fetchedReplies: [CommentItem]?
     @State private var isLoadingReplies = false
 
-    private let replyIndent: CGFloat = 36
     private let previewCount = 3
 
     private var replies: [CommentItem] {
         (fetchedReplies ?? comment.replies).sorted(by: replySort)
     }
 
-    private var visibleReplies: [CommentItem] {
-        showAll ? replies : Array(replies.prefix(previewCount))
-    }
-
     private var replyTotal: Int {
         max(comment.replyTotal, replies.count)
     }
 
+    private var replyTaskID: String? {
+        guard showAll, loadReplies != nil else { return nil }
+        return replySort.rawValue
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: isReply ? 6 : 8) {
+        VStack(alignment: .leading, spacing: isReply ? 4 : 8) {
             header
             if !comment.displayText.isEmpty {
                 Text(comment.displayText)
@@ -46,8 +46,7 @@ struct CommentRow: View {
                 repliesBlock
             }
         }
-        .padding(.vertical, isReply ? 6 : 8)
-        .padding(.leading, isReply ? replyIndent : 0)
+        .padding(.vertical, isReply ? 4 : 8)
         .fullScreenCover(isPresented: $showsViewer) {
             FullscreenImageViewer(paths: comment.viewerImagePaths, selection: $viewerSelection)
         }
@@ -87,53 +86,75 @@ struct CommentRow: View {
     }
 
     private var repliesBlock: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
                 Spacer(minLength: 0)
-                CommentSortPicker(sort: $replySort, compact: true)
-            }
-            .padding(.leading, replyIndent)
-
-            if isLoadingReplies, visibleReplies.isEmpty {
-                ProgressView()
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
+                CommentSortPicker(sort: $replySort, style: .replyThread)
+                if showAll {
+                    replyTextButton("收起回复", color: .accentColor, fullWidth: false) { showAll = false }
+                        .font(.caption2.weight(.medium))
+                }
             }
 
-            ForEach(visibleReplies) { reply in
+            let visible = showAll ? replies : Array(replies.prefix(previewCount))
+            ForEach(visible) { reply in
                 CommentRow(comment: reply, isReply: true)
             }
 
-            if replyTotal > previewCount {
-                Button {
-                    showAll.toggle()
-                    if showAll, replies.count < comment.replyTotal {
-                        Task { await refreshReplies() }
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        if isLoadingReplies { ProgressView().controlSize(.mini) }
-                        Text(showAll ? "收起回复" : "查看全部 \(replyTotal) 条回复")
-                        Image(systemName: showAll ? "chevron.up" : "chevron.down")
-                            .font(.caption2.weight(.semibold))
-                    }
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
+            if showAll, isLoadingReplies, replies.count < replyTotal {
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.small)
+                    Text("加载回复…").font(.caption2).foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
-                .padding(.leading, replyIndent)
+                .padding(.vertical, 4)
+            }
+
+            if replyTotal > previewCount {
+                if showAll {
+                    replyTextButton("收起全部") { showAll = false }
+                        .padding(.top, 4)
+                } else {
+                    replyTextButton("查看全部 \(replyTotal) 条回复", chevronDown: true) { showAll = true }
+                        .padding(.top, 2)
+                }
             }
         }
+        .padding(.leading, 14)
         .padding(.top, 2)
+        .task(id: replyTaskID) {
+            guard replyTaskID != nil else { return }
+            await fetchReplies()
+        }
     }
 
-    @MainActor
-    private func refreshReplies() async {
-        guard let loadReplies, !isLoadingReplies else { return }
+    private func replyTextButton(
+        _ title: String,
+        color: Color = .secondary,
+        chevronDown: Bool = false,
+        fullWidth: Bool = true,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Text(title)
+                if chevronDown {
+                    Image(systemName: "chevron.down")
+                        .font(.caption2.weight(.semibold))
+                }
+            }
+            .font(.caption.weight(.medium))
+            .foregroundStyle(color)
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: fullWidth ? .infinity : nil, alignment: .leading)
+    }
+
+    private func fetchReplies() async {
+        guard let loadReplies else { return }
         isLoadingReplies = true
         defer { isLoadingReplies = false }
-        let loaded = await loadReplies(comment)
-        if loaded.count > replies.count { fetchedReplies = loaded }
+        guard !Task.isCancelled else { return }
+        fetchedReplies = await loadReplies(comment, replySort)
     }
 }
 

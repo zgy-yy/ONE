@@ -15,12 +15,7 @@ final class ArticleDetailSession {
     private(set) var isReacting = false
     private(set) var comments = PagedListState<CommentItem>(pageSize: 10)
 
-    var commentSort: CommentSort = .createdAt {
-        didSet {
-            guard oldValue != commentSort else { return }
-            comments.reset()
-        }
-    }
+    var commentSort: CommentSort = .likes
 
     private var loadedArticleID: Int?
     private var reactions: ArticleReactionStore { .shared }
@@ -28,7 +23,7 @@ final class ArticleDetailSession {
     func load(articleID: Int) async {
         if loadedArticleID != articleID {
             comments.reset()
-            commentSort = .createdAt
+            commentSort = .likes
             loadedArticleID = articleID
         }
 
@@ -60,8 +55,14 @@ final class ArticleDetailSession {
     func toggleLike() async { await toggleReaction(.like) }
     func toggleCollect() async { await toggleReaction(.collect) }
 
+    func reloadComments() async {
+        comments.reset()
+        await loadComments(force: true)
+    }
+
     func loadComments(force: Bool = false) async {
         guard let articleID = loadedArticleID ?? detail?.id else { return }
+        let sort = commentSort
         var feed = comments
         guard feed.beginLoad(force: force) else {
             comments = feed
@@ -70,9 +71,12 @@ final class ArticleDetailSession {
         comments = feed
 
         do {
-            feed.finishLoad(try await fetchComments(articleID: articleID, page: 1))
+            let list = try await fetchComments(articleID: articleID, page: 1, sorting: sort)
+            guard commentSort == sort else { return }
+            feed.finishLoad(list)
             comments = feed
         } catch {
+            guard commentSort == sort else { return }
             feed.failLoad(error)
             comments = feed
         }
@@ -80,26 +84,25 @@ final class ArticleDetailSession {
 
     func loadMoreComments() async {
         guard let articleID = loadedArticleID ?? detail?.id else { return }
+        let sort = commentSort
         var feed = comments
         guard let page = feed.beginLoadMore() else { return }
         comments = feed
 
         do {
-            feed.finishLoadMore(try await fetchComments(articleID: articleID, page: page))
+            let list = try await fetchComments(articleID: articleID, page: page, sorting: sort)
+            guard commentSort == sort else { return }
+            feed.finishLoadMore(list)
             comments = feed
         } catch {
+            guard commentSort == sort else { return }
             feed.cancelLoadMore()
             comments = feed
         }
     }
 
-    func loadReplies(for comment: CommentItem) async -> [CommentItem] {
-        guard let articleID = loadedArticleID ?? detail?.id else { return comment.replies }
-        return await OneClient.commentReplies(
-            targetID: articleID,
-            type: CommentTargetType.article,
-            parent: comment
-        )
+    func loadReplies(for comment: CommentItem, sorting: CommentSort = .likes) async -> [CommentItem] {
+        await OneClient.commentReplies(parent: comment, sorting: sorting.rawValue)
     }
 
     private func toggleReaction(_ kind: ArticleReactionStore.Kind) async {
@@ -121,13 +124,17 @@ final class ArticleDetailSession {
         playURL = entries.first.flatMap { URL(string: $0.url) }
     }
 
-    private func fetchComments(articleID: Int, page: Int) async throws -> [CommentItem] {
+    private func fetchComments(
+        articleID: Int,
+        page: Int,
+        sorting: CommentSort
+    ) async throws -> [CommentItem] {
         try await OneClient.commentList(
             targetID: articleID,
             type: CommentTargetType.article,
             page: page,
             size: 10,
-            sorting: commentSort.rawValue
+            sorting: sorting.rawValue
         )
     }
 }
