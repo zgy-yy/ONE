@@ -8,9 +8,7 @@ struct FavoriteItemRow: View {
 
     private var article: ArticleSummary { item.asArticleSummary }
 
-    private var coverAspect: CGFloat {
-        item.listCategory.coverAspect
-    }
+    private let coverAspect = CoverAspect.landscape
 
     var body: some View {
         ArticleCardChromeCoverTop {
@@ -64,9 +62,7 @@ struct FavoriteItemRow: View {
                 onUncollect: { session.removeFavorite(articleID: $0) }
             )
             .font(.system(size: 10, weight: .medium))
-            .padding(.horizontal, 6)
-            .padding(.vertical, 5)
-            .background { CoverBottomFade(opacity: 0.65) }
+            .padding(6)
         }
     }
 

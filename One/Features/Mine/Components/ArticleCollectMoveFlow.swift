@@ -12,7 +12,7 @@ struct CollectFolderMoveContext: Identifiable, Hashable {
 
 // MARK: - 半屏提示
 
-/// 先提示是否移动；2 秒无操作关闭；确认后进入全屏选夹。
+/// 先提示是否移动；2 秒无操作关闭；确认后进入半屏选夹。
 private struct CollectFolderMovePrompt: View {
     let context: CollectFolderMoveContext
     let onDone: () -> Void
@@ -38,28 +38,18 @@ private struct CollectFolderMovePrompt: View {
             }
             .padding(.top, 8)
 
-            VStack(spacing: 10) {
-                Button("选择收藏夹") {
-                    cancelAutoDismiss()
-                    onPickFolder()
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .frame(maxWidth: .infinity)
-
-                Button("完成") {
-                    cancelAutoDismiss()
-                    onDone()
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-                .frame(maxWidth: .infinity)
+            Button("选择收藏夹") {
+                cancelAutoDismiss()
+                onPickFolder()
             }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .frame(maxWidth: .infinity)
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 20)
         .frame(maxWidth: .infinity)
-        .presentationDetents([.height(300)])
+        .presentationDetents([.height(260)])
         .presentationDragIndicator(.visible)
         .onAppear { scheduleAutoDismiss() }
         .onDisappear { cancelAutoDismiss() }
@@ -80,9 +70,9 @@ private struct CollectFolderMovePrompt: View {
     }
 }
 
-// MARK: - 全屏选夹
+// MARK: - 半屏选夹
 
-private struct CollectFolderMoveFullScreen: View {
+private struct CollectFolderMovePicker: View {
     let context: CollectFolderMoveContext
     let onClose: () -> Void
 
@@ -119,6 +109,8 @@ private struct CollectFolderMoveFullScreen: View {
             }
             .task { await library.loadFolders(force: true) }
         }
+        .presentationDetents([.fraction(0.75), .large])
+        .presentationDragIndicator(.visible)
     }
 
     @ViewBuilder
@@ -131,23 +123,18 @@ private struct CollectFolderMoveFullScreen: View {
                     Button {
                         Task { await move(to: folder) }
                     } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "folder.fill")
-                                .foregroundStyle(Color.accentColor)
-                            Text(folder.displayName)
-                                .foregroundStyle(.primary)
-                            Spacer(minLength: 8)
-                            Text(ArticleFormat.shortCount(folder.articleNum ?? 0))
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .monospacedDigit()
-                            if movingFolderID == folder.id {
-                                ProgressView()
-                                    .controlSize(.small)
+                        CollectFolderRow(folder: folder)
+                            .overlay(alignment: .trailing) {
+                                if movingFolderID == folder.id {
+                                    ProgressView()
+                                        .controlSize(.regular)
+                                        .padding(.trailing, 4)
+                                }
                             }
-                        }
                     }
+                    .buttonStyle(.plain)
                     .disabled(movingFolderID != nil)
+                    .styledListRow()
                 }
             }
 
@@ -159,7 +146,7 @@ private struct CollectFolderMoveFullScreen: View {
                 }
             }
         }
-        .listStyle(.insetGrouped)
+        .plainContentList()
     }
 
     private func loadErrorView(_ error: String) -> some View {
@@ -214,8 +201,8 @@ private struct CollectFolderMovePresentation: ViewModifier {
                     }
                 )
             }
-            .fullScreenCover(item: $folderPickerContext, onDismiss: onDismiss) { item in
-                CollectFolderMoveFullScreen(context: item) {
+            .sheet(item: $folderPickerContext, onDismiss: onDismiss) { item in
+                CollectFolderMovePicker(context: item) {
                     folderPickerContext = nil
                     onDismiss?()
                 }
@@ -266,7 +253,7 @@ enum ArticleCollectAction {
 }
 
 extension View {
-    /// 挂载收藏后的移动流程（半屏提示 + 全屏选夹）。
+    /// 挂载收藏后的移动流程（半屏提示 + 半屏选夹）。
     func articleCollectMoveFlow(
         _ context: Binding<CollectFolderMoveContext?>,
         onDismiss: (() -> Void)? = nil

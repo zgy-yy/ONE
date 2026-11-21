@@ -25,6 +25,23 @@ struct UserLikeItem: Decodable, Identifiable, Hashable {
         ImagePath.preferred(thumb: thumb, thumbnail: thumbTiny)
     }
 
+    var listCategory: ContentCategory {
+        ContentCategory.forSearch(modelID: modelID, seriesCategory: nil)
+    }
+
+    /// 列表副文案：`类型 / 作者`。
+    var typeAuthorLine: String? {
+        let category = listCategory
+        if category == .all {
+            return author?.nonEmpty
+        }
+        let type = category.title
+        if let author = author?.nonEmpty {
+            return "\(type) / \(author)"
+        }
+        return type
+    }
+
     /// 详情用 `article_id`，不是喜欢记录 id。
     var asArticleSummary: ArticleSummary {
         ArticleSummary(

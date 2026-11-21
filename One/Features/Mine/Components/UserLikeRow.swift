@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 我的喜欢列表行：左封面，右标题 / 作者 / 日期与可取消的喜欢。
+/// 我的喜欢列表行：左封面（左上角品类角标），右标题 / 类型·作者 / 日期与可取消的喜欢。
 struct UserLikeRow: View {
     let item: UserLikeItem
     @Bindable var session: MineLibrarySession
@@ -14,25 +14,18 @@ struct UserLikeRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            OneCoverImage(
-                path: item.imagePath,
-                aspectRatio: coverAspect,
-                cornerRadius: 8
-            )
-            .frame(width: coverWidth)
+            coverBlock
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.displayTitle)
                     .font(.body.weight(.medium))
                     .foregroundStyle(.primary)
-                    .lineLimit(2)
+                    .lineLimit(2, reservesSpace: true)
                     .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .layoutPriority(1)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
 
-                if let author = item.author?.nonEmpty {
-                    Text(author)
+                if let line = item.typeAuthorLine {
+                    Text(line)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -45,6 +38,22 @@ struct UserLikeRow: View {
             .matchCoverHeight(width: coverWidth, aspect: coverAspect)
         }
         .padding(.vertical, 4)
+    }
+
+    private var coverBlock: some View {
+        OneCoverImage(
+            path: item.imagePath,
+            aspectRatio: coverAspect,
+            cornerRadius: 8
+        )
+        .frame(width: coverWidth)
+        .overlay(alignment: .topLeading) {
+            CoverCategoryVolumeBadge(
+                systemImage: item.listCategory.coverVolumeBadgeIcon,
+                vol: nil,
+                showsBackdrop: false
+            )
+        }
     }
 
     private var metaRow: some View {

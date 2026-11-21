@@ -54,21 +54,28 @@ enum ArticleRowTypography {
 struct CoverCategoryVolumeBadge: View {
     let systemImage: String
     let vol: Int?
+    /// 为 `false` 时仅叠在封面上，无胶囊衬底（如「我的喜欢」）。
+    var showsBackdrop: Bool = true
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 3) {
             Image(systemName: systemImage)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.white)
+                .shadow(color: .black.opacity(showsBackdrop ? 0 : 0.45), radius: 2, x: 0, y: 1)
             if let vol {
                 Text("第\(vol)期")
                     .font(ArticleRowTypography.coverVolume)
                     .foregroundStyle(.white.opacity(0.88))
             }
         }
-        .padding(.horizontal, 7)
-        .padding(.vertical, 4)
-        .background(.black.opacity(0.32), in: Capsule())
+        .padding(.horizontal, showsBackdrop ? 7 : 0)
+        .padding(.vertical, showsBackdrop ? 4 : 0)
+        .background {
+            if showsBackdrop {
+                Capsule().fill(.black.opacity(0.32))
+            }
+        }
         .padding(8)
     }
 }
