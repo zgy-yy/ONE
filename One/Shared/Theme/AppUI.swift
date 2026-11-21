@@ -39,15 +39,14 @@ enum AppUI {
 
     /// 列表 / 网格底部分页状态。
     ///
-    /// 已加载内容末尾：加载更多时出转圈，否则出「我是有底线的」。
-    /// `exhausted` 保留参数兼容旧调用，展示不再依赖它（按月列表很难到达 earliest）。
+    /// 已加载内容末尾：加载更多时转圈；`exhausted` 为真时显示「我是有底线的」。
     @ViewBuilder
-    static func loadMoreFooter(loadingMore: Bool, exhausted _: Bool) -> some View {
+    static func loadMoreFooter(loadingMore: Bool, exhausted: Bool) -> some View {
         if loadingMore {
             ProgressView()
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
-        } else {
+        } else if exhausted {
             Text("我是有底线的")
                 .font(.footnote)
                 .foregroundStyle(.secondary)

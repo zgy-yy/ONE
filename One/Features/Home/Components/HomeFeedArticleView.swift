@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 首页日更「非图文」条目：类型 → 标题 → 作者 → 简介 → 横图封面（期数 / 播放 / 互动）。
+/// 首页日更「非图文」：上文案、下封面一体卡片；仅分类名居中，文案区毛玻璃衬底。
 struct HomeFeedArticleView: View {
     let article: ArticleSummary
     var showsDescription: Bool = true
@@ -9,31 +9,35 @@ struct HomeFeedArticleView: View {
     private var category: ContentCategory { article.listCategory }
 
     var body: some View {
+        ArticleCardChrome(cornerRadius: cornerRadius) {
+            textBlock
+        } cover: {
+            cover
+        }
+    }
+
+    private var textBlock: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(category.title)
-                .font(ArticleRowTypography.metaSmall)
-                .foregroundStyle(.tertiary)
+            articleCardCategoryTitle(category.title)
 
             Text(article.displayTitle)
-                .font(ArticleRowTypography.filmTitle)
+                .font(ArticleRowTypography.HomeFeedCard.title)
                 .foregroundStyle(.primary)
                 .lineLimit(2)
 
             if let authorLine = article.homeAuthorLine() {
                 Text(authorLine)
-                    .font(ArticleRowTypography.summary)
+                    .font(ArticleRowTypography.HomeFeedCard.body)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
 
             if showsDescription, let summary = article.summary?.nonEmpty {
                 Text(summary)
-                    .font(ArticleRowTypography.summary)
+                    .font(ArticleRowTypography.HomeFeedCard.body)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
             }
-
-            cover
         }
     }
 
@@ -52,6 +56,5 @@ struct HomeFeedArticleView: View {
         .overlay(alignment: .bottom) {
             CoverEngagementBar(article: article)
         }
-        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
     }
 }

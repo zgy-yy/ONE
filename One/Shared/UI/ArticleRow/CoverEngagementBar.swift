@@ -13,7 +13,7 @@ struct CoverEngagementBar: View {
             }
             Spacer(minLength: 0)
             ArticleCollectLikeMeta(article: article, onDarkOverlay: true, itemSpacing: 6)
-                .font(ArticleRowTypography.metaSmall)
+                .font(ArticleRowTypography.CoverBar.reactions)
         }
         .padding(.horizontal, horizontalPadding)
         .padding(.vertical, verticalPadding)
@@ -26,13 +26,14 @@ struct CoverEngagementBar: View {
 struct CoverStatLabel: View {
     let icon: String
     let text: String
+    var font: Font = ArticleRowTypography.CoverBar.views
 
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: icon)
             Text(text)
         }
-        .font(ArticleRowTypography.summary)
+        .font(font)
         .foregroundStyle(.white.opacity(0.9))
     }
 }

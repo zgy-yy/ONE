@@ -5,8 +5,9 @@ struct RadioArticleRow: View {
     let article: ArticleSummary
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        ArticleCardChromeCoverTop {
             cover
+        } text: {
             metaRow
         }
         .padding(.vertical, 2)
@@ -36,7 +37,6 @@ struct RadioArticleRow: View {
             .padding(.vertical, 10)
             .background { CoverBottomFade() }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private var metaRow: some View {

@@ -5,17 +5,19 @@ struct FilmArticleRow: View {
     let article: ArticleSummary
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        ArticleCardChromeCoverTop {
             cover
+        } text: {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(article.displayTitle)
+                    .font(ArticleRowTypography.filmTitle)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-            Text(article.displayTitle)
-                .font(ArticleRowTypography.filmTitle)
-                .lineLimit(2)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            if showsAuthorOrDate {
-                authorDateRow
+                if showsAuthorOrDate {
+                    authorDateRow
+                }
             }
         }
         .padding(.vertical, 2)
@@ -34,7 +36,6 @@ struct FilmArticleRow: View {
         .overlay(alignment: .bottom) {
             CoverEngagementBar(article: article)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private var showsAuthorOrDate: Bool {

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 两列瀑布流：按子视图实测高度放入更短的一列；列号缓存避免封面增高后乱跳。
+/// 两列瀑布流：子视图顺序与列表一致（0 左、1 右、2 左…），各列独立向下叠放，不拉高行高留空。
 struct MasonryLayout: Layout {
     var columns: Int = 2
     var spacing: CGFloat = 10
@@ -35,12 +35,10 @@ struct MasonryLayout: Layout {
         let columnWidth = max((width - spacing * CGFloat(columnCount - 1)) / CGFloat(columnCount), 1)
         let itemProposal = ProposedViewSize(width: columnWidth, height: nil)
 
-        if widthDiffers(cache.width, from: width) || cache.columnOfSubview.count > subviews.count {
-            cache.columnOfSubview.removeAll(keepingCapacity: true)
+        if widthDiffers(cache.width, from: width) || cache.columnOfSubview.count != subviews.count {
+            cache.columnOfSubview = (0 ..< subviews.count).map { column(forListIndex: $0, columnCount: columnCount) }
         }
         cache.width = width
-
-        resolveColumns(subviews: subviews, columnCount: columnCount, itemProposal: itemProposal, cache: &cache)
 
         var columnTops = [CGFloat](repeating: 0, count: columnCount)
         var frames: [CGRect] = []
@@ -59,45 +57,11 @@ struct MasonryLayout: Layout {
         cache.totalHeight = frames.isEmpty ? 0 : max((columnTops.max() ?? 0) - spacing, 0)
     }
 
-    private func resolveColumns(
-        subviews: Subviews,
-        columnCount: Int,
-        itemProposal: ProposedViewSize,
-        cache: inout Cache
-    ) {
-        guard cache.columnOfSubview.count < subviews.count else { return }
-
-        var columnTops = columnBottoms(
-            through: cache.columnOfSubview.count,
-            subviews: subviews,
-            columnCount: columnCount,
-            columnOfSubview: cache.columnOfSubview,
-            itemProposal: itemProposal
-        )
-
-        while cache.columnOfSubview.count < subviews.count {
-            let index = cache.columnOfSubview.count
-            let height = subviews[index].sizeThatFits(itemProposal).height
-            let column = columnTops.indices.min(by: { columnTops[$0] < columnTops[$1] }) ?? 0
-            cache.columnOfSubview.append(column)
-            columnTops[column] += height + spacing
-        }
-    }
-
-    private func columnBottoms(
-        through count: Int,
-        subviews: Subviews,
-        columnCount: Int,
-        columnOfSubview: [Int],
-        itemProposal: ProposedViewSize
-    ) -> [CGFloat] {
-        var tops = [CGFloat](repeating: 0, count: columnCount)
-        guard count > 0 else { return tops }
-        for index in 0 ..< count {
-            let height = subviews[index].sizeThatFits(itemProposal).height
-            tops[columnOfSubview[index]] += height + spacing
-        }
-        return tops
+    /// 列表下标 0 在左列；与 `Layout` 子视图遍历方向对齐（两列时左右对调修正）。
+    private func column(forListIndex index: Int, columnCount: Int) -> Int {
+        let slot = index % columnCount
+        guard columnCount == 2 else { return slot }
+        return 1 - slot
     }
 
     private func widthDiffers(_ cached: CGFloat, from width: CGFloat) -> Bool {

@@ -8,11 +8,7 @@ struct HomeArticleRow: View {
     var body: some View {
         Group {
             if article.modelID == ContentCategory.ModelID.graphic {
-                HomeGraphicArticleView(
-                    article: article,
-                    textAlignment: .leading,
-                    showsDescription: showsDescription
-                )
+                HomeGraphicArticleView(article: article, showsDescription: showsDescription)
             } else {
                 HomeFeedArticleView(article: article, showsDescription: showsDescription)
             }
@@ -45,6 +41,7 @@ private enum HomeArticleRowPreview {
         summary: "简介",
         likeNumber: 1,
         collectionNumber: 1,
+        views: 5600,
         isLike: 0,
         isCollected: 0
     )

@@ -5,14 +5,14 @@ import SwiftUI
 struct HomeMonthArticlesView: View {
     let day: DayDate
     @State private var session: HomeMonthSession
+    @State private var navigationMonthTitle: String
     @Bindable private var homeSession = HomeSession.shared
     @Environment(\.dismiss) private var dismiss
-
-    private let gridSpacing: CGFloat = 10
 
     init(day: DayDate) {
         self.day = day
         _session = State(initialValue: HomeMonthSession(monthAPIString: day.monthAPIString))
+        _navigationMonthTitle = State(initialValue: day.monthDisplayTitle)
     }
 
     private var hasNoContent: Bool {
@@ -29,7 +29,24 @@ struct HomeMonthArticlesView: View {
             emptyTitle: "暂无内容",
             retry: { Task { await session.load(force: true) } }
         ) {
-            articleGrid
+            MasonryMonthFeed(
+                sections: session.sections,
+                gridSpacing: 10,
+                showsFloatingMonthBar: false,
+                onVisibleMonthChange: { monthAPI in
+                    guard let monthAPI else { return }
+                    navigationMonthTitle = MonthYear.sectionTitle(forAPIString: monthAPI)
+                }
+            ) {
+                loadMoreFooter
+            } card: { article in
+                Button {
+                    jumpToDay(for: article)
+                } label: {
+                    HomeGraphicArticleView(article: article)
+                }
+                .buttonStyle(.plain)
+            }
         }
         .refreshable {
             await session.pullToRefresh()
@@ -38,8 +55,10 @@ struct HomeMonthArticlesView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Text(day.monthDisplayTitle)
+                Text(navigationMonthTitle)
                     .font(.headline)
+                    .contentTransition(.numericText())
+                    .animation(.easeInOut(duration: 0.2), value: navigationMonthTitle)
             }
         }
         .task {
@@ -47,43 +66,15 @@ struct HomeMonthArticlesView: View {
         }
     }
 
-    private var articleGrid: some View {
-        ScrollView {
-            // 只用一层 LazyVStack：嵌套 LazyVGrid 会在中段滑动时回跳、复用错乱。
-            LazyVStack(alignment: .leading, spacing: 20, pinnedViews: [.sectionHeaders]) {
-                ForEach(session.sections) { section in
-                    Section {
-                        sectionRows(section)
-                    } header: {
-                        ArticleMonthSectionHeader(monthAPIString: section.month, stickyChrome: true)
-                    }
-                }
-
-                loadMoreSentinel
-                AppUI.loadMoreFooter(
-                    loadingMore: session.isLoadingMore,
-                    exhausted: session.fullyExhausted && session.loaded
-                )
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-            }
-            .padding(.horizontal, 8)
-            .padding(.bottom, 16)
-        }
-    }
-
-    /// `MasonryLayout` 按卡片实测高度分列，避免预分列与 `HStack` 等高产生的空洞。
-    private func sectionRows(_ section: ArticleMonthSection) -> some View {
-        MasonryLayout(columns: 2, spacing: gridSpacing) {
-            ForEach(section.articles) { article in
-                Button {
-                    jumpToDay(for: article)
-                } label: {
-                    articleCard(article)
-                }
-                .buttonStyle(.plain)
-            }
-        }
+    @ViewBuilder
+    private var loadMoreFooter: some View {
+        loadMoreSentinel
+        AppUI.loadMoreFooter(
+            loadingMore: session.isLoadingMore,
+            exhausted: session.showsLoadMoreEnd
+        )
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
     }
 
     /// 真正滑到列表底部才触发加载更多。
@@ -91,7 +82,7 @@ struct HomeMonthArticlesView: View {
         Color.clear
             .frame(height: 1)
             .onAppear {
-                Task { await session.loadMore() }
+                Task { await session.loadMoreFromSentinel() }
             }
     }
 
@@ -103,9 +94,5 @@ struct HomeMonthArticlesView: View {
         homeSession.jumpToDay(target)
         dismiss()
         Task { await homeSession.load(homeSession.selectedDay) }
-    }
-
-    private func articleCard(_ article: ArticleSummary) -> some View {
-        HomeArticleCard(article: article)
     }
 }

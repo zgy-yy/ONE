@@ -49,27 +49,53 @@ struct DiscoverFeedView: View {
             emptyTitle: "无内容",
             retry: { Task { await session.loadArticles(channel: channel, force: true) } }
         ) {
-            MonthPagedArticleList(
-                sections: sections,
-                publishedAt: session.listPublishedAt,
-                loadingMore: session.isLoadingMoreArticles(channel),
-                exhausted: session.showsArticlesEndFooter(channel),
-                onAnchorMonthMissing: {
-                    Task { await session.loadArticles(channel: channel, force: true) }
-                }
-            ) { section in
+            Group {
                 if channel == .graphic {
-                    graphicRows(section)
-                } else {
-                    ForEach(section.articles) { article in
-                        articleRow(article)
-                            .styledListRow()
+                    MasonryMonthFeed(
+                        sections: sections,
+                        anchorMonth: session.listPublishedAt,
+                        onAnchorMonthMissing: {
+                            Task { await session.loadArticles(channel: channel, force: true) }
+                        }
+                    ) {
+                        AppUI.loadMoreFooter(
+                            loadingMore: session.isLoadingMoreArticles(channel),
+                            exhausted: session.showsArticlesEndFooter(channel)
+                        )
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                    } card: { article in
+                        GraphicArticleCard(article: article, textAlignment: .leading)
+                            .padding(.vertical, 2)
                             .contentShape(Rectangle())
                             .onTapGesture { articleDestination = article }
                             .onAppear {
-                                guard sections.isTailArticle(article, in: section) else { return }
+                                guard sections.contains(where: { sections.isTailArticle(article, in: $0) }) else {
+                                    return
+                                }
                                 Task { await session.loadMoreArticles(channel: channel) }
                             }
+                    }
+                } else {
+                    MonthPagedArticleList(
+                        sections: sections,
+                        publishedAt: session.listPublishedAt,
+                        loadingMore: session.isLoadingMoreArticles(channel),
+                        exhausted: session.showsArticlesEndFooter(channel),
+                        onAnchorMonthMissing: {
+                            Task { await session.loadArticles(channel: channel, force: true) }
+                        }
+                    ) { section in
+                        ForEach(section.articles) { article in
+                            articleRow(article)
+                                .styledListRow()
+                                .contentShape(Rectangle())
+                                .onTapGesture { articleDestination = article }
+                                .onAppear {
+                                    guard sections.isTailArticle(article, in: section) else { return }
+                                    Task { await session.loadMoreArticles(channel: channel) }
+                                }
+                        }
                     }
                 }
             }
@@ -84,23 +110,6 @@ struct DiscoverFeedView: View {
             guard hasNoArticles || !sections.contains(where: { $0.month == month }) else { return }
             Task { await session.loadArticles(channel: channel, force: true) }
         }
-    }
-
-    /// 图文两列瀑布流（与首页月列表 `MasonryLayout` 一致）。
-    private func graphicRows(_ section: ArticleMonthSection) -> some View {
-        MasonryLayout(columns: 2, spacing: 10) {
-            ForEach(section.articles) { article in
-                GraphicArticleCard(article: article, textAlignment: .leading)
-                    .padding(.vertical, 2)
-                    .contentShape(Rectangle())
-                    .onTapGesture { articleDestination = article }
-                    .onAppear {
-                        guard sections.isTailArticle(article, in: section) else { return }
-                        Task { await session.loadMoreArticles(channel: channel) }
-                    }
-            }
-        }
-        .styledListRow()
     }
 
     @ViewBuilder

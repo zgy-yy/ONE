@@ -6,9 +6,10 @@ struct VodArticleRow: View {
     var aspectRatio: CGFloat = CoverAspect.landscape
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        ArticleCardChromeCoverTop {
             cover
                 .allowsHitTesting(false)
+        } text: {
             metaBar
         }
         .padding(.vertical, 2)
@@ -39,7 +40,6 @@ struct VodArticleRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background { CoverBottomFade() }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private var showsSubtitleRow: Bool {

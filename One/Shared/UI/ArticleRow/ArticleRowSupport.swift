@@ -1,5 +1,11 @@
 import SwiftUI
 
+// 列表卡片约定（初学者速览）：
+// - `ArticleRow/*Row.swift`：发现页各体裁单行
+// - `GraphicArticleCard` / `HomeGraphicArticleView`：图文竖卡（文案在 `GraphicCardTextBlock`）
+// - `ArticleCardChrome`：毛玻璃文案 + 封面一体（首页日更横卡等）
+// - `../Layout/MasonryLayout` + `MasonryMonthFeed`：两列瀑布流与按月列表
+
 /// 列表行文字层级（阅读 / 影视 / 点播 / 电台 / 系列共用）。
 enum ArticleRowTypography {
     /// 主标题（信息列 / 封面叠字）。
@@ -18,6 +24,30 @@ enum ArticleRowTypography {
     static let date: Font = .caption
     /// 横图封面角标「第 N 期」。
     static let coverVolume: Font = .system(size: 10, weight: .medium)
+
+    /// 图文竖卡（首页瀑布流 / 发现图文）。
+    enum GraphicCard {
+        static let title = ArticleRowTypography.cardTitle
+        static let author = ArticleRowTypography.metaSmall
+        static let summary = ArticleRowTypography.summary
+        static let views = ArticleRowTypography.summary
+        static let reactions = ArticleRowTypography.metaSmall
+        static let date = ArticleRowTypography.metaSmall
+    }
+
+    /// 首页日更横卡（毛玻璃文案区）。
+    enum HomeFeedCard {
+        static let category = ArticleRowTypography.metaSmall
+        static let title = ArticleRowTypography.filmTitle
+        static let body = ArticleRowTypography.summary
+    }
+
+    /// 横图封面底栏叠字。
+    enum CoverBar {
+        static let views = ArticleRowTypography.summary
+        static let reactions = ArticleRowTypography.metaSmall
+        static let volume = ArticleRowTypography.summary
+    }
 }
 
 /// 横图封面左上角：品类图标 + 期数（影视 / 电台统一样式）。
