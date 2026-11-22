@@ -98,7 +98,7 @@ struct ArticleDetailMetaSection: View {
             }
             Button("取消", role: .cancel) {}
         } message: {
-            Text("原画体积更大；标准更省空间。")
+            Text("原画体积更大；标清更省空间。")
         }
     }
 }

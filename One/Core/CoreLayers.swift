@@ -5,7 +5,7 @@
  Features/       按业务分文件夹（Home / Discover / Article / Mine …）
    Detail/       详情壳、元信息、评论、标签
    Detail/Video/ 点播全屏播放（ArticleVideoPresenter → 系统 AVPlayerViewController）
-   Session/      @Observable：拉数、下载队列等
+   Mine/Session/  VideoDownloadSession、VideoDownloadTaskRegistry
    Views/        页面与列表
  Shared/         多 Feature 共用
    UI/           Row、导航、通用控件

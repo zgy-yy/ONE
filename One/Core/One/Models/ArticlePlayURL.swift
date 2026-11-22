@@ -19,7 +19,7 @@ enum ArticlePlayURL {
     /// 详情接口参数 `dn`。
     static let detailVideoDN = "https://pwavd123.phd3wfh.com/"
 
-    /// 下载可选：`video_file` 原画 → `video` 标准。
+    /// 下载可选：`video_file` 原画 → `video` 标清。
     struct DownloadOption: Identifiable, Hashable {
         var id: String { field }
         let field: String
@@ -34,7 +34,7 @@ enum ArticlePlayURL {
             guard let entry = entries.first(where: { $0.field == field }),
                   let url = URL(string: entry.url)
             else { return nil }
-            let title = field == "video_file" ? "原画" : "标准"
+            let title = field == "video_file" ? "原画" : "标清"
             return DownloadOption(field: field, title: title, url: url)
         }
     }

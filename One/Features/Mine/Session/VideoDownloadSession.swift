@@ -2,64 +2,6 @@ import Foundation
 import Observation
 import UIKit
 
-/// `URLSession` 任务 ID ↔ 下载项映射（委托线程安全，避免放在 `@Observable` 里）。
-private final class VideoDownloadTaskRegistry: @unchecked Sendable {
-    private let lock = NSLock()
-    nonisolated(unsafe) private var taskIDToItemID: [Int: UUID] = [:]
-    nonisolated(unsafe) private var itemIDToFileName: [UUID: String] = [:]
-
-    nonisolated init() {}
-
-    nonisolated func setItemID(_ itemID: UUID, forTaskID taskID: Int) {
-        lock.lock()
-        defer { lock.unlock() }
-        taskIDToItemID[taskID] = itemID
-    }
-
-    nonisolated func setFileName(_ fileName: String, for itemID: UUID) {
-        lock.lock()
-        defer { lock.unlock() }
-        itemIDToFileName[itemID] = fileName
-    }
-
-    nonisolated func removeFileName(for itemID: UUID) {
-        lock.lock()
-        defer { lock.unlock() }
-        itemIDToFileName[itemID] = nil
-    }
-
-    nonisolated func removeTaskMapping(taskID: Int) {
-        lock.lock()
-        defer { lock.unlock() }
-        taskIDToItemID[taskID] = nil
-    }
-
-    nonisolated func itemID(forTaskID taskID: Int) -> UUID? {
-        lock.lock()
-        defer { lock.unlock() }
-        return taskIDToItemID[taskID]
-    }
-
-    nonisolated func destinationURL(forTaskID taskID: Int) -> URL? {
-        let fileName: String?
-        lock.lock()
-        if let itemID = taskIDToItemID[taskID] {
-            fileName = itemIDToFileName[itemID]
-        } else {
-            fileName = nil
-        }
-        lock.unlock()
-
-        guard let fileName else { return nil }
-        do {
-            let dir = try VideoDownloadSession.persistedDownloadsDirectory(ensureExists: true)
-            return dir.appendingPathComponent(fileName, isDirectory: false)
-        } catch {
-            return nil
-        }
-    }
-}
-
 /// App 内视频下载队列（`URLSession` 后台任务 + 进度回调）。
 @MainActor
 @Observable
@@ -76,14 +18,17 @@ final class VideoDownloadSession: NSObject {
         var title: String
         var coverPath: String?
         var qualityLabel: String
+        /// 相对 `VideoDownloads` 的文件名（入队时确定，用于重启后找回文件）。
+        let fileName: String
         var progress: Double
         var bytesWritten: Int64
         var bytesExpected: Int64
         var state: State
         var localFileURL: URL?
         var errorMessage: String?
+        var addedAt: Date
 
-        enum State: String, Hashable {
+        enum State: String, Hashable, Codable {
             case downloading
             case completed
             case failed
@@ -114,10 +59,40 @@ final class VideoDownloadSession: NSObject {
 
     private(set) var items: [Item] = []
 
+    private struct PersistedItem: Codable {
+        let id: UUID
+        var title: String
+        var coverPath: String?
+        var qualityLabel: String
+        var fileName: String
+        var state: Item.State
+        var errorMessage: String?
+        var addedAt: Date
+
+        init(_ item: Item) {
+            id = item.id
+            title = item.title
+            coverPath = item.coverPath
+            qualityLabel = item.qualityLabel
+            fileName = item.fileName
+            state = item.state
+            errorMessage = item.errorMessage
+            addedAt = item.addedAt
+        }
+    }
+
+    static let downloadQualitySuffixes = ["原画", "标清"]
+
+    enum EnqueueResult {
+        case started
+        case duplicate
+    }
+
     /// 仅在下载列表页展示的提示（详情页不再弹 Alert）。
     enum ListBanner: Equatable {
         case queued(title: String)
         case completed(title: String)
+        case duplicate(title: String, quality: String)
 
         var text: String {
             switch self {
@@ -125,6 +100,8 @@ final class VideoDownloadSession: NSObject {
                 return "「\(title)」已加入下载，可在下方查看进度。"
             case let .completed(title):
                 return "「\(title)」已保存到「文件」→ \(VideoDownloadSession.filesAppFolderHint)。"
+            case let .duplicate(title, quality):
+                return "「\(title)」（\(quality)）已在下载列表中，无需重复下载。"
             }
         }
 
@@ -132,13 +109,10 @@ final class VideoDownloadSession: NSObject {
             switch self {
             case .queued: return "arrow.down.circle.fill"
             case .completed: return "checkmark.circle.fill"
+            case .duplicate: return "exclamationmark.circle.fill"
             }
         }
 
-        var isCompleted: Bool {
-            if case .completed = self { return true }
-            return false
-        }
     }
 
     private(set) var listBanner: ListBanner?
@@ -148,6 +122,7 @@ final class VideoDownloadSession: NSObject {
     private override init() {
         super.init()
         urlSession = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
+        items = Self.loadPersistedItems()
     }
 
     var activeDownloadCount: Int {
@@ -162,9 +137,21 @@ final class VideoDownloadSession: NSObject {
         return "\(appName) / \(downloadsFolderName)"
     }
 
-    func enqueue(title: String, coverPath: String?, qualityLabel: String, remoteURL: URL) {
+    @discardableResult
+    func enqueue(title: String, coverPath: String?, qualityLabel: String, remoteURL: URL) -> EnqueueResult {
+        let quality = Self.normalizedQualityLabel(qualityLabel)
+        let fileName = Self.suggestedFileName(title: title, qualityLabel: quality)
+
+        if items.contains(where: {
+            $0.fileName == fileName && ($0.state == .downloading || $0.state == .completed)
+        }) {
+            listBanner = .duplicate(title: title, quality: quality)
+            return .duplicate
+        }
+
+        items.removeAll { $0.fileName == fileName && $0.state == .failed }
+
         let itemID = UUID()
-        let fileName = Self.suggestedFileName(title: title, qualityLabel: qualityLabel, itemID: itemID)
         Self.taskRegistry.setFileName(fileName, for: itemID)
 
         items.insert(
@@ -172,16 +159,19 @@ final class VideoDownloadSession: NSObject {
                 id: itemID,
                 title: title,
                 coverPath: coverPath?.nonEmpty,
-                qualityLabel: qualityLabel,
+                qualityLabel: quality,
+                fileName: fileName,
                 progress: 0,
                 bytesWritten: 0,
                 bytesExpected: 0,
                 state: .downloading,
                 localFileURL: nil,
-                errorMessage: nil
+                errorMessage: nil,
+                addedAt: Date()
             ),
             at: 0
         )
+        persistItems()
 
         var request = URLRequest(url: remoteURL)
         request.timeoutInterval = 600
@@ -189,6 +179,7 @@ final class VideoDownloadSession: NSObject {
         Self.taskRegistry.setItemID(itemID, forTaskID: task.taskIdentifier)
         listBanner = .queued(title: title)
         task.resume()
+        return .started
     }
 
     func clearListBanner() {
@@ -231,6 +222,7 @@ final class VideoDownloadSession: NSObject {
         }
         items.removeAll { $0.id == item.id }
         Self.taskRegistry.removeFileName(for: item.id)
+        persistItems()
     }
 
     private func itemIndex(for id: UUID) -> Int? {
@@ -256,12 +248,14 @@ final class VideoDownloadSession: NSObject {
         items[index].localFileURL = fileURL
         items[index].errorMessage = nil
         listBanner = .completed(title: items[index].title)
+        persistItems()
     }
 
     private func markFailed(itemID: UUID, message: String) {
         guard let index = itemIndex(for: itemID) else { return }
         items[index].state = .failed
         items[index].errorMessage = message
+        persistItems()
     }
 
     private func clearTaskMapping(taskID: Int) {
@@ -283,14 +277,27 @@ final class VideoDownloadSession: NSObject {
         try fm.copyItem(at: tempLocation, to: destination)
     }
 
-    static func suggestedFileName(title: String, qualityLabel: String, itemID: UUID) -> String {
+    /// 仅 `片名-原画.mp4` / `片名-标清.mp4`。
+    static func suggestedFileName(title: String, qualityLabel: String) -> String {
+        let base = sanitizedBaseName(title)
+        let quality = normalizedQualityLabel(qualityLabel)
+        return "\(base)-\(quality).mp4"
+    }
+
+    static func normalizedQualityLabel(_ label: String) -> String {
+        switch label {
+        case "标准": return "标清"
+        case "原画", "标清": return label
+        default: return label
+        }
+    }
+
+    private static func sanitizedBaseName(_ title: String) -> String {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         let sanitized = trimmed
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: ":", with: "_")
-        let base = sanitized.isEmpty ? "video" : String(sanitized.prefix(48))
-        let suffix = String(itemID.uuidString.prefix(6))
-        return "\(base)-\(qualityLabel)-\(suffix).mp4"
+        return sanitized.isEmpty ? "video" : String(sanitized.prefix(80))
     }
 
     nonisolated static func persistedDownloadsDirectory(ensureExists: Bool = false) throws -> URL {
@@ -307,6 +314,133 @@ final class VideoDownloadSession: NSObject {
         return dir
     }
 
+    // MARK: - 列表持久化（进程退出后仍能看见记录）
+
+    private nonisolated static var indexFileURL: URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+        return base.appendingPathComponent("VideoDownloadsIndex.json")
+    }
+
+    private func persistItems() {
+        let payload = items.map(PersistedItem.init)
+        guard let data = try? JSONEncoder().encode(payload) else { return }
+        let url = Self.indexFileURL
+        try? FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try? data.write(to: url, options: .atomic)
+    }
+
+    private static func loadPersistedItems() -> [Item] {
+        let dir = (try? persistedDownloadsDirectory(ensureExists: true))
+        let indexURL = indexFileURL
+        let decoder = JSONDecoder()
+
+        var records: [PersistedItem] = []
+        if let data = try? Data(contentsOf: indexURL),
+           let decoded = try? decoder.decode([PersistedItem].self, from: data) {
+            records = decoded
+        }
+
+        var items: [Item] = records.map { record in
+            item(from: record, downloadsDir: dir)
+        }
+
+        guard let dir else { return items.sorted { $0.addedAt > $1.addedAt } }
+
+        let knownNames = Set(items.map(\.fileName))
+        if let urls = try? FileManager.default.contentsOfDirectory(
+            at: dir,
+            includingPropertiesForKeys: [.contentModificationDateKey],
+            options: [.skipsHiddenFiles]
+        ) {
+            for fileURL in urls where fileURL.pathExtension.lowercased() == "mp4" {
+                let name = fileURL.lastPathComponent
+                guard !knownNames.contains(name) else { continue }
+                let title = titleGuess(fromFileName: name)
+                items.append(
+                    Item(
+                        id: UUID(),
+                        title: title,
+                        coverPath: nil,
+                        qualityLabel: qualityLabel(fromFileName: name),
+                        fileName: name,
+                        progress: 1,
+                        bytesWritten: 0,
+                        bytesExpected: 0,
+                        state: .completed,
+                        localFileURL: fileURL,
+                        errorMessage: nil,
+                        addedAt: (try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate)
+                            ?? .distantPast
+                    )
+                )
+            }
+        }
+
+        return items.sorted { $0.addedAt > $1.addedAt }
+    }
+
+    private static func item(from record: PersistedItem, downloadsDir: URL?) -> Item {
+        var state = record.state
+        var error = record.errorMessage
+        var localURL: URL?
+
+        if state == .downloading {
+            state = .failed
+            error = "应用已退出，请重新下载"
+        }
+
+        if let dir = downloadsDir {
+            let fileURL = dir.appendingPathComponent(record.fileName)
+            if FileManager.default.fileExists(atPath: fileURL.path) {
+                localURL = fileURL
+                if state != .failed {
+                    state = .completed
+                    error = nil
+                }
+            } else if state == .completed {
+                state = .failed
+                error = "文件已不存在"
+            }
+        }
+
+        return Item(
+            id: record.id,
+            title: record.title,
+            coverPath: record.coverPath,
+            qualityLabel: record.qualityLabel,
+            fileName: record.fileName,
+            progress: state == .completed ? 1 : 0,
+            bytesWritten: 0,
+            bytesExpected: 0,
+            state: state,
+            localFileURL: localURL,
+            errorMessage: error,
+            addedAt: record.addedAt
+        )
+    }
+
+    private static func titleGuess(fromFileName name: String) -> String {
+        let base = (name as NSString).deletingPathExtension
+        for quality in downloadQualitySuffixes {
+            let suffix = "-\(quality)"
+            if base.hasSuffix(suffix) {
+                return String(base.dropLast(suffix.count))
+            }
+        }
+        return base
+    }
+
+    private static func qualityLabel(fromFileName name: String) -> String {
+        let base = (name as NSString).deletingPathExtension
+        for quality in downloadQualitySuffixes where base.hasSuffix("-\(quality)") {
+            return quality
+        }
+        return "本地"
+    }
 }
 
 extension VideoDownloadSession: URLSessionDownloadDelegate {

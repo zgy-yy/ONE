@@ -70,12 +70,12 @@ struct StandardArticleDetailView: View {
 
     private func queueDownload(_ option: ArticlePlayURL.DownloadOption) {
         guard let detail = session.detail else { return }
-        VideoDownloadSession.shared.enqueue(
+        let result = VideoDownloadSession.shared.enqueue(
             title: detail.displayVideoName,
             coverPath: detail.thumb ?? article.thumb,
             qualityLabel: option.title,
             remoteURL: option.url
         )
-        showsDownloadList = true
+        showsDownloadList = result == .started || result == .duplicate
     }
 }

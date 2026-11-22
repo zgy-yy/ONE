@@ -82,7 +82,7 @@ struct VideoDownloadListView: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: banner.systemImage)
                 .font(.body.weight(.semibold))
-                .foregroundStyle(banner.isCompleted ? .green : Color.accentColor)
+                .foregroundStyle(banner.listIconColor)
                 .symbolRenderingMode(.hierarchical)
                 .accessibilityHidden(true)
 
@@ -229,6 +229,16 @@ private struct VideoDownloadRow: View {
             Text(item.errorMessage ?? "下载失败")
                 .font(.caption)
                 .foregroundStyle(.red)
+        }
+    }
+}
+
+private extension VideoDownloadSession.ListBanner {
+    var listIconColor: Color {
+        switch self {
+        case .completed: return .green
+        case .duplicate: return .orange
+        case .queued: return Color.accentColor
         }
     }
 }
