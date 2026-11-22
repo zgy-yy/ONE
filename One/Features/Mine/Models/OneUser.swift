@@ -20,10 +20,6 @@ struct OneUser: Codable, Hashable, Identifiable {
         nickname?.nonEmpty ?? username?.nonEmpty ?? "用户 \(id)"
     }
 
-    var displayMobile: String {
-        mobile?.nonEmpty ?? "—"
-    }
-
     var avatarPath: String? {
         avatar?.nonEmpty ?? avatarThumbnail?.nonEmpty
     }

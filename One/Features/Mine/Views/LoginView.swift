@@ -11,6 +11,10 @@ struct LoginView: View {
     private let areaCode = "86"
     /// 与官网 `img_me_visitor_bg` 比例接近（1125×978 取顶图区域）。
     private let backgroundImageHeight: CGFloat = 300
+    /// 灰底表单整块（含 `systemGroupedBackground`）距屏幕左右的间距。
+    private let sectionSideMargin: CGFloat = 20
+    /// 灰底区域内部：表单、登录按钮相对灰边的左右留白。
+    private let sectionContentPadding: CGFloat = 16
 
     private enum Field {
         case mobile, code
@@ -20,22 +24,23 @@ struct LoginView: View {
         VStack(spacing: 0) {
             loginImageBar
 
-            ScrollView {
-                VStack(spacing: 28) {
-                    formCard
-                    loginButton
-                    Text("未注册的手机号验证后将自动创建账号")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .frame(maxWidth: .infinity)
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 20)
-                .padding(.bottom, 24)
+            VStack(spacing: 28) {
+                formCard
+                loginButton
+                Text("未注册的手机号验证后将自动创建账号")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .frame(maxWidth: .infinity)
+
+                Spacer(minLength: 0)
             }
-            .scrollDismissesKeyboard(.interactively)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.horizontal, sectionContentPadding)
+            .padding(.top, 20)
+            .padding(.bottom, 24)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(Color(.systemGroupedBackground))
+            .padding(.horizontal, sectionSideMargin)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
         .ignoresSafeArea(edges: .top)
         .onTapGesture { focusedField = nil }

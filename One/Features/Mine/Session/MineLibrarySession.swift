@@ -16,6 +16,14 @@ final class MineLibrarySession {
         }
     }
 
+    /// 夹内收藏列表筛选（`my/favorites` 的 `model_id` / `series_category`）。
+    var favoriteCategory: ContentCategory = .all {
+        didSet {
+            guard oldValue != favoriteCategory else { return }
+            favorites.reset()
+        }
+    }
+
     var folderSort = CollectFolderSort() {
         didSet {
             guard oldValue != folderSort else { return }
@@ -29,6 +37,7 @@ final class MineLibrarySession {
     // MARK: - 状态
 
     private(set) var likes = PagedListState<UserLikeItem>(pageSize: 50)
+    private(set) var followedActors = PagedListState<ActorSummary>(pageSize: 30)
     private(set) var favorites = PagedListState<FavoriteItem>(pageSize: 20)
     private(set) var folders: [CollectFolder] = []
     private(set) var isLoadingFolders = false
@@ -38,9 +47,11 @@ final class MineLibrarySession {
 
     func reset() {
         likeCategory = .all
+        favoriteCategory = .all
         folderSort = CollectFolderSort()
         selectedFolderID = 0
         likes.reset()
+        followedActors.reset()
         favorites.reset()
         folders = []
         foldersError = nil
@@ -67,6 +78,54 @@ final class MineLibrarySession {
             feed.failLoad(error)
             likes = feed
         }
+    }
+
+    // MARK: - 关注演员
+
+    func loadFollowedActors(force: Bool = false) async {
+        var feed = followedActors
+        guard feed.beginLoad(force: force) else {
+            followedActors = feed
+            return
+        }
+        followedActors = feed
+
+        do {
+            let list = try await OneClient.actorCollectActors(page: 1, size: feed.pageSize)
+            feed.finishLoad(list)
+            followedActors = feed
+        } catch {
+            feed.failLoad(error)
+            followedActors = feed
+        }
+    }
+
+    func loadMoreFollowedActors() async {
+        var feed = followedActors
+        guard let page = feed.beginLoadMore() else { return }
+        followedActors = feed
+
+        do {
+            let list = try await OneClient.actorCollectActors(page: page, size: feed.pageSize)
+            feed.finishLoadMore(list)
+            followedActors = feed
+        } catch {
+            feed.cancelLoadMore()
+            followedActors = feed
+        }
+    }
+
+    /// 取消关注后从列表移除（与详情 `actor/collect` 同步）。
+    func removeFollowedActor(id: Int) {
+        var feed = followedActors
+        feed.removeAll { $0.id == id }
+        followedActors = feed
+    }
+
+    func insertFollowedActor(_ actor: ActorSummary) {
+        var feed = followedActors
+        feed.prependUnique(actor)
+        followedActors = feed
     }
 
     func unlikeItem(_ item: UserLikeItem) async {
@@ -115,7 +174,35 @@ final class MineLibrarySession {
         await loadFolders(force: true)
     }
 
-    // MARK: - 夹内收藏
+    func renameCollectFolder(folderID: Int, name: String) async throws {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            throw OneClientError.apiRejected("请输入收藏夹名称")
+        }
+        guard let folder = folders.first(where: { $0.id == folderID }) else {
+            throw OneClientError.apiRejected("收藏夹不存在")
+        }
+        guard folder.canRename else {
+            throw OneClientError.apiRejected("默认收藏夹不能改名")
+        }
+        try await OneClient.updateCollectFolder(folderID: folderID, folderName: trimmed)
+        await loadFolders(force: true)
+    }
+
+    func deleteCollectFolder(folderID: Int) async throws {
+        guard let folder = folders.first(where: { $0.id == folderID }) else {
+            throw OneClientError.apiRejected("收藏夹不存在")
+        }
+        guard folder.canDelete else {
+            throw OneClientError.apiRejected("默认收藏夹不能删除")
+        }
+        try await OneClient.deleteCollectFolder(folderID: folderID)
+        if selectedFolderID == folderID {
+            selectedFolderID = 0
+            favorites.reset()
+        }
+        await loadFolders(force: true)
+    }
 
     /// 切换收藏夹时绑定 `folderID` 并清空缓存；同一夹重复进入（如从详情返回）不重置。
     func enterFolder(id: Int) {
@@ -129,6 +216,21 @@ final class MineLibrarySession {
         var feed = favorites
         feed.removeAll { $0.id == articleID }
         favorites = feed
+    }
+
+    /// 批量移入目标收藏夹（`ids` / `item_ids` 逗号分隔，与官网一致）。
+    func moveFavorites(articleIDs: [Int], to folderID: Int) async throws {
+        let ids = Array(Set(articleIDs))
+        guard !ids.isEmpty else {
+            throw OneClientError.apiRejected("请选择要移动的内容")
+        }
+        try await OneClient.moveToCollectFolder(articleIDs: ids, folderID: folderID)
+        if folderID != selectedFolderID {
+            var feed = favorites
+            feed.removeAll { ids.contains($0.id) }
+            favorites = feed
+        }
+        await loadFolders(force: true)
     }
 
     func loadFavorites(force: Bool = false) async {
@@ -166,8 +268,8 @@ final class MineLibrarySession {
 
     private func fetchFavorites(page: Int) async throws -> FavoritesPayload {
         try await OneClient.favorites(
-            modelID: ContentCategory.all.modelID,
-            seriesCategory: ContentCategory.all.seriesCategory,
+            modelID: favoriteCategory.modelID,
+            seriesCategory: favoriteCategory.seriesCategory,
             page: page,
             size: favorites.pageSize,
             folderID: selectedFolderID

@@ -42,14 +42,15 @@ private struct CollectFolderMovePrompt: View {
                 cancelAutoDismiss()
                 onPickFolder()
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+            .font(.subheadline.weight(.medium))
+            .buttonStyle(.bordered)
+            .controlSize(.small)
             .frame(maxWidth: .infinity)
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 20)
         .frame(maxWidth: .infinity)
-        .presentationDetents([.height(260)])
+        .presentationDetents([.height(240)])
         .presentationDragIndicator(.visible)
         .onAppear { scheduleAutoDismiss() }
         .onDisappear { cancelAutoDismiss() }
@@ -67,115 +68,6 @@ private struct CollectFolderMovePrompt: View {
     private func cancelAutoDismiss() {
         autoDismissTask?.cancel()
         autoDismissTask = nil
-    }
-}
-
-// MARK: - 半屏选夹
-
-private struct CollectFolderMovePicker: View {
-    let context: CollectFolderMoveContext
-    let onClose: () -> Void
-
-    @Bindable private var library = MineLibrarySession.shared
-    @Bindable private var reactions = ArticleReactionStore.shared
-
-    @State private var errorMessage: String?
-    @State private var movingFolderID: Int?
-
-    private var articleID: Int { context.articleID }
-
-    private var displayState: ArticleReactionStore.State {
-        reactions.states[articleID] ?? context.seed
-    }
-
-    var body: some View {
-        NavigationStack {
-            Group {
-                if library.isLoadingFolders, library.folders.isEmpty {
-                    ProgressView("加载收藏夹…")
-                } else if let error = library.foldersError, library.folders.isEmpty {
-                    loadErrorView(error)
-                } else {
-                    folderList
-                }
-            }
-            .navigationTitle("移动收藏")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("完成") { onClose() }
-                        .disabled(movingFolderID != nil)
-                }
-            }
-            .task { await library.loadFolders(force: true) }
-        }
-        .presentationDetents([.fraction(0.75), .large])
-        .presentationDragIndicator(.visible)
-    }
-
-    @ViewBuilder
-    private var folderList: some View {
-        List {
-            if library.folders.isEmpty {
-                ContentUnavailableView("暂无收藏夹", systemImage: "folder")
-            } else {
-                ForEach(library.folders) { folder in
-                    Button {
-                        Task { await move(to: folder) }
-                    } label: {
-                        CollectFolderRow(folder: folder)
-                            .overlay(alignment: .trailing) {
-                                if movingFolderID == folder.id {
-                                    ProgressView()
-                                        .controlSize(.regular)
-                                        .padding(.trailing, 4)
-                                }
-                            }
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(movingFolderID != nil)
-                    .styledListRow()
-                }
-            }
-
-            if let errorMessage {
-                Section {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                }
-            }
-        }
-        .plainContentList()
-    }
-
-    private func loadErrorView(_ error: String) -> some View {
-        ContentUnavailableView {
-            Label("加载失败", systemImage: "exclamationmark.triangle")
-        } description: {
-            Text(error)
-        } actions: {
-            Button("重试") {
-                Task { await library.loadFolders(force: true) }
-            }
-        }
-    }
-
-    private func move(to folder: CollectFolder) async {
-        errorMessage = nil
-        movingFolderID = folder.id
-        defer { movingFolderID = nil }
-
-        do {
-            try await reactions.collectToFolder(
-                articleID: articleID,
-                folderID: folder.id,
-                seed: displayState
-            )
-            onClose()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
     }
 }
 
@@ -202,11 +94,34 @@ private struct CollectFolderMovePresentation: ViewModifier {
                 )
             }
             .sheet(item: $folderPickerContext, onDismiss: onDismiss) { item in
-                CollectFolderMovePicker(context: item) {
-                    folderPickerContext = nil
-                    onDismiss?()
-                }
+                CollectFolderMovePickerSheet(context: item)
             }
+    }
+}
+
+/// 收藏后：单条移入其它夹。
+private struct CollectFolderMovePickerSheet: View {
+    let context: CollectFolderMoveContext
+
+    @Bindable private var reactions = ArticleReactionStore.shared
+
+    private var articleID: Int { context.articleID }
+
+    private var displayState: ArticleReactionStore.State {
+        reactions.states[articleID] ?? context.seed
+    }
+
+    var body: some View {
+        CollectFolderPickerSheet(
+            title: "移动收藏",
+            cancelTitle: "完成"
+        ) { folder in
+            try await reactions.collectToFolder(
+                articleID: articleID,
+                folderID: folder.id,
+                seed: displayState
+            )
+        }
     }
 }
 
@@ -231,6 +146,9 @@ enum ArticleCollectAction {
             return nil
         }
 
+        reactions.markBusy(articleID: article.id, kind: .collect, busy: true)
+        defer { reactions.markBusy(articleID: article.id, kind: .collect, busy: false) }
+
         await library.loadFolders()
         do {
             try await reactions.collectToFolder(
@@ -248,6 +166,19 @@ enum ArticleCollectAction {
             print("[ArticleCollect] default folder failed id=\(article.id): \(error.localizedDescription)")
             return nil
         }
+    }
+
+    /// 详情页点收藏：无移夹弹窗时刷新详情里的互动数字；返回值赋给移夹 Sheet 状态。
+    @discardableResult
+    static func handleInDetail(
+        article: ArticleSummary,
+        syncDetail: () -> Void
+    ) async -> CollectFolderMoveContext? {
+        let context = await handle(article: article)
+        if context == nil {
+            syncDetail()
+        }
+        return context
     }
 }
 

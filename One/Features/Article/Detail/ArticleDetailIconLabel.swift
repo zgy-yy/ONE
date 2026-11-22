@@ -8,14 +8,22 @@ struct ArticleDetailIconLabel: View {
     var emphasized = false
     /// 已喜欢 / 已收藏：图标实心 + 橙色。
     var active = false
+    var isLoading = false
 
     var body: some View {
         HStack(alignment: .center, spacing: 6) {
-            Image(systemName: systemImage)
-                .font(.subheadline.weight(.semibold))
-                .symbolRenderingMode(.monochrome)
-                .foregroundStyle(active ? Color.orange : Color.secondary)
-                .frame(width: 20, alignment: .center)
+            Group {
+                if isLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Image(systemName: systemImage)
+                        .font(.subheadline.weight(.semibold))
+                        .symbolRenderingMode(.monochrome)
+                        .foregroundStyle(active ? Color.orange : Color.secondary)
+                }
+            }
+            .frame(width: 20, height: 20, alignment: .center)
 
             if let prefix {
                 Text(prefix)

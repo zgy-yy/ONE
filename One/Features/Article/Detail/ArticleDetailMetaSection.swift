@@ -2,6 +2,7 @@ import SwiftUI
 
 /// 封面下方的固定元信息（片名、播放、价格、演职员、规格、统计）。
 struct ArticleDetailMetaSection: View {
+    let summary: ArticleSummary
     let detail: ArticleDetail
     var style: ArticleDetailStyle = .media
     var canPlay: Bool = false
@@ -40,6 +41,7 @@ struct ArticleDetailMetaSection: View {
             )
             DetailVideoSpecsRow(detail: detail, evenDistribution: style.evenVideoSpecs)
             DetailMetricsRow(
+                article: summary,
                 detail: detail,
                 showsDownloadCount: style.showsDownloadCount,
                 showsDate: !style.dateBesidePublisher && !style.dateInPreviewHeader && !style.dateBeforePublisher,
@@ -225,6 +227,7 @@ private struct DetailVideoSpecsRow: View {
 // MARK: - 互动与统计
 
 private struct DetailMetricsRow: View {
+    let article: ArticleSummary
     let detail: ArticleDetail
     var showsDownloadCount: Bool = true
     var showsDate: Bool = true
@@ -326,20 +329,20 @@ private struct DetailMetricsRow: View {
 
     @ViewBuilder
     private var collectButton: some View {
-        reactionButton(
-            systemImage: detail.hasCollected ? ArticleDetailSymbol.collectOn : ArticleDetailSymbol.collect,
-            text: ArticleFormat.shortCount(detail.collectionNumber ?? 0),
-            active: detail.hasCollected,
+        ArticleDetailEngagementButton(
+            kind: .collect,
+            article: article,
+            detail: detail,
             action: onCollect
         )
     }
 
     @ViewBuilder
     private var likeButton: some View {
-        reactionButton(
-            systemImage: detail.isLiked ? ArticleDetailSymbol.likeOn : ArticleDetailSymbol.like,
-            text: ArticleFormat.shortCount(detail.likeNumber ?? 0),
-            active: detail.isLiked,
+        ArticleDetailEngagementButton(
+            kind: .like,
+            article: article,
+            detail: detail,
             action: onLike
         )
     }
@@ -347,22 +350,5 @@ private struct DetailMetricsRow: View {
     private func statLabel(_ symbol: String, count: Int) -> some View {
         ArticleDetailIconLabel(systemImage: symbol, text: ArticleFormat.shortCount(count))
             .monospacedDigit()
-    }
-
-    @ViewBuilder
-    private func reactionButton(
-        systemImage: String,
-        text: String,
-        active: Bool,
-        action: (() -> Void)?
-    ) -> some View {
-        let label = ArticleDetailIconLabel(systemImage: systemImage, text: text, active: active)
-            .monospacedDigit()
-        if let action {
-            Button(action: action) { label }
-                .buttonStyle(.plain)
-        } else {
-            label
-        }
     }
 }

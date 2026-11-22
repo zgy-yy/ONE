@@ -62,11 +62,6 @@ struct GraphicArticleDetailView: View {
 
     @ViewBuilder
     private func authorAndReactionsRow(author: String?, detail: ArticleDetail?) -> some View {
-        let collected = detail?.hasCollected ?? article.hasCollected
-        let liked = detail?.isLiked ?? article.isLiked
-        let collectCount = detail?.collectionNumber ?? article.collectionNumber
-        let likeCount = detail?.likeNumber ?? article.likeNumber
-
         HStack(alignment: .center, spacing: 12) {
             if let author {
                 Text(author)
@@ -78,36 +73,20 @@ struct GraphicArticleDetailView: View {
                 Spacer(minLength: 0)
             }
 
-            HStack(spacing: 16) {
-                Button {
+            ArticleDetailEngagementRow(
+                article: article,
+                detail: detail,
+                interactionDisabled: detail == nil,
+                onCollect: {
                     Task {
-                        collectMoveContext = await ArticleCollectAction.handle(article: article)
-                        if collectMoveContext == nil {
-                            session.syncReactionsFromStore()
-                        }
+                        collectMoveContext = await ArticleCollectAction.handleInDetail(
+                            article: article,
+                            syncDetail: { session.syncReactionsFromStore() }
+                        )
                     }
-                } label: {
-                    ArticleDetailIconLabel(
-                        systemImage: collected ? ArticleDetailSymbol.collectOn : ArticleDetailSymbol.collect,
-                        text: ArticleFormat.shortCount(collectCount ?? 0),
-                        active: collected
-                    )
-                }
-                .buttonStyle(.plain)
-                .disabled(session.detail == nil || session.isReacting)
-
-                Button {
-                    Task { await session.toggleLike() }
-                } label: {
-                    ArticleDetailIconLabel(
-                        systemImage: liked ? ArticleDetailSymbol.likeOn : ArticleDetailSymbol.like,
-                        text: ArticleFormat.shortCount(likeCount ?? 0),
-                        active: liked
-                    )
-                }
-                .buttonStyle(.plain)
-                .disabled(session.detail == nil || session.isReacting)
-            }
+                },
+                onLike: { Task { await session.toggleLike() } }
+            )
         }
         .frame(maxWidth: .infinity)
     }

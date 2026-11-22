@@ -58,7 +58,7 @@ struct UserLikeRow: View {
 
     private var metaRow: some View {
         let state = reactions.displayState(for: article)
-        let busy = reactions.isBusy(article.id)
+        let likeBusy = reactions.isBusy(article.id, kind: .like)
 
         return HStack(spacing: 8) {
             if let date = ArticleFormat.dateOnly(from: item.publishedAt) {
@@ -70,11 +70,11 @@ struct UserLikeRow: View {
             Button {
                 Task { await session.unlikeItem(item) }
             } label: {
-                MetaIconText.likes(state.likeNumber, active: state.isLiked)
+                MetaIconText.likes(state.likeNumber, active: state.isLiked, isLoading: likeBusy)
                     .font(.caption2)
             }
             .buttonStyle(.plain)
-            .disabled(busy)
+            .disabled(likeBusy)
 
             Spacer(minLength: 0)
         }

@@ -53,17 +53,40 @@ final class ArticleReactionStore {
     }
 
     private(set) var states: [Int: State] = [:]
-    private var busyIDs: Set<Int> = []
+    private var busyKinds: [Int: Set<Kind>] = [:]
 
     private init() {}
 
+    func isBusy(_ articleID: Int, kind: Kind) -> Bool {
+        busyKinds[articleID]?.contains(kind) == true
+    }
+
     func isBusy(_ articleID: Int) -> Bool {
-        busyIDs.contains(articleID)
+        busyKinds[articleID] != nil
+    }
+
+    func markBusy(articleID: Int, kind: Kind, busy: Bool) {
+        setBusy(articleID, kind: kind, busy)
+    }
+
+    private func setBusy(_ articleID: Int, kind: Kind, _ busy: Bool) {
+        if busy {
+            busyKinds[articleID, default: []].insert(kind)
+        } else {
+            busyKinds[articleID]?.remove(kind)
+            if busyKinds[articleID]?.isEmpty == true {
+                busyKinds.removeValue(forKey: articleID)
+            }
+        }
     }
 
     /// 有缓存用缓存，否则用列表/详情底稿。
     func displayState(for article: ArticleSummary) -> State {
         states[article.id] ?? State(article)
+    }
+
+    func displayState(for detail: ArticleDetail) -> State {
+        states[detail.id] ?? State(detail)
     }
 
     /// 详情拉取后写入（若缓存已有乐观更新则先盖回详情再统一写缓存）。
@@ -90,9 +113,9 @@ final class ArticleReactionStore {
         if states[articleID] == nil {
             states[articleID] = seed
         }
-        guard !busyIDs.contains(articleID), var state = states[articleID] else { return }
-        busyIDs.insert(articleID)
-        defer { busyIDs.remove(articleID) }
+        guard !isBusy(articleID, kind: kind), var state = states[articleID] else { return }
+        setBusy(articleID, kind: kind, true)
+        defer { setBusy(articleID, kind: kind, false) }
 
         do {
             switch kind {
@@ -116,9 +139,16 @@ final class ArticleReactionStore {
         if states[articleID] == nil {
             states[articleID] = seed
         }
-        guard !busyIDs.contains(articleID), var state = states[articleID] else { return }
-        busyIDs.insert(articleID)
-        defer { busyIDs.remove(articleID) }
+        guard var state = states[articleID] else { return }
+        let ownsBusy = !isBusy(articleID, kind: .collect)
+        if ownsBusy {
+            setBusy(articleID, kind: .collect, true)
+        }
+        defer {
+            if ownsBusy {
+                setBusy(articleID, kind: .collect, false)
+            }
+        }
 
         if !state.hasCollected {
             try await OneClient.articleCollect(articleID: articleID)

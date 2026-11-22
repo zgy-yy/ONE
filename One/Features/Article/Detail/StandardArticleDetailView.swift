@@ -24,10 +24,10 @@ struct StandardArticleDetailView: View {
                     onCommentsTap: { showsComments = true },
                     onCollect: {
                         Task {
-                            collectMoveContext = await ArticleCollectAction.handle(article: article)
-                            if collectMoveContext == nil {
-                                session.syncReactionsFromStore()
-                            }
+                            collectMoveContext = await ArticleCollectAction.handleInDetail(
+                                article: article,
+                                syncDetail: { session.syncReactionsFromStore() }
+                            )
                         }
                     },
                     onLike: { Task { await session.toggleLike() } }

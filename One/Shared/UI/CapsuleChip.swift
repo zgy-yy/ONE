@@ -69,3 +69,46 @@ struct HorizontalCapsuleStrip<Item: Identifiable, ID: Hashable>: View {
         }
     }
 }
+
+/// 等分胶囊分段：选中项背景滑动（创建时间 / 收藏时间等）。
+struct SlidingCapsuleSegmented<Item: Hashable>: View {
+    let items: [Item]
+    let title: (Item) -> String
+    @Binding var selection: Item
+
+    @Namespace private var segmentPill
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(items, id: \.self) { item in
+                let isSelected = selection == item
+                Button {
+                    guard selection != item else { return }
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+                        selection = item
+                    }
+                } label: {
+                    Text(title(item))
+                        .font(.caption.weight(isSelected ? .semibold : .medium))
+                        .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 7)
+                        .background {
+                            if isSelected {
+                                Capsule()
+                                    .fill(Color(.systemBackground))
+                                    .shadow(color: .black.opacity(0.07), radius: 2, y: 1)
+                                    .matchedGeometryEffect(id: "segmentPill", in: segmentPill)
+                            }
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(isSelected ? [.isSelected, .isButton] : .isButton)
+            }
+        }
+        .padding(4)
+        .background(Capsule().fill(Color(.tertiarySystemFill)))
+    }
+}

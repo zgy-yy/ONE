@@ -15,6 +15,13 @@ struct ActorSummary: Decodable, Identifiable, Hashable {
         ImagePath.preferred(thumb: thumb, thumbnail: thumbnail)
     }
 
+    init(id: Int, mainName: String?, thumb: String?, thumbnail: String?) {
+        self.id = id
+        self.mainName = mainName
+        self.thumb = thumb
+        self.thumbnail = thumbnail
+    }
+
     enum CodingKeys: String, CodingKey {
         case id, thumb, thumbnail
         case mainName = "main_name"

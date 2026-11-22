@@ -19,6 +19,8 @@ nonisolated enum OneAPI {
     static let actorNewActorsPath = "actor/getNewActors"
     static let actorHotActorsPath = "actor/getHotActors"
     static let actorDetailPath = "actor/detail"
+    static let actorCollectPath = "actor/collect"
+    static let actorGetCollectActorsPath = "actor/getCollectActors"
     static let actorArticlesPath = "actor/getActorArticles"
     static let actorPhotosPath = "actor/getActorPhotos"
     static let commentListPath = "comment/listV254"
@@ -32,6 +34,8 @@ nonisolated enum OneAPI {
     static let userLikeListPath = "my/getUserLikeList"
     static let collectFolderListPath = "my/getCollectFolderListByPage"
     static let createCollectFolderPath = "my/createCollectFolder"
+    static let updateCollectFolderPath = "my/updateCollectFolder"
+    static let deleteCollectFolderPath = "my/deleteCollectFolder"
     static let favoritesPath = "my/favorites"
 
     static func isSuccess(code: Int?) -> Bool {

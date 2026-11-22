@@ -40,6 +40,7 @@ struct ArticleDetailBodyView: View {
     private var metaSection: some View {
         if let detail {
             ArticleDetailMetaSection(
+                summary: summary,
                 detail: detail,
                 style: style,
                 canPlay: canPlay,

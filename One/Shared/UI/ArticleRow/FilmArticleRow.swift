@@ -4,11 +4,17 @@ import SwiftUI
 struct FilmArticleRow: View {
     let article: ArticleSummary
 
+    private let textBackdropHorizontal: CGFloat = 8
+    private let textBackdropVertical: CGFloat = 6
+
     var body: some View {
-        ArticleCardChromeCoverTop {
+        ArticleCardChromeCoverTop(
+            textBackdropHorizontal: textBackdropHorizontal,
+            textBackdropVertical: textBackdropVertical
+        ) {
             cover
         } text: {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(article.displayTitle)
                     .font(ArticleRowTypography.filmTitle)
                     .lineLimit(2)

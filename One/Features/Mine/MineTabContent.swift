@@ -1,6 +1,9 @@
 import SwiftUI
 
-/// 「我的」Tab：登录 / 资料 / 喜欢 / 收藏。
+/// 「我的」Tab 根：`NavigationStack` + 登录态分发。
+///
+/// - 未登录 → `LoginView`
+/// - 已登录 → `ProfileView`（喜欢 / 收藏 / 关注）
 struct MineTabContent: View {
     @Bindable private var auth = AuthSession.shared
 
@@ -12,6 +15,9 @@ struct MineTabContent: View {
                 .libraryDetailDestinations()
                 .navigationDestination(for: CollectFolderRoute.self) {
                     CollectFolderDetailView(route: $0)
+                }
+                .navigationDestination(for: ActorSummary.self) {
+                    ActorDetailView(actor: $0)
                 }
         }
     }

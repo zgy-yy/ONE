@@ -74,6 +74,29 @@ extension OneClient {
         _ = try unwrap(envelope)
     }
 
+    /// 重命名收藏夹（body：`user_collect_folder_id` + `folder_name`）。
+    static func updateCollectFolder(folderID: Int, folderName: String) async throws {
+        let envelope = try await post(
+            OneApiEnvelope<IgnoredJSON?>.self,
+            path: OneAPI.updateCollectFolderPath,
+            data: [
+                "user_collect_folder_id": String(folderID),
+                "folder_name": folderName,
+            ]
+        )
+        _ = try unwrap(envelope)
+    }
+
+    /// 删除收藏夹（body：`user_collect_folder_id`）。
+    static func deleteCollectFolder(folderID: Int) async throws {
+        let envelope = try await post(
+            OneApiEnvelope<IgnoredJSON?>.self,
+            path: OneAPI.deleteCollectFolderPath,
+            data: ["user_collect_folder_id": String(folderID)]
+        )
+        _ = try unwrap(envelope)
+    }
+
     static func favorites(
         modelID: Int,
         seriesCategory: Int = 0,

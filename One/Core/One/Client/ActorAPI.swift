@@ -74,6 +74,34 @@ extension OneClient {
         return detail
     }
 
+    /// 切换演员收藏（body：`id`）。
+    static func actorCollect(actorID: Int) async throws {
+        let envelope = try await post(
+            OneApiEnvelope<IgnoredJSON?>.self,
+            path: OneAPI.actorCollectPath,
+            data: ["id": String(actorID)]
+        )
+        _ = try unwrap(envelope)
+    }
+
+    /// 我关注的演员（`page` / `size` / `keyword`）。
+    static func actorCollectActors(
+        page: Int,
+        size: Int = 30,
+        keyword: String = ""
+    ) async throws -> [ActorSummary] {
+        let envelope = try await post(
+            OneApiEnvelope<ActorListPayload>.self,
+            path: OneAPI.actorGetCollectActorsPath,
+            data: [
+                "page": String(page),
+                "size": String(size),
+                "keyword": keyword,
+            ]
+        )
+        return try unwrap(envelope)?.list ?? []
+    }
+
     static func actorArticles(
         actorID: Int,
         page: Int,

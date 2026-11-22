@@ -92,4 +92,10 @@ struct PagedListState<Item: Identifiable> where Item.ID: Hashable {
     mutating func removeAll(where predicate: (Item) -> Bool) {
         items.removeAll(where: predicate)
     }
+
+    /// 去重后插入到列表头部（关注演员等）。
+    mutating func prependUnique(_ item: Item) where Item.ID: Hashable {
+        guard !items.contains(where: { $0.id == item.id }) else { return }
+        items.insert(item, at: 0)
+    }
 }

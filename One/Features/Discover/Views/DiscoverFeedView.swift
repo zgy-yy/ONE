@@ -58,23 +58,12 @@ struct DiscoverFeedView: View {
                             Task { await session.loadArticles(channel: channel, force: true) }
                         }
                     ) {
-                        AppUI.loadMoreFooter(
-                            loadingMore: session.isLoadingMoreArticles(channel),
-                            exhausted: session.showsArticlesEndFooter(channel)
-                        )
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
+                        graphicLoadMoreFooter
                     } card: { article in
                         GraphicArticleCard(article: article, textAlignment: .leading)
                             .padding(.vertical, 2)
                             .contentShape(Rectangle())
                             .onTapGesture { articleDestination = article }
-                            .onAppear {
-                                guard sections.contains(where: { sections.isTailArticle(article, in: $0) }) else {
-                                    return
-                                }
-                                Task { await session.loadMoreArticles(channel: channel) }
-                            }
                     }
                 } else {
                     MonthPagedArticleList(
@@ -110,6 +99,22 @@ struct DiscoverFeedView: View {
             guard hasNoArticles || !sections.contains(where: { $0.month == month }) else { return }
             Task { await session.loadArticles(channel: channel, force: true) }
         }
+    }
+
+    /// 瀑布流两列高度不齐，不能用「末篇 onAppear」触底；用 footer 哨兵（同 `HomeMonthArticlesView`）。
+    @ViewBuilder
+    private var graphicLoadMoreFooter: some View {
+        Color.clear
+            .frame(height: 1)
+            .onAppear {
+                Task { await session.loadMoreArticles(channel: channel) }
+            }
+        AppUI.loadMoreFooter(
+            loadingMore: session.isLoadingMoreArticles(channel),
+            exhausted: session.showsArticlesEndFooter(channel)
+        )
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
     }
 
     @ViewBuilder

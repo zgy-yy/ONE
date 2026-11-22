@@ -9,9 +9,14 @@ struct FavoriteItemRow: View {
     private var article: ArticleSummary { item.asArticleSummary }
 
     private let coverAspect = CoverAspect.landscape
+    private let textBackdropHorizontal: CGFloat = 8
+    private let textBackdropVertical: CGFloat = 6
 
     var body: some View {
-        ArticleCardChromeCoverTop {
+        ArticleCardChromeCoverTop(
+            textBackdropHorizontal: textBackdropHorizontal,
+            textBackdropVertical: textBackdropVertical
+        ) {
             coverBlock
         } text: {
             VStack(alignment: .leading, spacing: 6) {

@@ -18,8 +18,8 @@ struct ActorDetail: Decodable, Identifiable {
     let articleNum: Int?
     let photoNum: Int?
     let commentNum: Int?
-    /// 仅 `0` / `1`：是否已收藏。
-    let isCollected: Int?
+    /// 仅 `0` / `1`：是否已收藏（收藏后可本地更新）。
+    var isCollected: Int?
 
     var hasCollected: Bool { isCollected == 1 }
 
@@ -35,6 +35,11 @@ struct ActorDetail: Decodable, Identifiable {
     /// 详情封面：优先原图 `thumb`，更清晰。
     var coverImagePath: String? {
         ImagePath.full(thumb: thumb, thumbnail: thumbnail)
+    }
+
+    /// 列表 / 导航用摘要。
+    var asSummary: ActorSummary {
+        ActorSummary(id: id, mainName: mainName, thumb: thumb, thumbnail: thumbnail)
     }
 
     var displayDesc: String? {

@@ -12,7 +12,6 @@ final class ArticleDetailSession {
     private(set) var playURLEntries: [ArticlePlayURL.Entry] = []
     private(set) var isLoading = false
     private(set) var error: String?
-    private(set) var isReacting = false
     private(set) var comments = PagedListState<CommentItem>(pageSize: 10)
 
     var commentSort: CommentSort = .likes
@@ -112,9 +111,7 @@ final class ArticleDetailSession {
     }
 
     private func toggleReaction(_ kind: ArticleReactionStore.Kind) async {
-        guard var article = detail, !isReacting else { return }
-        isReacting = true
-        defer { isReacting = false }
+        guard var article = detail else { return }
 
         await reactions.toggle(kind, articleID: article.id, seed: .init(article))
         reactions.apply(to: &article)

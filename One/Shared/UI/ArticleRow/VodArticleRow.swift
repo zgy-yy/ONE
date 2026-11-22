@@ -5,8 +5,14 @@ struct VodArticleRow: View {
     let article: ArticleSummary
     var aspectRatio: CGFloat = CoverAspect.landscape
 
+    private let textBackdropHorizontal: CGFloat = 8
+    private let textBackdropVertical: CGFloat = 6
+
     var body: some View {
-        ArticleCardChromeCoverTop {
+        ArticleCardChromeCoverTop(
+            textBackdropHorizontal: textBackdropHorizontal,
+            textBackdropVertical: textBackdropVertical
+        ) {
             cover
                 .allowsHitTesting(false)
         } text: {

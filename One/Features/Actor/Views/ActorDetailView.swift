@@ -9,6 +9,7 @@ struct ActorDetailView: View {
     @State private var segment: ActorDetailSegment = .articles
     @State private var photoViewerIndex: Int?
     @State private var photoViewerSelection = 0
+    @State private var collectError: String?
 
     private let photoColumns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 3)
     private let articleColumns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 2)
@@ -58,6 +59,14 @@ struct ActorDetailView: View {
         .onChange(of: session.articleSort) { _, _ in
             Task { await session.loadSegment(.articles, actorID: actor.id) }
         }
+        .alert("收藏失败", isPresented: .init(
+            get: { collectError != nil },
+            set: { if !$0 { collectError = nil } }
+        )) {
+            Button("好", role: .cancel) {}
+        } message: {
+            if let collectError { Text(collectError) }
+        }
     }
 
     private var contentScroll: some View {
@@ -79,30 +88,34 @@ struct ActorDetailView: View {
 
     private var header: some View {
         LeadingMediaHeader(mediaWidth: coverWidth) {
-            // 详情用原图 thumb，比列表 thumbnail 更清晰
-            ActorAvatarImage(
-                path: session.detail?.coverImagePath
-                    ?? ImagePath.full(thumb: actor.thumb, thumbnail: actor.thumbnail)
-            )
+            ZStack(alignment: .bottomTrailing) {
+                ActorAvatarImage(
+                    path: session.detail?.coverImagePath
+                        ?? ImagePath.full(thumb: actor.thumb, thumbnail: actor.thumbnail)
+                )
+                if session.detail != nil {
+                    collectCoverButton
+                }
+            }
         } info: {
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(nameRows, id: \.label) { row in
                     nameRow(icon: row.icon, label: row.label, value: row.value)
                 }
-                if let detail = session.detail {
-                    HStack(spacing: 6) {
-                        Image(systemName: detail.hasCollected ? "bookmark.fill" : "bookmark")
-                            .symbolRenderingMode(.monochrome)
-                            .foregroundStyle(detail.hasCollected ? Color.orange : Color.secondary)
-                        Text(detail.hasCollected ? "已收藏" : "未收藏")
-                            .font(.subheadline)
-                            .foregroundStyle(detail.hasCollected ? Color.primary : Color.secondary)
-                    }
-                    .padding(.top, 2)
-                }
                 infoLines
             }
         }
+    }
+
+    private var collectCoverButton: some View {
+        let collected = session.detail?.hasCollected == true
+        return CoverOverlayIconButton(
+            systemImage: collected ? "bookmark.fill" : "bookmark",
+            active: collected,
+            isLoading: session.isCollecting,
+            action: { Task { await toggleActorCollect() } }
+        )
+        .accessibilityLabel(collected ? "已收藏演员" : "收藏演员")
     }
 
     private struct NameRow: Hashable {
@@ -117,7 +130,7 @@ struct ActorDetailView: View {
             .init(icon: "textformat", label: "中文名", value: orDash(d?.mainName ?? actor.displayName)),
             .init(icon: "globe.asia.australia", label: "日文名", value: orDash(d?.japaneseName)),
             .init(icon: "sparkles", label: "昵称", value: orDash(d?.nickname)),
-            .init(icon: "bookmark", label: "别名", value: orDash(d?.aliasName)),
+            .init(icon: "tag", label: "别名", value: orDash(d?.aliasName)),
         ]
     }
 
@@ -164,6 +177,19 @@ struct ActorDetailView: View {
 
     private func orDash(_ value: String?) -> String {
         value?.nonEmpty ?? "-"
+    }
+
+    private func toggleActorCollect() async {
+        collectError = nil
+        guard AuthSession.shared.isLoggedIn else {
+            collectError = "请先登录"
+            return
+        }
+        do {
+            try await session.toggleCollect(actorID: actor.id)
+        } catch {
+            collectError = error.localizedDescription
+        }
     }
 
     private func descSection(_ text: String) -> some View {

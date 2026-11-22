@@ -19,6 +19,8 @@ struct ArticleCardChrome<TextContent: View, CoverContent: View>: View {
 /// 发现 / 点播等「上封面、下文案」：衬底与封面无缝衔接，外缘统一圆角。
 struct ArticleCardChromeCoverTop<TextContent: View, CoverContent: View>: View {
     var cornerRadius: CGFloat = 8
+    var textBackdropHorizontal: CGFloat = 12
+    var textBackdropVertical: CGFloat = 10
     @ViewBuilder var cover: () -> CoverContent
     @ViewBuilder var text: () -> TextContent
 
@@ -26,7 +28,10 @@ struct ArticleCardChromeCoverTop<TextContent: View, CoverContent: View>: View {
         VStack(alignment: .leading, spacing: 0) {
             cover()
             text()
-                .articleCardTextBackdrop()
+                .articleCardTextBackdrop(
+                    horizontal: textBackdropHorizontal,
+                    vertical: textBackdropVertical
+                )
         }
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
     }

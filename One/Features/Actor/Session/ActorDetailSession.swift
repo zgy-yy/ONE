@@ -22,6 +22,7 @@ final class ActorDetailSession {
     }
 
     private var loadedActorID: Int?
+    private(set) var isCollecting = false
     private static var detailCache: [Int: ActorDetail] = [:]
 
     func load(actorID: Int) async {
@@ -176,5 +177,26 @@ final class ActorDetailSession {
 
     func loadReplies(for comment: CommentItem, sorting: CommentSort = .likes) async -> [CommentItem] {
         await OneClient.commentReplies(parent: comment, sorting: sorting.rawValue)
+    }
+
+    /// `actor/collect` 切换收藏，并同步缓存里的 `is_collected`。
+    func toggleCollect(actorID: Int) async throws {
+        guard !isCollecting else { return }
+        isCollecting = true
+        defer { isCollecting = false }
+
+        try await OneClient.actorCollect(actorID: actorID)
+
+        guard var current = detail, current.id == actorID else { return }
+        let next = current.hasCollected ? 0 : 1
+        current.isCollected = next
+        detail = current
+        Self.detailCache[actorID] = current
+
+        if next == 0 {
+            MineLibrarySession.shared.removeFollowedActor(id: actorID)
+        } else {
+            MineLibrarySession.shared.insertFollowedActor(current.asSummary)
+        }
     }
 }

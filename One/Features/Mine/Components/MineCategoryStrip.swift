@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 喜欢 / 收藏顶部的内容分类条。
+/// 喜欢列表 / 单个收藏夹内内容的分类筛选（`ContentCategory`）。
 struct MineCategoryStrip: View {
     @Binding var category: ContentCategory
 

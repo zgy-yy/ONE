@@ -2,6 +2,7 @@ import SwiftUI
 
 // 列表卡片约定（初学者速览）：
 // - `ArticleRow/*Row.swift`：发现页各体裁单行
+// - `../Reactions/ArticleCollectLikeMeta.swift`：列表收藏 + 喜欢
 // - `GraphicArticleCard` / `HomeGraphicArticleView`：图文竖卡（文案在 `GraphicCardTextBlock`）
 // - `ArticleCardChrome`：毛玻璃文案 + 封面一体（首页日更横卡等）
 // - `../Layout/MasonryLayout` + `MasonryMonthFeed`：两列瀑布流与按月列表
@@ -85,14 +86,26 @@ struct MetaIconText: View {
     let systemImage: String
     let text: String
     var active = false
+    var isLoading = false
     /// 封面暗色渐变上：未点亮用白字，不用灰色。
     var onDarkOverlay = false
 
+    private let iconSlotWidth: CGFloat = 14
+
     var body: some View {
         HStack(spacing: 4) {
-            Image(systemName: systemImage)
-                .symbolRenderingMode(.monochrome)
-                .foregroundStyle(active ? Color.orange : inactiveColor)
+            Group {
+                if isLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(onDarkOverlay ? .white : nil)
+                } else {
+                    Image(systemName: systemImage)
+                        .symbolRenderingMode(.monochrome)
+                        .foregroundStyle(active ? Color.orange : inactiveColor)
+                }
+            }
+            .frame(width: iconSlotWidth, height: iconSlotWidth, alignment: .center)
             Text(text)
                 .lineLimit(1)
                 .foregroundStyle(active ? activeTextColor : inactiveColor)
@@ -108,85 +121,50 @@ struct MetaIconText: View {
         onDarkOverlay ? Color.white : Color.primary
     }
 
-    static func likes(_ count: Int, active: Bool = false, onDarkOverlay: Bool = false) -> MetaIconText {
+    static func likes(
+        _ count: Int,
+        active: Bool = false,
+        isLoading: Bool = false,
+        onDarkOverlay: Bool = false
+    ) -> MetaIconText {
         MetaIconText(
             systemImage: active ? "heart.fill" : "heart",
             text: ArticleFormat.shortCount(count),
             active: active,
+            isLoading: isLoading,
             onDarkOverlay: onDarkOverlay
         )
     }
 
-    static func likesText(_ raw: String, active: Bool = false, onDarkOverlay: Bool = false) -> MetaIconText {
+    static func likesText(
+        _ raw: String,
+        active: Bool = false,
+        isLoading: Bool = false,
+        onDarkOverlay: Bool = false
+    ) -> MetaIconText {
         let text = Int(raw).map(ArticleFormat.shortCount) ?? raw
         return MetaIconText(
             systemImage: active ? "heart.fill" : "heart",
             text: text,
             active: active,
+            isLoading: isLoading,
             onDarkOverlay: onDarkOverlay
         )
     }
 
-    static func collect(count: Int? = nil, active: Bool = false, onDarkOverlay: Bool = false) -> MetaIconText {
+    static func collect(
+        count: Int? = nil,
+        active: Bool = false,
+        isLoading: Bool = false,
+        onDarkOverlay: Bool = false
+    ) -> MetaIconText {
         MetaIconText(
             systemImage: active ? "bookmark.fill" : "bookmark",
             text: count.map(ArticleFormat.shortCount) ?? "",
             active: active,
+            isLoading: isLoading,
             onDarkOverlay: onDarkOverlay
         )
-    }
-}
-
-/// 列表卡片共用：收藏 + 喜欢；与详情共用 `ArticleReactionStore`。
-struct ArticleCollectLikeMeta: View {
-    let article: ArticleSummary
-    var onDarkOverlay = false
-    /// 收藏与喜欢之间的间距；窄卡片可改小避免挤换行。
-    var itemSpacing: CGFloat = 12
-    /// 用户取消收藏后回调（如从收藏夹列表移除该项）。
-    var onUncollect: ((Int) -> Void)? = nil
-
-    @Bindable private var reactions = ArticleReactionStore.shared
-
-    @State private var collectMoveContext: CollectFolderMoveContext?
-
-    var body: some View {
-        let state = reactions.displayState(for: article)
-        let busy = reactions.isBusy(article.id)
-        let seed = ArticleReactionStore.State(article)
-
-        HStack(spacing: itemSpacing) {
-            Button {
-                Task {
-                    let hadCollected = state.hasCollected
-                    collectMoveContext = await ArticleCollectAction.handle(article: article)
-                    if hadCollected, !reactions.displayState(for: article).hasCollected {
-                        onUncollect?(article.id)
-                    }
-                }
-            } label: {
-                MetaIconText.collect(
-                    count: state.collectionNumber,
-                    active: state.hasCollected,
-                    onDarkOverlay: onDarkOverlay
-                )
-            }
-            .buttonStyle(.plain)
-            .disabled(busy)
-            Button {
-                Task { await reactions.toggle(.like, articleID: article.id, seed: seed) }
-            } label: {
-                MetaIconText.likes(
-                    state.likeNumber,
-                    active: state.isLiked,
-                    onDarkOverlay: onDarkOverlay
-                )
-            }
-            .buttonStyle(.plain)
-            .disabled(busy)
-        }
-        .fixedSize(horizontal: true, vertical: false)
-        .articleCollectMoveFlow($collectMoveContext)
     }
 }
 
