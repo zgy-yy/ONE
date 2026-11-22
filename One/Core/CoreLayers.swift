@@ -27,6 +27,7 @@
    列表 ArticleCollectLikeMeta / 详情 ArticleDetailEngagementRow
    → ArticleReactionStore → OneClient.articleLike/Collect
    收藏后移夹：ArticleCollectAction + articleCollectMoveFlow
+   收藏夹 UI：CollectFolderUI（弹窗 / 小按钮）+ CollectFolderListRow + CollectFolderPickerSheet
 
  不要：在 View 里拼 URL、写加解密、直接依赖其它 Feature 的私有类型。
  */

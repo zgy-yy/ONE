@@ -13,6 +13,9 @@ struct CollectFolderPickerSheet: View {
 
     @State private var errorMessage: String?
     @State private var busyFolderID: Int?
+    @State private var showsCreateFolderAlert = false
+    @State private var newFolderName = ""
+    @State private var isCreatingFolder = false
 
     var body: some View {
         NavigationStack {
@@ -30,12 +33,29 @@ struct CollectFolderPickerSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(cancelTitle) { dismiss() }
-                        .font(.subheadline.weight(.medium))
-                        .buttonStyle(.plain)
-                        .disabled(busyFolderID != nil)
+                        .foregroundStyle(.secondary)
+                        .buttonStyle(CompactToolbarTextButtonStyle())
+                        .disabled(busyFolderID != nil || isCreatingFolder)
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button("新建收藏夹") {
+                        newFolderName = ""
+                        showsCreateFolderAlert = true
+                    }
+                    .buttonStyle(CompactToolbarTextButtonStyle())
+                    .disabled(busyFolderID != nil || isCreatingFolder)
                 }
             }
             .task { await library.loadFolders(force: true) }
+            .collectFolderNameAlert(
+                CollectFolderAlertCopy.createTitle,
+                isPresented: $showsCreateFolderAlert,
+                name: $newFolderName,
+                hint: CollectFolderAlertCopy.createHint,
+                confirmTitle: "创建"
+            ) {
+                Task { await createFolder() }
+            }
         }
         .presentationDetents([.fraction(0.75), .large])
         .presentationDragIndicator(.visible)
@@ -88,14 +108,27 @@ struct CollectFolderPickerSheet: View {
     }
 
     private func folderLoadError(_ message: String) -> some View {
-        ContentUnavailableView {
-            Label("加载失败", systemImage: "exclamationmark.triangle")
-        } description: {
-            Text(message)
-        } actions: {
-            Button("重试") {
-                Task { await library.loadFolders(force: true) }
-            }
+        CollectFolderLoadFailureView(message: message) {
+            Task { await library.loadFolders(force: true) }
+        }
+    }
+
+    private var trimmedNewFolderName: String {
+        newFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func createFolder() async {
+        guard !trimmedNewFolderName.isEmpty else { return }
+        errorMessage = nil
+        isCreatingFolder = true
+        defer { isCreatingFolder = false }
+
+        do {
+            try await library.createCollectFolder(name: trimmedNewFolderName)
+            newFolderName = ""
+            showsCreateFolderAlert = false
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 

@@ -93,8 +93,7 @@ struct CollectFolderDetailView: View {
     @ViewBuilder
     private func favoriteCell(_ item: FavoriteItem) -> some View {
         let isSelected = selectedIDs.contains(item.id)
-        let row = FavoriteItemRow(item: item)
-            .allowsHitTesting(!isManaging)
+        let row = FavoriteItemRow(item: item, selectionMode: isManaging)
             .overlay(alignment: .topTrailing) {
                 if isManaging {
                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
@@ -117,6 +116,7 @@ struct CollectFolderDetailView: View {
                 toggleSelection(item.id)
             } label: {
                 row
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         } else {

@@ -3,6 +3,8 @@ import SwiftUI
 /// 收藏夹内竖卡：上封面、下文案（与 `FilmArticleRow` 同套衬底）；封面底栏可点喜欢 / 收藏。
 struct FavoriteItemRow: View {
     let item: FavoriteItem
+    /// 管理多选时关闭封面互动，整卡由外层 Button 接管点击。
+    var selectionMode = false
 
     @Bindable private var session = MineLibrarySession.shared
 
@@ -68,6 +70,7 @@ struct FavoriteItemRow: View {
             )
             .font(.system(size: 10, weight: .medium))
             .padding(6)
+            .allowsHitTesting(!selectionMode)
         }
     }
 
