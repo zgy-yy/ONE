@@ -31,6 +31,7 @@ struct FavoriteItemRow: View {
                 metaRow
             }
         }
+        .allowsHitTesting(!selectionMode)
     }
 
     private var metaRow: some View {

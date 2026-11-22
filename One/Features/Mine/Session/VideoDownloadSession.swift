@@ -1,128 +1,128 @@
 import Foundation
+import Network
 import Observation
 import UIKit
 
-/// App 内视频下载队列（`URLSession` 后台任务 + 进度回调）。
+/// 视频下载调度中心（单例 Session）。
+///
+/// 阅读顺序（初学者）：
+/// 1. `VideoDownloadModels.swift` — 列表项长什么样
+/// 2. 本文件 — 入队、暂停、网络与生命周期
+/// 3. `VideoDownloadTaskRegistry.swift` — 任务 ID 映射（委托线程安全）
+/// 4. `VideoDownloadSession+Persistence.swift` — JSON 索引与本地 mp4
+/// 5. 本文件末尾 — `URLSessionDownloadDelegate` 回调
+/// 6. `VideoDownloadListView.swift` — 界面
 @MainActor
 @Observable
 final class VideoDownloadSession: NSObject {
     static let shared = VideoDownloadSession()
 
-    nonisolated private static let taskRegistry = VideoDownloadTaskRegistry()
+    nonisolated static let taskRegistry = VideoDownloadTaskRegistry()
 
     /// 用户视频目录：`Documents/VideoDownloads`，可在系统「文件」App 中直接查看。
     nonisolated static let downloadsFolderName = "VideoDownloads"
 
-    struct Item: Identifiable, Hashable {
-        let id: UUID
-        var title: String
-        var coverPath: String?
-        var qualityLabel: String
-        /// 相对 `VideoDownloads` 的文件名（入队时确定，用于重启后找回文件）。
-        let fileName: String
-        var progress: Double
-        var bytesWritten: Int64
-        var bytesExpected: Int64
-        var state: State
-        var localFileURL: URL?
-        var errorMessage: String?
-        var addedAt: Date
-
-        enum State: String, Hashable, Codable {
-            case downloading
-            case completed
-            case failed
-        }
-
-        var progressText: String {
-            switch state {
-            case .downloading:
-                if progress > 0 {
-                    return "\(Int((progress * 100).rounded()))%"
-                }
-                return "连接中…"
-            case .completed: return "已完成"
-            case .failed: return "失败"
-            }
-        }
-
-        var formattedBytesWritten: String? {
-            guard state == .downloading, bytesWritten > 0 else { return nil }
-            return ByteCountFormatter.string(fromByteCount: bytesWritten, countStyle: .file)
-        }
-
-        var formattedBytesTotal: String? {
-            guard state == .downloading, bytesExpected > 0 else { return nil }
-            return ByteCountFormatter.string(fromByteCount: bytesExpected, countStyle: .file)
-        }
-    }
-
     private(set) var items: [Item] = []
-
-    private struct PersistedItem: Codable {
-        let id: UUID
-        var title: String
-        var coverPath: String?
-        var qualityLabel: String
-        var fileName: String
-        var state: Item.State
-        var errorMessage: String?
-        var addedAt: Date
-
-        init(_ item: Item) {
-            id = item.id
-            title = item.title
-            coverPath = item.coverPath
-            qualityLabel = item.qualityLabel
-            fileName = item.fileName
-            state = item.state
-            errorMessage = item.errorMessage
-            addedAt = item.addedAt
-        }
-    }
-
-    static let downloadQualitySuffixes = ["原画", "标清"]
-
-    enum EnqueueResult {
-        case started
-        case duplicate
-    }
-
-    /// 仅在下载列表页展示的提示（详情页不再弹 Alert）。
-    enum ListBanner: Equatable {
-        case queued(title: String)
-        case completed(title: String)
-        case duplicate(title: String, quality: String)
-
-        var text: String {
-            switch self {
-            case let .queued(title):
-                return "「\(title)」已加入下载，可在下方查看进度。"
-            case let .completed(title):
-                return "「\(title)」已保存到「文件」→ \(VideoDownloadSession.filesAppFolderHint)。"
-            case let .duplicate(title, quality):
-                return "「\(title)」（\(quality)）已在下载列表中，无需重复下载。"
-            }
-        }
-
-        var systemImage: String {
-            switch self {
-            case .queued: return "arrow.down.circle.fill"
-            case .completed: return "checkmark.circle.fill"
-            case .duplicate: return "exclamationmark.circle.fill"
-            }
-        }
-
-    }
-
     private(set) var listBanner: ListBanner?
 
     private var urlSession: URLSession!
+    private let networkMonitor = NWPathMonitor()
+    private let networkQueue = DispatchQueue(label: "VideoDownload.NetworkMonitor")
+    private var downloadSpeedTrackers: [UUID: DownloadSpeedSample] = [:]
+    private var lastProgressPersistDate = Date.distantPast
+    private var preserveSuspendRemainingCount = 0
+
+    private struct DownloadSpeedSample {
+        var lastBytes: Int64
+        var lastDate: Date
+        var smoothedBytesPerSecond: Double
+    }
+
+    // MARK: - 初始化
 
     private override init() {
         super.init()
-        urlSession = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
+        urlSession = URLSession(configuration: Self.makeURLSessionConfiguration(), delegate: self, delegateQueue: nil)
         items = Self.loadPersistedItems()
+        restoreRegistryFromPersistedItems()
+        seedSpeedTrackersFromItems()
+        resumeInterruptedDownloads()
+        startNetworkMonitor()
+        registerAppLifecycleObservers()
+    }
+
+    // MARK: - 生命周期与网络
+
+    private func restoreRegistryFromPersistedItems() {
+        for item in items where item.state == .downloading {
+            Self.taskRegistry.setFileName(item.fileName, for: item.id)
+            if let url = URL(string: item.remoteURLString) {
+                Self.taskRegistry.setRemoteURL(url, for: item.id)
+            }
+        }
+    }
+
+    private func seedSpeedTrackersFromItems() {
+        let now = Date()
+        for item in items where item.state == .downloading && item.bytesWritten > 0 {
+            downloadSpeedTrackers[item.id] = DownloadSpeedSample(
+                lastBytes: item.bytesWritten,
+                lastDate: now,
+                smoothedBytesPerSecond: 0
+            )
+        }
+    }
+
+    private func registerAppLifecycleObservers() {
+        let center = NotificationCenter.default
+        center.addObserver(
+            self,
+            selector: #selector(onDidEnterBackground),
+            name: UIApplication.didEnterBackgroundNotification,
+            object: nil
+        )
+        center.addObserver(
+            self,
+            selector: #selector(onWillTerminate),
+            name: UIApplication.willTerminateNotification,
+            object: nil
+        )
+        center.addObserver(
+            self,
+            selector: #selector(onWillEnterForeground),
+            name: UIApplication.willEnterForegroundNotification,
+            object: nil
+        )
+    }
+
+    @objc private func onDidEnterBackground() {
+        preserveActiveDownloadsBeforeSuspension()
+    }
+
+    @objc private func onWillTerminate() {
+        preserveActiveDownloadsBeforeSuspension()
+    }
+
+    @objc private func onWillEnterForeground() {
+        resumeInterruptedDownloads()
+    }
+
+    private static func makeURLSessionConfiguration() -> URLSessionConfiguration {
+        let config = URLSessionConfiguration.default
+        config.waitsForConnectivity = true
+        config.timeoutIntervalForResource = 86_400
+        config.timeoutIntervalForRequest = 600
+        return config
+    }
+
+    private func startNetworkMonitor() {
+        networkMonitor.pathUpdateHandler = { [weak self] path in
+            guard path.status == .satisfied else { return }
+            DispatchQueue.main.async {
+                self?.resumeInterruptedDownloads()
+            }
+        }
+        networkMonitor.start(queue: networkQueue)
     }
 
     var activeDownloadCount: Int {
@@ -136,6 +136,8 @@ final class VideoDownloadSession: NSObject {
             ?? "One"
         return "\(appName) / \(downloadsFolderName)"
     }
+
+    // MARK: - 对外 API
 
     @discardableResult
     func enqueue(title: String, coverPath: String?, qualityLabel: String, remoteURL: URL) -> EnqueueResult {
@@ -153,6 +155,7 @@ final class VideoDownloadSession: NSObject {
 
         let itemID = UUID()
         Self.taskRegistry.setFileName(fileName, for: itemID)
+        Self.taskRegistry.setRemoteURL(remoteURL, for: itemID)
 
         items.insert(
             Item(
@@ -167,23 +170,152 @@ final class VideoDownloadSession: NSObject {
                 state: .downloading,
                 localFileURL: nil,
                 errorMessage: nil,
-                addedAt: Date()
+                addedAt: Date(),
+                remoteURLString: remoteURL.absoluteString,
+                isWaitingForNetwork: false,
+                isPaused: false
             ),
             at: 0
         )
         persistItems()
+        deleteResumeData(for: itemID)
 
-        var request = URLRequest(url: remoteURL)
-        request.timeoutInterval = 600
-        let task = urlSession.downloadTask(with: request)
-        Self.taskRegistry.setItemID(itemID, forTaskID: task.taskIdentifier)
         listBanner = .queued(title: title)
-        task.resume()
+        startDownloadTask(for: itemID)
         return .started
     }
 
     func clearListBanner() {
         listBanner = nil
+    }
+
+    func toggleDownloadPause(_ item: Item) {
+        if item.isPaused {
+            resumeDownloadAfterPause(item)
+        } else {
+            pauseDownload(item)
+        }
+    }
+
+    private func pauseDownload(_ item: Item) {
+        guard item.state == .downloading, !item.isPaused else { return }
+        cancelActiveDownload(for: item.id, markPaused: true)
+    }
+
+    private func resumeDownloadAfterPause(_ item: Item) {
+        guard item.state == .downloading, item.isPaused else { return }
+        guard let index = itemIndex(for: item.id) else { return }
+        items[index].isPaused = false
+        items[index].isWaitingForNetwork = false
+        persistItems()
+        startDownloadTask(for: item.id)
+    }
+
+    // MARK: - 暂停 / 后台续传
+
+    /// 退到后台 / 即将被杀时：用 `resumeData` 留住断点，下次进来自动续传。
+    private func preserveActiveDownloadsBeforeSuspension() {
+        let activeIDs = items
+            .filter { $0.state == .downloading && !$0.isPaused }
+            .map(\.id)
+        guard !activeIDs.isEmpty else {
+            persistItems()
+            return
+        }
+
+        urlSession.getTasksWithCompletionHandler { _, _, downloadTasks in
+            let tasksToCancel = downloadTasks.compactMap { task -> (URLSessionDownloadTask, UUID)? in
+                guard let itemID = Self.taskRegistry.itemID(forTaskID: task.taskIdentifier),
+                      activeIDs.contains(itemID)
+                else { return nil }
+                return (task, itemID)
+            }
+            Task { @MainActor in
+                self.beginPreservingDownloadsBeforeSuspension(tasksToCancel)
+            }
+        }
+    }
+
+    private func beginPreservingDownloadsBeforeSuspension(_ tasks: [(URLSessionDownloadTask, UUID)]) {
+        guard !tasks.isEmpty else {
+            persistItems()
+            return
+        }
+        preserveSuspendRemainingCount = tasks.count
+        for (task, itemID) in tasks {
+            cancelDownloadTask(task, itemID: itemID, markPaused: false) {
+                self.onPreserveSuspendCancelFinished()
+            }
+        }
+    }
+
+    private func onPreserveSuspendCancelFinished() {
+        preserveSuspendRemainingCount -= 1
+        if preserveSuspendRemainingCount <= 0 {
+            persistItems()
+        }
+    }
+
+    private func cancelActiveDownload(for itemID: UUID, markPaused: Bool) {
+        guard let index = itemIndex(for: itemID), items[index].state == .downloading else { return }
+
+        if let taskID = Self.taskRegistry.taskID(forItemID: itemID) {
+            urlSession.getTasksWithCompletionHandler { _, _, downloadTasks in
+                let matched = downloadTasks.first { $0.taskIdentifier == taskID }
+                Task { @MainActor in
+                    if let matched {
+                        self.cancelDownloadTask(matched, itemID: itemID, markPaused: markPaused, completion: nil)
+                    } else if markPaused {
+                        self.applyPausedState(for: itemID)
+                    }
+                }
+            }
+        } else if markPaused {
+            applyPausedState(for: itemID)
+        }
+    }
+
+    private func cancelDownloadTask(
+        _ task: URLSessionDownloadTask,
+        itemID: UUID,
+        markPaused: Bool,
+        completion: (() -> Void)?
+    ) {
+        let taskID = task.taskIdentifier
+        task.cancel(byProducingResumeData: { data in
+            Task { @MainActor in
+                self.finishCancellingDownload(
+                    resumeData: data,
+                    itemID: itemID,
+                    taskID: taskID,
+                    markPaused: markPaused
+                )
+                completion?()
+            }
+        })
+    }
+
+    private func finishCancellingDownload(
+        resumeData: Data?,
+        itemID: UUID,
+        taskID: Int,
+        markPaused: Bool
+    ) {
+        if let resumeData {
+            saveResumeData(resumeData, for: itemID)
+        }
+        clearTaskMapping(taskID: taskID)
+        if markPaused {
+            applyPausedState(for: itemID)
+        }
+    }
+
+    private func applyPausedState(for itemID: UUID) {
+        guard let index = itemIndex(for: itemID), items[index].state == .downloading else { return }
+        items[index].isPaused = true
+        items[index].isWaitingForNetwork = false
+        resetDownloadSpeed(for: itemID)
+        persistItems()
     }
 
     /// 已落盘的 mp4（按修改时间倒序）。
@@ -217,19 +349,27 @@ final class VideoDownloadSession: NSObject {
     }
 
     func remove(_ item: Item) {
+        if let taskID = Self.taskRegistry.taskID(forItemID: item.id) {
+            urlSession.getTasksWithCompletionHandler { _, _, downloadTasks in
+                downloadTasks.first { $0.taskIdentifier == taskID }?.cancel()
+            }
+        }
         if let url = item.localFileURL {
             try? FileManager.default.removeItem(at: url)
         }
         items.removeAll { $0.id == item.id }
         Self.taskRegistry.removeFileName(for: item.id)
+        Self.taskRegistry.removeRemoteURL(for: item.id)
+        deleteResumeData(for: item.id)
+        downloadSpeedTrackers.removeValue(forKey: item.id)
         persistItems()
     }
 
-    private func itemIndex(for id: UUID) -> Int? {
+    func itemIndex(for id: UUID) -> Int? {
         items.firstIndex { $0.id == id }
     }
 
-    private func updateProgress(
+    func updateProgress(
         itemID: UUID,
         fraction: Double,
         bytesWritten: Int64,
@@ -239,209 +379,178 @@ final class VideoDownloadSession: NSObject {
         items[index].progress = min(1, max(0, fraction))
         items[index].bytesWritten = bytesWritten
         items[index].bytesExpected = bytesExpected
+        if items[index].state == .downloading, items[index].isWaitingForNetwork {
+            items[index].isWaitingForNetwork = false
+        }
+        updateDownloadSpeed(itemID: itemID, bytesWritten: bytesWritten)
+
+        let now = Date()
+        if now.timeIntervalSince(lastProgressPersistDate) >= 1.5 {
+            lastProgressPersistDate = now
+            persistItems()
+        }
     }
 
-    private func markCompleted(itemID: UUID, fileURL: URL) {
+    private func updateDownloadSpeed(itemID: UUID, bytesWritten: Int64, now: Date = .now) {
+        guard let index = itemIndex(for: itemID), items[index].state == .downloading else { return }
+
+        if var sample = downloadSpeedTrackers[itemID] {
+            let interval = now.timeIntervalSince(sample.lastDate)
+            guard interval >= 0.3 else { return }
+
+            let deltaBytes = bytesWritten - sample.lastBytes
+            sample.lastBytes = bytesWritten
+            sample.lastDate = now
+
+            if deltaBytes > 0 {
+                let instant = Double(deltaBytes) / interval
+                let alpha = 0.35
+                if sample.smoothedBytesPerSecond > 0 {
+                    sample.smoothedBytesPerSecond =
+                        sample.smoothedBytesPerSecond * (1 - alpha) + instant * alpha
+                } else {
+                    sample.smoothedBytesPerSecond = instant
+                }
+                items[index].bytesPerSecond = sample.smoothedBytesPerSecond
+            }
+
+            downloadSpeedTrackers[itemID] = sample
+        } else {
+            downloadSpeedTrackers[itemID] = DownloadSpeedSample(
+                lastBytes: bytesWritten,
+                lastDate: now,
+                smoothedBytesPerSecond: 0
+            )
+        }
+    }
+
+    private func resetDownloadSpeed(for itemID: UUID) {
+        downloadSpeedTrackers.removeValue(forKey: itemID)
+        guard let index = itemIndex(for: itemID) else { return }
+        items[index].bytesPerSecond = 0
+    }
+
+    func markCompleted(itemID: UUID, fileURL: URL) {
         guard let index = itemIndex(for: itemID) else { return }
         items[index].state = .completed
         items[index].progress = 1
         items[index].localFileURL = fileURL
         items[index].errorMessage = nil
+        items[index].isWaitingForNetwork = false
+        resetDownloadSpeed(for: itemID)
+        deleteResumeData(for: itemID)
         listBanner = .completed(title: items[index].title)
         persistItems()
     }
 
-    private func markFailed(itemID: UUID, message: String) {
+    func markFailed(itemID: UUID, message: String) {
         guard let index = itemIndex(for: itemID) else { return }
         items[index].state = .failed
         items[index].errorMessage = message
+        items[index].isWaitingForNetwork = false
+        resetDownloadSpeed(for: itemID)
         persistItems()
     }
 
-    private func clearTaskMapping(taskID: Int) {
-        Self.taskRegistry.removeTaskMapping(taskID: taskID)
+    func markWaitingForNetwork(itemID: UUID) {
+        guard let index = itemIndex(for: itemID) else { return }
+        guard items[index].state == .downloading else { return }
+        items[index].isWaitingForNetwork = true
+        items[index].errorMessage = nil
+        resetDownloadSpeed(for: itemID)
+        persistItems()
     }
 
-    /// 在委托回调里同步落盘（须在 `didFinishDownloadingTo` 返回前完成，不能 `await` 主线程）。
-    nonisolated private static func persistDownload(
-        from tempLocation: URL,
-        to destination: URL
-    ) throws {
-        let fm = FileManager.default
-        let dir = destination.deletingLastPathComponent()
-        try fm.createDirectory(at: dir, withIntermediateDirectories: true)
-        if fm.fileExists(atPath: destination.path) {
-            try fm.removeItem(at: destination)
-        }
-        // 必须从 CFNetwork 临时路径 **复制**；方法返回后临时文件会被系统删掉。
-        try fm.copyItem(at: tempLocation, to: destination)
-    }
+    // MARK: - 任务控制与进度
 
-    /// 仅 `片名-原画.mp4` / `片名-标清.mp4`。
-    static func suggestedFileName(title: String, qualityLabel: String) -> String {
-        let base = sanitizedBaseName(title)
-        let quality = normalizedQualityLabel(qualityLabel)
-        return "\(base)-\(quality).mp4"
-    }
-
-    static func normalizedQualityLabel(_ label: String) -> String {
-        switch label {
-        case "标准": return "标清"
-        case "原画", "标清": return label
-        default: return label
+    /// 网络恢复或冷启动后，继续未完成下载（支持 `resumeData` 断点续传）。
+    private func resumeInterruptedDownloads() {
+        for item in items where item.state == .downloading && !item.isPaused {
+            guard !Self.taskRegistry.hasActiveTask(for: item.id) else { continue }
+            startDownloadTask(for: item.id)
         }
     }
 
-    private static func sanitizedBaseName(_ title: String) -> String {
-        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        let sanitized = trimmed
-            .replacingOccurrences(of: "/", with: "_")
-            .replacingOccurrences(of: ":", with: "_")
-        return sanitized.isEmpty ? "video" : String(sanitized.prefix(80))
+    private func startDownloadTask(for itemID: UUID) {
+        guard let index = itemIndex(for: itemID), items[index].state == .downloading, !items[index].isPaused else { return }
+        guard let remoteURL = URL(string: items[index].remoteURLString)
+            ?? Self.taskRegistry.remoteURL(for: itemID)
+        else {
+            markFailed(itemID: itemID, message: "缺少下载地址")
+            return
+        }
+
+        Self.taskRegistry.setRemoteURL(remoteURL, for: itemID)
+        items[index].isWaitingForNetwork = false
+        items[index].errorMessage = nil
+        resetDownloadSpeed(for: itemID)
+
+        let task: URLSessionDownloadTask
+        if let resumeData = loadResumeData(for: itemID) {
+            task = urlSession.downloadTask(withResumeData: resumeData)
+        } else {
+            var request = URLRequest(url: remoteURL)
+            request.timeoutInterval = 600
+            task = urlSession.downloadTask(with: request)
+        }
+
+        Self.taskRegistry.setItemID(itemID, forTaskID: task.taskIdentifier)
+        task.resume()
     }
 
-    nonisolated static func persistedDownloadsDirectory(ensureExists: Bool = false) throws -> URL {
-        guard let base = FileManager.default.urls(
-            for: .documentDirectory,
-            in: .userDomainMask
-        ).first else {
-            throw CocoaError(.fileNoSuchFile)
+    nonisolated static func isRecoverableNetworkError(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        if nsError.domain == NSURLErrorDomain {
+            switch nsError.code {
+            case NSURLErrorNotConnectedToInternet,
+                 NSURLErrorNetworkConnectionLost,
+                 NSURLErrorTimedOut,
+                 NSURLErrorCannotConnectToHost,
+                 NSURLErrorCannotFindHost,
+                 NSURLErrorDNSLookupFailed,
+                 NSURLErrorInternationalRoamingOff,
+                 NSURLErrorDataNotAllowed:
+                return true
+            default:
+                return false
+            }
         }
-        let dir = base.appendingPathComponent(downloadsFolderName, isDirectory: true)
-        if ensureExists {
-            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        }
-        return dir
+        return false
     }
 
-    // MARK: - 列表持久化（进程退出后仍能看见记录）
+    nonisolated static func resumeData(from error: Error) -> Data? {
+        let nsError = error as NSError
+        return nsError.userInfo[NSURLSessionDownloadTaskResumeData] as? Data
+    }
 
-    private nonisolated static var indexFileURL: URL {
+    func saveResumeData(_ data: Data, for itemID: UUID) {
+        try? data.write(to: Self.resumeDataURL(for: itemID), options: .atomic)
+    }
+
+    private func loadResumeData(for itemID: UUID) -> Data? {
+        let url = Self.resumeDataURL(for: itemID)
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        return try? Data(contentsOf: url)
+    }
+
+    private func deleteResumeData(for itemID: UUID) {
+        try? FileManager.default.removeItem(at: Self.resumeDataURL(for: itemID))
+    }
+
+    private nonisolated static func resumeDataURL(for itemID: UUID) -> URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
-        return base.appendingPathComponent("VideoDownloadsIndex.json")
+        let dir = base.appendingPathComponent("VideoDownloadResume", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("\(itemID.uuidString).resume", isDirectory: false)
     }
 
-    private func persistItems() {
-        let payload = items.map(PersistedItem.init)
-        guard let data = try? JSONEncoder().encode(payload) else { return }
-        let url = Self.indexFileURL
-        try? FileManager.default.createDirectory(
-            at: url.deletingLastPathComponent(),
-            withIntermediateDirectories: true
-        )
-        try? data.write(to: url, options: .atomic)
-    }
-
-    private static func loadPersistedItems() -> [Item] {
-        let dir = (try? persistedDownloadsDirectory(ensureExists: true))
-        let indexURL = indexFileURL
-        let decoder = JSONDecoder()
-
-        var records: [PersistedItem] = []
-        if let data = try? Data(contentsOf: indexURL),
-           let decoded = try? decoder.decode([PersistedItem].self, from: data) {
-            records = decoded
-        }
-
-        var items: [Item] = records.map { record in
-            item(from: record, downloadsDir: dir)
-        }
-
-        guard let dir else { return items.sorted { $0.addedAt > $1.addedAt } }
-
-        let knownNames = Set(items.map(\.fileName))
-        if let urls = try? FileManager.default.contentsOfDirectory(
-            at: dir,
-            includingPropertiesForKeys: [.contentModificationDateKey],
-            options: [.skipsHiddenFiles]
-        ) {
-            for fileURL in urls where fileURL.pathExtension.lowercased() == "mp4" {
-                let name = fileURL.lastPathComponent
-                guard !knownNames.contains(name) else { continue }
-                let title = titleGuess(fromFileName: name)
-                items.append(
-                    Item(
-                        id: UUID(),
-                        title: title,
-                        coverPath: nil,
-                        qualityLabel: qualityLabel(fromFileName: name),
-                        fileName: name,
-                        progress: 1,
-                        bytesWritten: 0,
-                        bytesExpected: 0,
-                        state: .completed,
-                        localFileURL: fileURL,
-                        errorMessage: nil,
-                        addedAt: (try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate)
-                            ?? .distantPast
-                    )
-                )
-            }
-        }
-
-        return items.sorted { $0.addedAt > $1.addedAt }
-    }
-
-    private static func item(from record: PersistedItem, downloadsDir: URL?) -> Item {
-        var state = record.state
-        var error = record.errorMessage
-        var localURL: URL?
-
-        if state == .downloading {
-            state = .failed
-            error = "应用已退出，请重新下载"
-        }
-
-        if let dir = downloadsDir {
-            let fileURL = dir.appendingPathComponent(record.fileName)
-            if FileManager.default.fileExists(atPath: fileURL.path) {
-                localURL = fileURL
-                if state != .failed {
-                    state = .completed
-                    error = nil
-                }
-            } else if state == .completed {
-                state = .failed
-                error = "文件已不存在"
-            }
-        }
-
-        return Item(
-            id: record.id,
-            title: record.title,
-            coverPath: record.coverPath,
-            qualityLabel: record.qualityLabel,
-            fileName: record.fileName,
-            progress: state == .completed ? 1 : 0,
-            bytesWritten: 0,
-            bytesExpected: 0,
-            state: state,
-            localFileURL: localURL,
-            errorMessage: error,
-            addedAt: record.addedAt
-        )
-    }
-
-    private static func titleGuess(fromFileName name: String) -> String {
-        let base = (name as NSString).deletingPathExtension
-        for quality in downloadQualitySuffixes {
-            let suffix = "-\(quality)"
-            if base.hasSuffix(suffix) {
-                return String(base.dropLast(suffix.count))
-            }
-        }
-        return base
-    }
-
-    private static func qualityLabel(fromFileName name: String) -> String {
-        let base = (name as NSString).deletingPathExtension
-        for quality in downloadQualitySuffixes where base.hasSuffix("-\(quality)") {
-            return quality
-        }
-        return "本地"
+    func clearTaskMapping(taskID: Int) {
+        Self.taskRegistry.removeTaskMapping(taskID: taskID)
     }
 }
+
+// MARK: - URLSessionDownloadDelegate
 
 extension VideoDownloadSession: URLSessionDownloadDelegate {
     nonisolated func urlSession(
@@ -454,9 +563,11 @@ extension VideoDownloadSession: URLSessionDownloadDelegate {
         guard totalBytesExpectedToWrite > 0 else { return }
         let taskID = downloadTask.taskIdentifier
         let fraction = Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
-        Task { @MainActor in
-            guard let itemID = Self.taskRegistry.itemID(forTaskID: taskID) else { return }
-            self.updateProgress(
+        Task { @MainActor [weak self] in
+            guard let self,
+                  let itemID = Self.taskRegistry.itemID(forTaskID: taskID)
+            else { return }
+            updateProgress(
                 itemID: itemID,
                 fraction: fraction,
                 bytesWritten: totalBytesWritten,
@@ -490,8 +601,9 @@ extension VideoDownloadSession: URLSessionDownloadDelegate {
             )
         }
 
-        Task { @MainActor in
-            defer { self.clearTaskMapping(taskID: taskID) }
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { clearTaskMapping(taskID: taskID) }
             guard let itemID else {
                 if case .success(let url) = persistResult {
                     try? FileManager.default.removeItem(at: url)
@@ -500,9 +612,9 @@ extension VideoDownloadSession: URLSessionDownloadDelegate {
             }
             switch persistResult {
             case let .success(url):
-                self.markCompleted(itemID: itemID, fileURL: url)
+                markCompleted(itemID: itemID, fileURL: url)
             case let .failure(error):
-                self.markFailed(itemID: itemID, message: error.localizedDescription)
+                markFailed(itemID: itemID, message: error.localizedDescription)
             }
         }
     }
@@ -510,12 +622,31 @@ extension VideoDownloadSession: URLSessionDownloadDelegate {
     nonisolated func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         guard let error else { return }
         let taskID = task.taskIdentifier
-        Task { @MainActor in
-            defer { self.clearTaskMapping(taskID: taskID) }
+        let nsError = error as NSError
+        let resumeData = Self.resumeData(from: error)
+        let recoverable = Self.isRecoverableNetworkError(error)
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { clearTaskMapping(taskID: taskID) }
             guard let itemID = Self.taskRegistry.itemID(forTaskID: taskID) else { return }
-            if let index = self.itemIndex(for: itemID), self.items[index].state == .downloading {
-                self.markFailed(itemID: itemID, message: error.localizedDescription)
+            guard let index = itemIndex(for: itemID), items[index].state == .downloading else { return }
+
+            if nsError.code == NSURLErrorCancelled {
+                if let resumeData {
+                    saveResumeData(resumeData, for: itemID)
+                    persistItems()
+                }
+                return
             }
+
+            if recoverable {
+                if let resumeData {
+                    saveResumeData(resumeData, for: itemID)
+                }
+                markWaitingForNetwork(itemID: itemID)
+                return
+            }
+            markFailed(itemID: itemID, message: error.localizedDescription)
         }
     }
 }

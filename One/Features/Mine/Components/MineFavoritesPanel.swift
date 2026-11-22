@@ -10,6 +10,7 @@ struct MineFavoritesPanel: View {
     @State private var renameError: String?
     @State private var createError: String?
     @State private var progressMessage: String?
+    @State private var renamingFolderID: Int?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -60,6 +61,7 @@ struct MineFavoritesPanel: View {
                 List(session.folders) { folder in
                     CollectFolderListRow(
                         folder: folder,
+                        isRenaming: renamingFolderID == folder.id,
                         onConfirmDelete: { await confirmDelete(folderID: $0) },
                         onRename: { await confirmRename($0, name: $1) }
                     )
@@ -69,6 +71,7 @@ struct MineFavoritesPanel: View {
                             folderName: folder.displayName
                         )
                     )
+                    .allowsHitTesting(renamingFolderID != folder.id)
                     .styledListRow()
                 }
                 .plainContentList(onRefresh: { await session.loadFolders(force: true) })
@@ -111,6 +114,9 @@ struct MineFavoritesPanel: View {
     private func confirmRename(_ folder: CollectFolder, name: String) async {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed != folder.displayName else { return }
+        renamingFolderID = folder.id
+        defer { renamingFolderID = nil }
+
         do {
             try await session.renameCollectFolder(folderID: folder.id, name: trimmed)
         } catch {

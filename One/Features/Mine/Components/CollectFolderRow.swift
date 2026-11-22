@@ -32,6 +32,7 @@ struct CollectFolderRow: View {
             }
             .matchCoverHeight(width: coverWidth, aspect: coverAspect)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var metaRow: some View {

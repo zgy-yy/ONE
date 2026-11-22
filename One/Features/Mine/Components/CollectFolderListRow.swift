@@ -3,6 +3,7 @@ import SwiftUI
 /// 收藏夹列表行：滑动 / 长按 → 重命名（Alert）、删除（本行确认框）。
 struct CollectFolderListRow: View {
     let folder: CollectFolder
+    var isRenaming = false
     let onConfirmDelete: (Int) async -> Void
     let onRename: (CollectFolder, String) async -> Void
 
@@ -12,6 +13,14 @@ struct CollectFolderListRow: View {
 
     var body: some View {
         CollectFolderRow(folder: folder)
+            .overlay(alignment: .trailing) {
+                if isRenaming {
+                    ProgressView()
+                        .controlSize(.regular)
+                        .padding(.trailing, 4)
+                }
+            }
+            .opacity(isRenaming ? 0.72 : 1)
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 if folder.canDelete {
                     Button {
@@ -56,8 +65,11 @@ struct CollectFolderListRow: View {
                 hint: CollectFolderAlertCopy.renameHint,
                 confirmTitle: "保存"
             ) {
-                Task { await onRename(folder, renameDraft) }
+                let draft = renameDraft
+                showsRenameAlert = false
+                Task { await onRename(folder, draft) }
             }
+            .disabled(isRenaming)
     }
 
     private func presentRename() {

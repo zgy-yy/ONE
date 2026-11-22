@@ -1,10 +1,17 @@
 import SwiftUI
 
-/// 我的 → 下载：进度列表；完成文件写入 `Documents/VideoDownloads`，在「文件」App 可见。
+/// 我的 → 下载列表（只绑 `VideoDownloadSession.shared`，不写网络逻辑）。
+///
+/// 已完成条目：点按 → `VideoDownloadsFolderView` 并定位到对应 mp4。
+private struct DownloadFolderBrowseContext: Identifiable {
+    let id = UUID()
+    let highlightFileName: String?
+}
+
 struct VideoDownloadListView: View {
     @Bindable private var downloads = VideoDownloadSession.shared
 
-    @State private var showsFolderBrowser = false
+    @State private var folderBrowseContext: DownloadFolderBrowseContext?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -22,7 +29,9 @@ struct VideoDownloadListView: View {
             } else {
                 List {
                     ForEach(downloads.items) { item in
-                        VideoDownloadRow(item: item)
+                        VideoDownloadRow(item: item, downloads: downloads) { fileName in
+                            folderBrowseContext = DownloadFolderBrowseContext(highlightFileName: fileName)
+                        }
                             .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
                             .listRowSeparator(.hidden)
                     }
@@ -55,9 +64,9 @@ struct VideoDownloadListView: View {
         .navigationTitle("下载")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
-        .sheet(isPresented: $showsFolderBrowser) {
+        .sheet(item: $folderBrowseContext) { context in
             NavigationStack {
-                VideoDownloadsFolderView()
+                VideoDownloadsFolderView(highlightFileName: context.highlightFileName)
             }
             .presentationDragIndicator(.visible)
         }
@@ -66,7 +75,7 @@ struct VideoDownloadListView: View {
     private func openDownloadsFolder() {
         Task {
             if await !downloads.openDownloadsFolderInFilesApp() {
-                showsFolderBrowser = true
+                folderBrowseContext = DownloadFolderBrowseContext(highlightFileName: nil)
             }
         }
     }
@@ -112,6 +121,8 @@ struct VideoDownloadListView: View {
 
 private struct VideoDownloadRow: View {
     let item: VideoDownloadSession.Item
+    @Bindable var downloads: VideoDownloadSession
+    var onOpenSavedFile: (String) -> Void
 
     private let coverWidth: CGFloat = 148
 
@@ -120,6 +131,22 @@ private struct VideoDownloadRow: View {
     }
 
     var body: some View {
+        Group {
+            if item.state == .completed {
+                Button {
+                    onOpenSavedFile(item.fileName)
+                } label: {
+                    rowContent
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("在文件夹中查看 \(item.title)")
+            } else {
+                rowContent
+            }
+        }
+    }
+
+    private var rowContent: some View {
         HStack(alignment: .top, spacing: 12) {
             cover
                 .frame(width: coverWidth)
@@ -128,6 +155,8 @@ private struct VideoDownloadRow: View {
             infoColumn
                 .frame(maxWidth: .infinity, minHeight: coverHeight, maxHeight: coverHeight, alignment: .topLeading)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
     }
 
     private var infoColumn: some View {
@@ -161,30 +190,17 @@ private struct VideoDownloadRow: View {
         }
         .overlay {
             if item.state == .downloading {
-                ZStack {
-                    Color.black.opacity(0.32)
-                    VStack(spacing: 6) {
-                        if item.progress > 0 {
-                            ProgressView(value: item.progress) {
-                                EmptyView()
-                            }
-                            .progressViewStyle(.circular)
-                            .controlSize(.regular)
-                            .tint(.white)
-                            Text(item.progressText)
-                                .font(.caption.weight(.semibold))
-                                .monospacedDigit()
-                        } else {
-                            ProgressView()
-                                .controlSize(.regular)
-                                .tint(.white)
-                            Text(item.progressText)
-                                .font(.caption.weight(.medium))
-                        }
-                    }
-                    .foregroundStyle(.white)
+                Button {
+                    downloads.toggleDownloadPause(item)
+                } label: {
+                    Image(systemName: item.isPaused ? "play.circle.fill" : "pause.circle.fill")
+                        .font(.system(size: 48))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.45), radius: 3, y: 1)
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .buttonStyle(.plain)
+                .accessibilityLabel(item.isPaused ? "继续下载" : "暂停下载")
             }
         }
     }
@@ -193,12 +209,20 @@ private struct VideoDownloadRow: View {
     private var statusLine: some View {
         switch item.state {
         case .downloading:
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("下载中 · \(item.progressText)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-                Spacer(minLength: 4)
+            HStack(alignment: .top, spacing: 8) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(item.isPaused ? item.progressText : "下载中 · \(item.progressText)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                    if let speed = item.formattedDownloadSpeed {
+                        Text(speed)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                            .monospacedDigit()
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 if item.formattedBytesWritten != nil || item.formattedBytesTotal != nil {
                     VStack(alignment: .trailing, spacing: 1) {
                         if let written = item.formattedBytesWritten {

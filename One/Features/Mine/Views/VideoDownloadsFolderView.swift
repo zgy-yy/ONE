@@ -3,6 +3,9 @@ import SwiftUI
 
 /// 下载目录浏览：列出 `Documents/VideoDownloads` 内视频，可预览。
 struct VideoDownloadsFolderView: View {
+    /// 从下载列表点入时，滚动并高亮该文件名。
+    var highlightFileName: String?
+
     @Bindable private var downloads = VideoDownloadSession.shared
     @Environment(\.dismiss) private var dismiss
 
@@ -10,6 +13,13 @@ struct VideoDownloadsFolderView: View {
     @State private var fileURLs: [URL] = []
 
     var body: some View {
+        ScrollViewReader { scrollProxy in
+            listContent(scrollProxy: scrollProxy)
+        }
+    }
+
+    @ViewBuilder
+    private func listContent(scrollProxy: ScrollViewProxy) -> some View {
         List {
             if let folder = downloads.downloadsFolderURL {
                 Section {
@@ -53,6 +63,12 @@ struct VideoDownloadsFolderView: View {
                                     .foregroundStyle(.tertiary)
                             }
                         }
+                        .id(url.path)
+                        .listRowBackground(
+                            isHighlighted(url)
+                                ? Color.accentColor.opacity(0.14)
+                                : Color.clear
+                        )
                     }
                 }
             }
@@ -67,8 +83,30 @@ struct VideoDownloadsFolderView: View {
                 Button("刷新") { reloadFiles() }
             }
         }
-        .onAppear { reloadFiles() }
+        .onAppear {
+            reloadFiles()
+            scrollToHighlightIfNeeded(using: scrollProxy)
+        }
+        .onChange(of: fileURLs.map(\.path)) { _, _ in
+            scrollToHighlightIfNeeded(using: scrollProxy)
+        }
         .quickLookPreview($previewURL)
+    }
+
+    private func isHighlighted(_ url: URL) -> Bool {
+        guard let highlightFileName, !highlightFileName.isEmpty else { return false }
+        return url.lastPathComponent == highlightFileName
+    }
+
+    private func scrollToHighlightIfNeeded(using proxy: ScrollViewProxy) {
+        guard let highlightFileName,
+              let url = fileURLs.first(where: { $0.lastPathComponent == highlightFileName })
+        else { return }
+        DispatchQueue.main.async {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                proxy.scrollTo(url.path, anchor: .center)
+            }
+        }
     }
 
     private func reloadFiles() {

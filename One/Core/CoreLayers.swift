@@ -5,7 +5,7 @@
  Features/       按业务分文件夹（Home / Discover / Article / Mine …）
    Detail/       详情壳、元信息、评论、标签
    Detail/Video/ 点播全屏播放（ArticleVideoPresenter → 系统 AVPlayerViewController）
-   Mine/Session/  VideoDownloadSession、VideoDownloadTaskRegistry
+   Mine/Session/  VideoDownload*（Session / Models / Persistence / Delegate）、TaskRegistry
    Views/        页面与列表
  Shared/         多 Feature 共用
    UI/           Row、导航、通用控件
@@ -26,7 +26,7 @@
 
  视频：
    详情「播放」→ ArticleVideoPresenter
-   详情「下载」→ VideoDownloadSession → VideoDownloadListView
+   详情「下载」→ VideoDownloadSession（断点/暂停）→ VideoDownloadListView
 
  喜欢 / 收藏：
    ArticleReactionStore → OneClient

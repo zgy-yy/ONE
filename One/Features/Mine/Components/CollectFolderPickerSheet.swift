@@ -73,8 +73,11 @@ struct CollectFolderPickerSheet: View {
                         Task { await pick(folder) }
                     } label: {
                         CollectFolderRow(folder: folder)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
                             .overlay(alignment: .trailing) {
                                 trailingAccessory(for: folder)
+                                    .allowsHitTesting(false)
                             }
                     }
                     .buttonStyle(.plain)
