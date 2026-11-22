@@ -7,7 +7,10 @@ enum ArticleVideoPresenter {
     static func present(url: URL) {
         guard let host = UIViewController.topMost else { return }
 
+        VideoPlaybackAudio.prepareForPlayback()
+
         let player = AVPlayer(url: url)
+        player.isMuted = false
         let controller = AVPlayerViewController()
         controller.player = player
         controller.modalPresentationStyle = .fullScreen
