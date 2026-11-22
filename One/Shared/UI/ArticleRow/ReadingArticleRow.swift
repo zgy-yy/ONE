@@ -74,3 +74,9 @@ struct ReadingArticleRow: View {
         .font(ArticleRowTypography.metaSmall)
     }
 }
+
+#Preview("阅读行") {
+    PreviewListChrome.list {
+        ReadingArticleRow(article: PreviewSamples.Article.reading).styledListRow()
+    }
+}

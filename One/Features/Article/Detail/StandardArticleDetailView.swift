@@ -49,6 +49,6 @@ struct StandardArticleDetailView: View {
 
     private func startPlayback() {
         guard let url = session.playURL else { return }
-        ArticleVideoPresenter.present(url: url)
+        ArticleVideoPresenter.present(url: url, quality: session.detail?.quality)
     }
 }

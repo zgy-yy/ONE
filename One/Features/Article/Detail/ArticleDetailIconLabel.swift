@@ -52,6 +52,16 @@ struct ArticleDetailIconLabel: View {
 }
 
 /// 评论入口（与收藏 / 喜欢同一套图标样式）。
+#Preview("详情小标签") {
+    VStack(alignment: .leading, spacing: 12) {
+        ArticleDetailIconLabel.actor("演员名")
+        ArticleDetailIconLabel.publisher("出品方")
+        ArticleDetailIconLabel.volumeIssue(12)
+        ArticleDetailCommentButton(count: 99) {}
+    }
+    .padding()
+}
+
 struct ArticleDetailCommentButton: View {
     let count: Int
     var action: () -> Void

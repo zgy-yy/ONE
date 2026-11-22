@@ -25,7 +25,7 @@ enum JSONFlex {
 struct IgnoredJSON: Decodable {
     init(from decoder: Decoder) throws {
         if let single = try? decoder.singleValueContainer() {
-            if (try? single.decodeNil()) == true { return }
+            if single.decodeNil() { return }
             if (try? single.decode(Bool.self)) != nil { return }
             if (try? single.decode(Int.self)) != nil { return }
             if (try? single.decode(Double.self)) != nil { return }

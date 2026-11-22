@@ -107,57 +107,8 @@ struct VodArticleRow: View {
 }
 
 #Preview("点播行") {
-    List {
-        VodArticleRow(article: VodArticleRowPreview.full)
-            .styledListRow()
-        VodArticleRow(article: VodArticleRowPreview.discount)
-            .styledListRow()
+    PreviewListChrome.list {
+        VodArticleRow(article: PreviewSamples.Article.vod).styledListRow()
+        VodArticleRow(article: PreviewSamples.Article.vodDiscount).styledListRow()
     }
-    .plainContentList()
-}
-
-/// 预览用假数据（`thumb` 为公开 https 图）。
-private enum VodArticleRowPreview {
-    private static let coverA =
-        "https://images.unsplash.com/photo-1574267432645-b74e72d8b193?w=560&h=315&fit=crop"
-    private static let coverB =
-        "https://images.unsplash.com/photo-1485846230555-89fc4e4f964b?w=560&h=315&fit=crop"
-
-    static let full = ArticleSummary(
-        id: 9301,
-        title: "导演访谈 · 幕后纪录完整版",
-        thumb: coverA,
-        author: "Studio One",
-        publishedAt: "2024-04-12 20:00:00",
-        modelID: ContentCategory.ModelID.vod,
-        summary: nil,
-        coin: 12,
-        originalCoin: 18,
-        likeNumber: 640,
-        collectionNumber: 220,
-        views: 128_400,
-        isLike: 1,
-        isCollected: 0,
-        length: "129分钟",
-        vol: 7
-    )
-
-    static let discount = ArticleSummary(
-        id: 9302,
-        title: "短片选",
-        thumb: coverB,
-        author: "独立映像",
-        publishedAt: "2023-08-05",
-        modelID: ContentCategory.ModelID.vod,
-        summary: nil,
-        coin: 6,
-        originalCoin: nil,
-        likeNumber: 42,
-        collectionNumber: 8,
-        views: 9200,
-        isLike: 0,
-        isCollected: 1,
-        length: "24分钟",
-        vol: 2
-    )
 }

@@ -3,10 +3,13 @@
 
  App/            入口（OneApp、ContentView）
  Features/       按业务分文件夹（Home / Discover / Article …）
-   Detail/Views  界面
-   Session       @Observable：拉数、编排、把结果交给 View
+   Detail/       详情壳、元信息、评论
+   Detail/Video/ 点播全屏播放（Presenter / Playback / Rotation）
+   Session       @Observable：拉数、编排，把结果交给 View
  Shared/         多 Feature 共用
    UI/           Row、导航、通用控件
+   UI/Previews/  PreviewSamples + PreviewListChrome
+   UIKit/        UIViewController.topMost 等 UIKit 小扩展
    UI/Reactions/ 喜欢 / 收藏 UI 与移夹流程（ArticleCollectFlow）
    Models/       评论、反应状态（ArticleReactionStore）等
  Core/

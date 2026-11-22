@@ -55,49 +55,8 @@ struct RadioArticleRow: View {
 }
 
 #Preview("电台行") {
-    List {
-        RadioArticleRow(article: RadioArticleRowPreview.withVolume)
-            .styledListRow()
-        RadioArticleRow(article: RadioArticleRowPreview.compact)
-            .styledListRow()
+    PreviewListChrome.list {
+        RadioArticleRow(article: PreviewSamples.Article.radio).styledListRow()
+        RadioArticleRow(article: PreviewSamples.Article.radioShort).styledListRow()
     }
-    .plainContentList()
-}
-
-/// 预览用假数据（`thumb` 为公开 https 图）。
-private enum RadioArticleRowPreview {
-    private static let coverA =
-        "https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=560&h=315&fit=crop"
-    private static let coverB =
-        "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=560&h=315&fit=crop"
-
-    static let withVolume = ArticleSummary(
-        id: 9101,
-        title: "午夜电台 · 城市漫步",
-        thumb: coverA,
-        author: "小林",
-        publishedAt: "2024-05-20 18:00:00",
-        modelID: ContentCategory.ModelID.radio,
-        summary: nil,
-        likeNumber: 3200,
-        collectionNumber: 512,
-        isLike: 1,
-        isCollected: 0,
-        vol: 128
-    )
-
-    static let compact = ArticleSummary(
-        id: 9102,
-        title: "短标题一期",
-        thumb: coverB,
-        author: "电台编辑部",
-        publishedAt: "2023-09-01",
-        modelID: ContentCategory.ModelID.radio,
-        summary: nil,
-        likeNumber: 88,
-        collectionNumber: nil,
-        isLike: 0,
-        isCollected: 1,
-        vol: 12
-    )
 }

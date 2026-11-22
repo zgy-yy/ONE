@@ -25,6 +25,17 @@ final class ActorDetailSession {
     private(set) var isCollecting = false
     private static var detailCache: [Int: ActorDetail] = [:]
 
+    /// Preview：注入详情，避免走线路 / 接口。
+    func configureForPreview(detail: ActorDetail) {
+        loadedActorID = detail.id
+        self.detail = detail
+        error = nil
+        isLoading = false
+        articles.reset()
+        photos.reset()
+        comments.reset()
+    }
+
     func load(actorID: Int) async {
         if loadedActorID != actorID {
             articles.reset()

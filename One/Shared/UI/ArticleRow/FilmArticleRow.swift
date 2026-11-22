@@ -65,51 +65,8 @@ struct FilmArticleRow: View {
 }
 
 #Preview("影视行") {
-    List {
-        FilmArticleRow(article: FilmArticleRowPreview.longTitle)
-            .styledListRow()
-        FilmArticleRow(article: FilmArticleRowPreview.shortTitle)
-            .styledListRow()
+    PreviewListChrome.list {
+        FilmArticleRow(article: PreviewSamples.Article.filmLong).styledListRow()
+        FilmArticleRow(article: PreviewSamples.Article.filmShort).styledListRow()
     }
-    .plainContentList()
-}
-
-/// 预览用假数据（`thumb` 为公开 https 图，不走 `one_img` CDN）。
-private enum FilmArticleRowPreview {
-    private static let coverA =
-        "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=560&h=315&fit=crop"
-    private static let coverB =
-        "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=560&h=315&fit=crop"
-
-    static let longTitle = ArticleSummary(
-        id: 9001,
-        title: "漫长的季节 · 全集回顾",
-        thumb: coverA,
-        author: "辛爽",
-        publishedAt: "2024-03-15 12:00:00",
-        modelID: ContentCategory.ModelID.film,
-        summary: nil,
-        likeNumber: 12_800,
-        collectionNumber: 3200,
-        views: 1_413_682,
-        isLike: 1,
-        isCollected: 0,
-        vol: 3
-    )
-
-    static let shortTitle = ArticleSummary(
-        id: 9002,
-        title: "海边一日",
-        thumb: coverB,
-        author: "佚名",
-        publishedAt: "2023-11-01",
-        modelID: ContentCategory.ModelID.film,
-        summary: nil,
-        likeNumber: 256,
-        collectionNumber: 890,
-        views: 52_000,
-        isLike: 0,
-        isCollected: 1,
-        vol: 1
-    )
 }

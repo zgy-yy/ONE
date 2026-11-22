@@ -4,17 +4,22 @@ import SwiftUI
 struct ActorDetailView: View {
     let actor: ActorSummary
 
-    @State private var session = ActorDetailSession()
+    @State private var session: ActorDetailSession
     @State private var showsFullDesc = false
     @State private var segment: ActorDetailSegment = .articles
     @State private var photoViewerIndex: Int?
     @State private var photoViewerSelection = 0
     @State private var collectError: String?
 
+    init(actor: ActorSummary, session: ActorDetailSession? = nil) {
+        self.actor = actor
+        _session = State(initialValue: session ?? ActorDetailSession())
+    }
+
     private let photoColumns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 3)
     private let articleColumns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 2)
-    /// 详情封面宽度（竖图 3:4，再大一点更醒目）。
-    private let coverWidth: CGFloat = 176
+    /// 详情封面宽度（竖图 3:4）。
+    private let coverWidth: CGFloat = 160
 
     private var displayName: String {
         session.detail?.displayName ?? actor.displayName
@@ -37,6 +42,7 @@ struct ActorDetailView: View {
         .task(id: actor.id) {
             showsFullDesc = false
             segment = .articles
+            guard session.detail?.id != actor.id else { return }
             await session.load(actorID: actor.id)
         }
         .sheet(isPresented: $showsFullDesc) {
@@ -86,97 +92,22 @@ struct ActorDetailView: View {
 
     // MARK: - Header
 
+    /// 详情大图 `thumb`；未加载完成时用列表带入的路径。
+    private var headerCoverPath: String? {
+        session.detail?.coverImagePath
+            ?? ImagePath.full(thumb: actor.thumb, thumbnail: actor.thumbnail)
+    }
+
     private var header: some View {
-        LeadingMediaHeader(mediaWidth: coverWidth) {
-            ZStack(alignment: .bottomTrailing) {
-                ActorAvatarImage(
-                    path: session.detail?.coverImagePath
-                        ?? ImagePath.full(thumb: actor.thumb, thumbnail: actor.thumbnail)
-                )
-                if session.detail != nil {
-                    collectCoverButton
-                }
-            }
-        } info: {
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(nameRows, id: \.label) { row in
-                    nameRow(icon: row.icon, label: row.label, value: row.value)
-                }
-                infoLines
-            }
-        }
-    }
-
-    private var collectCoverButton: some View {
-        let collected = session.detail?.hasCollected == true
-        return CoverOverlayIconButton(
-            systemImage: collected ? "bookmark.fill" : "bookmark",
-            active: collected,
-            isLoading: session.isCollecting,
-            action: { Task { await toggleActorCollect() } }
+        ActorDetailProfileHeader(
+            coverPath: headerCoverPath,
+            coverWidth: coverWidth,
+            fields: ActorProfileFields.make(detail: session.detail, actor: actor),
+            showsCollect: session.detail != nil,
+            isCollected: session.detail?.hasCollected == true,
+            isCollecting: session.isCollecting,
+            onCollect: { Task { await toggleActorCollect() } }
         )
-        .accessibilityLabel(collected ? "已收藏演员" : "收藏演员")
-    }
-
-    private struct NameRow: Hashable {
-        let icon: String
-        let label: String
-        let value: String
-    }
-
-    private var nameRows: [NameRow] {
-        let d = session.detail
-        return [
-            .init(icon: "textformat", label: "中文名", value: orDash(d?.mainName ?? actor.displayName)),
-            .init(icon: "globe.asia.australia", label: "日文名", value: orDash(d?.japaneseName)),
-            .init(icon: "sparkles", label: "昵称", value: orDash(d?.nickname)),
-            .init(icon: "tag", label: "别名", value: orDash(d?.aliasName)),
-        ]
-    }
-
-    private func nameRow(icon: String, label: String, value: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Image(systemName: icon)
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-                .frame(width: 14, alignment: .center)
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-                .frame(width: 40, alignment: .leading)
-            Text(value)
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(.primary)
-                .lineLimit(2)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(label) \(value)")
-    }
-
-    private var infoLines: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ForEach(infoRows, id: \.label) { row in
-                nameRow(icon: row.icon, label: row.label, value: row.value)
-            }
-        }
-        .padding(.top, 2)
-    }
-
-    private var infoRows: [NameRow] {
-        let d = session.detail
-        let height = d?.height?.nonEmpty.map { "\($0) cm" }
-        return [
-            .init(icon: "arrow.up.and.down", label: "身高", value: height ?? "-"),
-            .init(icon: "rectangle.split.3x1", label: "三围", value: orDash(d?.bustWaistHip)),
-            .init(icon: "mug", label: "罩杯", value: orDash(d?.cupSize)),
-            .init(icon: "birthday.cake", label: "生日", value: orDash(d?.birthDate)),
-            .init(icon: "person.badge.clock", label: "年龄", value: orDash(d?.age)),
-        ]
-    }
-
-    private func orDash(_ value: String?) -> String {
-        value?.nonEmpty ?? "-"
     }
 
     private func toggleActorCollect() async {
@@ -230,40 +161,10 @@ struct ActorDetailView: View {
     // MARK: - Tabs
 
     private var segmentTabs: some View {
-        HStack(spacing: 0) {
-            ForEach(ActorDetailSegment.allCases) { item in
-                Button {
-                    segment = item
-                } label: {
-                    segmentTabLabel(item)
-                }
-                .buttonStyle(.plain)
-                .frame(maxWidth: .infinity)
-            }
-        }
-        .padding(.vertical, 10)
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        ActorDetailSegmentTabs(segment: $segment, count: segmentCount)
     }
 
-    private func segmentTabLabel(_ item: ActorDetailSegment) -> some View {
-        let selected = segment == item
-        let count = count(for: item) ?? 0
-        return VStack(spacing: 4) {
-            Image(systemName: item.systemImage)
-                .font(.body.weight(.semibold))
-            Text("\(item.rawValue) \(ArticleFormat.shortCount(count))")
-                .font(.caption.weight(.medium))
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
-        }
-        .foregroundStyle(selected ? Color.accentColor : Color.secondary)
-        .padding(.vertical, 2)
-        .accessibilityLabel("\(item.rawValue) \(count)")
-        .accessibilityAddTraits(selected ? .isSelected : [])
-    }
-
-    private func count(for segment: ActorDetailSegment) -> Int? {
+    private func segmentCount(_ segment: ActorDetailSegment) -> Int? {
         switch segment {
         case .articles: session.detail?.articleNum
         case .photos: session.detail?.photoNum
@@ -412,5 +313,13 @@ struct ActorDetailView: View {
                 )
             }
         }
+    }
+}
+
+#Preview("演员详情") {
+    let session = ActorDetailSession()
+    session.configureForPreview(detail: PreviewSamples.Actor.detail)
+    return NavigationStack {
+        ActorDetailView(actor: PreviewSamples.Actor.summary, session: session)
     }
 }

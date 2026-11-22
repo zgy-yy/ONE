@@ -71,30 +71,8 @@ struct GraphicArticleCard: View {
 }
 
 #Preview("发现图文") {
-    List {
-        GraphicArticleCard(article: GraphicArticleCardPreview.sample, textAlignment: .leading)
+    PreviewListChrome.list {
+        GraphicArticleCard(article: PreviewSamples.Article.graphic, textAlignment: .leading)
             .styledListRow()
     }
-    .plainContentList()
-}
-
-private enum GraphicArticleCardPreview {
-    private static let thumb =
-        "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400&h=533&fit=crop"
-
-    static let sample = ArticleSummary(
-        id: 9201,
-        title: "夏日街拍",
-        thumb: thumb,
-        author: "编辑部",
-        publishedAt: "2024-06-18",
-        modelID: ContentCategory.ModelID.graphic,
-        summary: "简介最多两行。",
-        likeNumber: 2048,
-        collectionNumber: 3120,
-        views: 98_000,
-        isLike: 1,
-        isCollected: 0,
-        vol: 18
-    )
 }

@@ -94,26 +94,6 @@ struct GraphicArticleDetailView: View {
 
 #Preview("图文详情") {
     NavigationStack {
-        GraphicArticleDetailView(article: GraphicArticleDetailPreview.article)
+        GraphicArticleDetailView(article: PreviewSamples.Article.graphicDetailPage)
     }
-}
-
-private enum GraphicArticleDetailPreview {
-    private static let thumb =
-        "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400&h=533&fit=crop"
-
-    static let article = ArticleSummary(
-        id: 8401,
-        title: "图文详情预览 · 标题居中展示",
-        thumb: thumb,
-        author: "摄影组",
-        publishedAt: "2024-08-15",
-        modelID: ContentCategory.ModelID.graphic,
-        summary: "简介左对齐；作者与收藏、喜欢同一行。",
-        likeNumber: 1280,
-        collectionNumber: 456,
-        views: 88_000,
-        isLike: 1,
-        isCollected: 0
-    )
 }

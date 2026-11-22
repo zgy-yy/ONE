@@ -46,29 +46,7 @@ struct HomeGraphicArticleView: View {
 }
 
 #Preview("首页图文") {
-    List {
-        HomeGraphicArticleView(article: HomeGraphicArticlePreview.sample)
-            .styledListRow()
+    PreviewListChrome.list {
+        HomeGraphicArticleView(article: PreviewSamples.Article.graphic).styledListRow()
     }
-    .plainContentList()
-}
-
-private enum HomeGraphicArticlePreview {
-    private static let thumb =
-        "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400&h=533&fit=crop"
-
-    static let sample = ArticleSummary(
-        id: 8301,
-        title: "首页图文",
-        thumb: thumb,
-        author: "摄影组",
-        publishedAt: "2024-07-01",
-        modelID: ContentCategory.ModelID.graphic,
-        summary: "简介不限制行数，封面按原图比例。",
-        likeNumber: 888,
-        collectionNumber: 120,
-        views: 42_000,
-        isLike: 1,
-        isCollected: 0
-    )
 }

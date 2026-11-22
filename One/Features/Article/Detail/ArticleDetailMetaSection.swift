@@ -352,3 +352,19 @@ private struct DetailMetricsRow: View {
             .monospacedDigit()
     }
 }
+
+#Preview("点播元信息") {
+    ScrollView {
+        ArticleDetailMetaSection(
+            summary: PreviewSamples.Article.vod,
+            detail: PreviewSamples.Article.vodDetail,
+            style: .media,
+            canPlay: true,
+            onPlay: {},
+            onCollect: {},
+            onLike: {},
+            onCommentsTap: {}
+        )
+        .padding()
+    }
+}

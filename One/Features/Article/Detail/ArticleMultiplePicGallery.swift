@@ -88,6 +88,16 @@ struct ArticleMultiplePicGallery: View {
     }
 }
 
+#Preview("精彩预览") {
+    ArticleMultiplePicGallery(
+        paths: PreviewSamples.Article.galleryPaths,
+        commentCount: 12,
+        onCommentsTap: {},
+        headerDate: "2024-01-01"
+    )
+    .padding()
+}
+
 private struct ArticleGalleryImage: View {
     let path: String
 

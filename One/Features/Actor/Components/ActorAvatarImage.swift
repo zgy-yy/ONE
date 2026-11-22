@@ -13,3 +13,9 @@ struct ActorAvatarImage: View {
         )
     }
 }
+
+#Preview("演员头像") {
+    ActorAvatarImage(path: PreviewSamples.Actor.coverURL)
+        .frame(width: 120)
+        .padding()
+}
