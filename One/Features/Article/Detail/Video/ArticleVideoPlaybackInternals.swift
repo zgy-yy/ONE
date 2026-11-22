@@ -1,6 +1,23 @@
 import AVFoundation
+import AVKit
 import SwiftUI
 import UIKit
+
+// MARK: - 投屏（AirPlay）
+
+/// 系统 AirPlay / 电视路由选择器（`prioritizesVideoDevices` 优先视频设备）。
+struct ArticleVideoAirPlayRoutePicker: UIViewRepresentable {
+    func makeUIView(context: Context) -> AVRoutePickerView {
+        let view = AVRoutePickerView(frame: CGRect(x: 0, y: 0, width: 44, height: 44))
+        view.prioritizesVideoDevices = true
+        view.tintColor = UIColor.white.withAlphaComponent(0.92)
+        view.activeTintColor = .white
+        view.backgroundColor = .clear
+        return view
+    }
+
+    func updateUIView(_ uiView: AVRoutePickerView, context: Context) {}
+}
 
 // MARK: - AVPlayerLayer
 

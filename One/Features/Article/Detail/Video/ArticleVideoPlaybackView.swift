@@ -102,6 +102,19 @@ struct ArticleVideoPlaybackView: View {
     private var topBar: some View {
         HStack {
             Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .playbackControlShadow()
+            }
+            .accessibilityLabel("关闭播放")
+
+            Spacer()
+
+            Button {
                 userOverrodeRotation = true
                 withAnimation(.easeInOut(duration: 0.28)) {
                     contentRotation = PlaybackContentRotation.toggleDegrees(contentRotation)
@@ -116,18 +129,10 @@ struct ArticleVideoPlaybackView: View {
             }
             .accessibilityLabel("旋转画面")
 
-            Spacer()
-
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 28, weight: .semibold))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(.white)
-                    .playbackControlShadow()
-            }
-            .accessibilityLabel("关闭播放")
+            ArticleVideoAirPlayRoutePicker()
+                .frame(width: 44, height: 44)
+                .playbackControlShadow()
+                .accessibilityLabel("投屏")
         }
         .padding(.horizontal, 20)
         .padding(.top, 8)
@@ -238,6 +243,7 @@ struct ArticleVideoPlaybackView: View {
     private func startPlayback() {
         VideoPlaybackAudio.activate()
         player.isMuted = false
+        player.allowsExternalPlayback = true
         player.automaticallyWaitsToMinimizeStalling = true
         player.play()
         isPlaying = true
