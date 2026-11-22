@@ -1,23 +1,22 @@
-import SwiftUI
+import AVKit
 import UIKit
 
-/// 全屏打开文章内链视频（详情页点「播放」）。
+/// 全屏打开文章内链视频（详情页点「播放」）— 使用系统 `AVPlayerViewController`。
 enum ArticleVideoPresenter {
     @MainActor
-    static func present(url: URL, quality: String? = nil) {
+    static func present(url: URL) {
         guard let host = UIViewController.topMost else { return }
 
-        let controller = PortraitFullScreenHostingController(
-            rootView: ArticleVideoPlaybackView(url: url, quality: quality)
-        )
+        let player = AVPlayer(url: url)
+        let controller = AVPlayerViewController()
+        controller.player = player
         controller.modalPresentationStyle = .fullScreen
-        host.present(controller, animated: true)
-    }
-}
+        controller.allowsPictureInPicturePlayback = true
+        controller.canStartPictureInPictureAutomaticallyFromInline = true
+        controller.exitsFullScreenWhenPlaybackEnds = true
 
-/// 播放页锁定竖屏；横片在 `ArticleVideoPlaybackView` 内 `rotationEffect` 转 90°。
-private final class PortraitFullScreenHostingController<Content: View>: UIHostingController<Content> {
-    override var supportedInterfaceOrientations: UIInterfaceOrientationMask { .portrait }
-    override var shouldAutorotate: Bool { false }
-    override var prefersStatusBarHidden: Bool { true }
+        host.present(controller, animated: true) {
+            player.play()
+        }
+    }
 }

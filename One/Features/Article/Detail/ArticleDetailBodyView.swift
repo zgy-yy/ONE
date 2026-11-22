@@ -6,7 +6,9 @@ struct ArticleDetailBodyView: View {
     let summary: ArticleSummary
     var style: ArticleDetailStyle = .media
     var canPlay: Bool = false
+    var videoDownloadOptions: [ArticlePlayURL.DownloadOption] = []
     var onPlay: (() -> Void)?
+    var onPickDownload: ((ArticlePlayURL.DownloadOption) -> Void)?
     var onCommentsTap: (() -> Void)?
     var onCollect: (() -> Void)?
     var onLike: (() -> Void)?
@@ -44,7 +46,9 @@ struct ArticleDetailBodyView: View {
                 detail: detail,
                 style: style,
                 canPlay: canPlay,
+                videoDownloadOptions: videoDownloadOptions,
                 onPlay: onPlay,
+                onPickDownload: onPickDownload,
                 onCollect: onCollect,
                 onLike: onLike,
                 onCommentsTap: onCommentsTap

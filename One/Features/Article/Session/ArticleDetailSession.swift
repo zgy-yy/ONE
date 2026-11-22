@@ -44,7 +44,8 @@ final class ArticleDetailSession {
 
             var article = try await business
             reactions.merge(into: &article)
-            applyPlayURLs(from: (try? await play) ?? article)
+            let playDetail = try? await play
+            applyPlayURLs(business: article, play: playDetail)
             detail = article
         } catch {
             self.error = error.localizedDescription
@@ -118,9 +119,14 @@ final class ArticleDetailSession {
         detail = article
     }
 
-    private func applyPlayURLs(from article: ArticleDetail) {
+    var videoDownloadOptions: [ArticlePlayURL.DownloadOption] {
+        ArticlePlayURL.downloadOptions(from: playURLEntries)
+    }
+
+    private func applyPlayURLs(business: ArticleDetail, play: ArticleDetail?) {
         let entries = ArticlePlayURL.allEntries(
-            detail: article,
+            business: business,
+            play: play,
             apiBase: OneSession.shared.baseURL
         )
         playURLEntries = entries

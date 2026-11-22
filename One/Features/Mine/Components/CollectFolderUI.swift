@@ -7,6 +7,8 @@ enum CollectFolderAlertCopy {
     static let createHint = "输入名称后点创建"
     static let renameHint = "输入新名称后点保存"
     static let fieldPlaceholder = "收藏夹名称"
+    static let creatingProgress = "正在创建收藏夹…"
+    static let deletingProgress = "正在删除收藏夹…"
 }
 
 extension View {
@@ -70,6 +72,32 @@ extension View {
         } message: {
             Text("夹内收藏将一并移除，此操作不可撤销。")
         }
+    }
+
+    /// 创建 / 删除等请求中：半透明遮罩 + 文案（`nil` 表示空闲）。
+    func collectFolderBusyOverlay(_ progressMessage: String?) -> some View {
+        let isBusy = progressMessage != nil
+        return overlay {
+            if let progressMessage {
+                ZStack {
+                    Color.black.opacity(0.22)
+                        .ignoresSafeArea()
+                    VStack(spacing: 12) {
+                        ProgressView()
+                            .controlSize(.large)
+                        Text(progressMessage)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 28)
+                    .padding(.vertical, 20)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: isBusy)
+        .allowsHitTesting(!isBusy)
     }
 }
 

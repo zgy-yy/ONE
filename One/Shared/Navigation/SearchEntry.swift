@@ -46,5 +46,10 @@ extension View {
                 .presentationDragIndicator(.visible)
                 .presentationCornerRadius(16)
         }
+        .onChange(of: isPresented.wrappedValue) { _, showing in
+            if !showing {
+                SearchSession.shared.clearResults()
+            }
+        }
     }
 }

@@ -3,6 +3,8 @@ import SwiftUI
 /// 搜索卡片：热词 / 分类 / 结果列表。
 struct SearchView: View {
     @Bindable private var session = SearchSession.shared
+    @Environment(\.dismiss) private var dismiss
+    @State private var isSearchDrawerPresented = true
 
     var body: some View {
         NavigationStack {
@@ -12,10 +14,16 @@ struct SearchView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .searchable(
                     text: searchFieldBinding,
+                    isPresented: $isSearchDrawerPresented,
                     placement: .navigationBarDrawer(displayMode: .always),
                     prompt: "输入关键词"
                 )
                 .searchPresentationToolbarBehavior(.avoidHidingContent)
+                .onChange(of: isSearchDrawerPresented) { _, presented in
+                    if !presented {
+                        closeSearchPanel()
+                    }
+                }
                 .onSubmit(of: .search, session.submit)
                 .safeAreaInset(edge: .top, spacing: 0) {
                     TopCapsuleBar(
@@ -28,7 +36,12 @@ struct SearchView: View {
                 }
                 .libraryDetailDestinations()
                 .task { await session.loadHotWordsIfNeeded() }
+                .onAppear { isSearchDrawerPresented = true }
         }
+    }
+
+    private func closeSearchPanel() {
+        dismiss()
     }
 
     private var searchFieldBinding: Binding<String> {

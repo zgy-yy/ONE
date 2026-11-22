@@ -8,6 +8,7 @@ struct StandardArticleDetailView: View {
     @State private var session = ArticleDetailSession()
     @State private var showsComments = false
     @State private var collectMoveContext: CollectFolderMoveContext?
+    @State private var showsDownloadList = false
 
     var body: some View {
         ArticleDetailChrome(article: article, session: session) {
@@ -20,7 +21,11 @@ struct StandardArticleDetailView: View {
                     summary: article,
                     style: style,
                     canPlay: session.playURL != nil,
+                    videoDownloadOptions: session.videoDownloadOptions,
                     onPlay: style.showsPlay ? { startPlayback() } : nil,
+                    onPickDownload: style.showsPlay && !session.videoDownloadOptions.isEmpty
+                        ? { queueDownload($0) }
+                        : nil,
                     onCommentsTap: { showsComments = true },
                     onCollect: {
                         Task {
@@ -45,10 +50,32 @@ struct StandardArticleDetailView: View {
         .articleCollectMoveFlow($collectMoveContext) {
             session.syncReactionsFromStore()
         }
+        .sheet(isPresented: $showsDownloadList) {
+            NavigationStack {
+                VideoDownloadListView()
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("完成") { showsDownloadList = false }
+                        }
+                    }
+            }
+            .presentationDragIndicator(.visible)
+        }
     }
 
     private func startPlayback() {
         guard let url = session.playURL else { return }
-        ArticleVideoPresenter.present(url: url, quality: session.detail?.quality)
+        ArticleVideoPresenter.present(url: url)
+    }
+
+    private func queueDownload(_ option: ArticlePlayURL.DownloadOption) {
+        guard let detail = session.detail else { return }
+        VideoDownloadSession.shared.enqueue(
+            title: detail.displayVideoName,
+            coverPath: detail.thumb ?? article.thumb,
+            qualityLabel: option.title,
+            remoteURL: option.url
+        )
+        showsDownloadList = true
     }
 }

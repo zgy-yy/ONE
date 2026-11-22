@@ -6,29 +6,28 @@ struct ArticleDetailMetaSection: View {
     let detail: ArticleDetail
     var style: ArticleDetailStyle = .media
     var canPlay: Bool = false
+    var videoDownloadOptions: [ArticlePlayURL.DownloadOption] = []
     var onPlay: (() -> Void)?
+    var onPickDownload: ((ArticlePlayURL.DownloadOption) -> Void)?
     var onCollect: (() -> Void)?
     var onLike: (() -> Void)?
     var onCommentsTap: (() -> Void)?
 
     private let rowSpacing: CGFloat = 12
 
+    @State private var showsDownloadQualityPicker = false
+
+    private var showsDownloadButton: Bool {
+        onPickDownload != nil && !videoDownloadOptions.isEmpty
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: rowSpacing) {
             Text(detail.displayVideoName)
                 .font(.title2.weight(.semibold))
 
-            if let onPlay {
-                Button(action: onPlay) {
-                    Label("播放", systemImage: "play.fill")
-                        .font(.body.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 4)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.orange)
-                .disabled(!canPlay)
-                .opacity(canPlay ? 1 : 0.45)
+            if onPlay != nil || showsDownloadButton {
+                playDownloadRow
             }
 
             DetailPriceNumberRow(detail: detail)
@@ -54,6 +53,53 @@ struct ArticleDetailMetaSection: View {
             )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var playDownloadRow: some View {
+        HStack(spacing: 12) {
+            if let onPlay {
+                Button(action: onPlay) {
+                    Label("播放", systemImage: "play.fill")
+                        .font(.body.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 4)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.orange)
+                .disabled(!canPlay)
+                .opacity(canPlay ? 1 : 0.45)
+            }
+
+            if showsDownloadButton {
+                downloadButton
+            }
+        }
+    }
+
+    private var downloadButton: some View {
+        Button {
+            showsDownloadQualityPicker = true
+        } label: {
+            Label("下载", systemImage: "arrow.down.circle")
+                .font(.body.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 4)
+        }
+        .buttonStyle(.bordered)
+        .confirmationDialog(
+            "选择下载清晰度",
+            isPresented: $showsDownloadQualityPicker,
+            titleVisibility: .visible
+        ) {
+            ForEach(videoDownloadOptions) { option in
+                Button(option.title) {
+                    onPickDownload?(option)
+                }
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("原画体积更大；标准更省空间。")
+        }
     }
 }
 

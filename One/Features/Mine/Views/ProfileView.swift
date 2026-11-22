@@ -5,6 +5,7 @@ struct ProfileView: View {
     let user: OneUser
     var onLogout: () -> Void
 
+    @Bindable private var downloads = VideoDownloadSession.shared
     @State private var libraryTab: LibraryTab = .likes
 
     private let bannerHeight: CGFloat = 152
@@ -67,6 +68,13 @@ struct ProfileView: View {
                 .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
+            NavigationLink {
+                VideoDownloadListView()
+            } label: {
+                downloadEntryLabel
+            }
+            .buttonStyle(.plain)
+
             Button("退出", action: onLogout)
                 .font(.caption.weight(.medium))
                 .foregroundStyle(.secondary)
@@ -83,6 +91,28 @@ struct ProfileView: View {
                 .strokeBorder(Color.white.opacity(0.35), lineWidth: 0.5)
         }
         .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
+    }
+
+    private var downloadEntryLabel: some View {
+        ZStack(alignment: .topTrailing) {
+            Image(systemName: "arrow.down.circle")
+                .font(.title3.weight(.medium))
+                .foregroundStyle(Color.accentColor)
+                .frame(width: 36, height: 36)
+                .background(Color(.tertiarySystemFill), in: Circle())
+                .accessibilityLabel("下载列表")
+
+            if downloads.activeDownloadCount > 0 {
+                Text("\(downloads.activeDownloadCount)")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
+                    .background(Color.orange, in: Capsule())
+                    .offset(x: 6, y: -6)
+                    .accessibilityHidden(true)
+            }
+        }
     }
 
     private var libraryTabBar: some View {

@@ -19,19 +19,54 @@ enum ArticlePlayURL {
     /// 详情接口参数 `dn`。
     static let detailVideoDN = "https://pwavd123.phd3wfh.com/"
 
+    /// 下载可选：`video_file` 原画 → `video` 标准。
+    struct DownloadOption: Identifiable, Hashable {
+        var id: String { field }
+        let field: String
+        let title: String
+        let url: URL
+    }
+
+    private static let downloadFields = ["video_file", "video"]
+
+    static func downloadOptions(from entries: [Entry]) -> [DownloadOption] {
+        downloadFields.compactMap { field in
+            guard let entry = entries.first(where: { $0.field == field }),
+                  let url = URL(string: entry.url)
+            else { return nil }
+            let title = field == "video_file" ? "原画" : "标准"
+            return DownloadOption(field: field, title: title, url: url)
+        }
+    }
+
     /// 全部可用地址：按优先级排列，相同 URL 只保留一条。播放器取 `first`。
-    static func allEntries(detail: ArticleDetail, apiBase: URL?) -> [Entry] {
+    static func allEntries(
+        business: ArticleDetail,
+        play: ArticleDetail? = nil,
+        apiBase: URL?
+    ) -> [Entry] {
         let api = apiHost(from: apiBase) ?? OneTargets.hostBases.first ?? videoCDNBase
+        let play = play ?? business
+
+        func mergedPath(_ businessPath: String?, _ playPath: String?) -> String? {
+            playPath?.nonEmpty ?? businessPath?.nonEmpty
+        }
+
+        let mergedVideos: [ArticleVideoItem] = {
+            let fromPlay = play.videos ?? []
+            if !fromPlay.isEmpty { return fromPlay }
+            return business.videos ?? []
+        }()
 
         // 顺序即播放优先级
         var sources: [(field: String, path: String?, base: String)] = [
-            ("video_hls_h265", detail.videoHlsH265, api),
-            ("video_hls", detail.videoHls, api),
-            ("video_file", detail.videoFile, videoCDNBase),
-            ("video", detail.video, videoCDNBase),
-            ("preview_video", detail.previewVideo, videoCDNBase),
+            ("video_hls_h265", mergedPath(business.videoHlsH265, play.videoHlsH265), api),
+            ("video_hls", mergedPath(business.videoHls, play.videoHls), api),
+            ("video_file", mergedPath(business.videoFile, play.videoFile), videoCDNBase),
+            ("video", mergedPath(business.video, play.video), videoCDNBase),
+            ("preview_video", mergedPath(business.previewVideo, play.previewVideo), videoCDNBase),
         ]
-        for (index, item) in (detail.videos ?? []).enumerated() {
+        for (index, item) in mergedVideos.enumerated() {
             sources.append(("videos[\(index)]", item.videoFile, videoCDNBase))
         }
 

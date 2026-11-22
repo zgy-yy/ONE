@@ -2,16 +2,17 @@
  项目分层（主流 iOS：Feature + 薄 Core）
 
  App/            入口（OneApp、ContentView）
- Features/       按业务分文件夹（Home / Discover / Article …）
-   Detail/       详情壳、元信息、评论
-   Detail/Video/ 点播全屏播放（Presenter / Playback / Rotation）
-   Session       @Observable：拉数、编排，把结果交给 View
+ Features/       按业务分文件夹（Home / Discover / Article / Mine …）
+   Detail/       详情壳、元信息、评论、标签
+   Detail/Video/ 点播全屏播放（ArticleVideoPresenter → 系统 AVPlayerViewController）
+   Session/      @Observable：拉数、下载队列等
+   Views/        页面与列表
  Shared/         多 Feature 共用
    UI/           Row、导航、通用控件
    UI/Previews/  PreviewSamples + PreviewListChrome
    UIKit/        UIViewController.topMost 等 UIKit 小扩展
-   UI/Reactions/ 喜欢 / 收藏 UI 与移夹流程（ArticleCollectFlow）
-   Models/       评论、反应状态（ArticleReactionStore）等
+   UI/Reactions/ 喜欢 / 收藏 UI 与移夹流程
+   Models/       评论、反应状态等
  Core/
    Network/      HTTP 传输
    Tokens/       启动壳：选线、JWT、CDN
@@ -23,11 +24,13 @@
  调用链（记住这一条）：
    View → Feature Session → OneClient → HTTPClient
 
+ 视频：
+   详情「播放」→ ArticleVideoPresenter
+   详情「下载」→ VideoDownloadSession → VideoDownloadListView
+
  喜欢 / 收藏：
-   列表 ArticleCollectLikeMeta / 详情 ArticleDetailEngagementRow
-   → ArticleReactionStore → OneClient.articleLike/Collect
-   收藏后移夹：ArticleCollectAction + articleCollectMoveFlow
-   收藏夹 UI：CollectFolderUI（弹窗 / 小按钮）+ CollectFolderListRow + CollectFolderPickerSheet
+   ArticleReactionStore → OneClient
+   收藏夹：CollectFolderUI、ArticleCollectAction
 
  不要：在 View 里拼 URL、写加解密、直接依赖其它 Feature 的私有类型。
  */

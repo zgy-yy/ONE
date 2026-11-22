@@ -9,6 +9,7 @@ struct MineFavoritesPanel: View {
     @State private var deleteError: String?
     @State private var renameError: String?
     @State private var createError: String?
+    @State private var progressMessage: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -35,6 +36,7 @@ struct MineFavoritesPanel: View {
         .collectFolderErrorAlert("删除失败", error: $deleteError)
         .collectFolderErrorAlert("重命名失败", error: $renameError)
         .collectFolderErrorAlert("创建失败", error: $createError)
+        .collectFolderBusyOverlay(progressMessage)
     }
 
     @ViewBuilder
@@ -83,16 +85,22 @@ struct MineFavoritesPanel: View {
     private func confirmCreate() async {
         let trimmed = newFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+        showsCreateFolderAlert = false
+        progressMessage = CollectFolderAlertCopy.creatingProgress
+        defer { progressMessage = nil }
+
         do {
             try await session.createCollectFolder(name: trimmed)
             newFolderName = ""
-            showsCreateFolderAlert = false
         } catch {
             createError = error.localizedDescription
         }
     }
 
     private func confirmDelete(folderID: Int) async {
+        progressMessage = CollectFolderAlertCopy.deletingProgress
+        defer { progressMessage = nil }
+
         do {
             try await session.deleteCollectFolder(folderID: folderID)
         } catch {

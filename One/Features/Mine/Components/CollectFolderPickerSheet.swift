@@ -15,7 +15,7 @@ struct CollectFolderPickerSheet: View {
     @State private var busyFolderID: Int?
     @State private var showsCreateFolderAlert = false
     @State private var newFolderName = ""
-    @State private var isCreatingFolder = false
+    @State private var progressMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -35,7 +35,7 @@ struct CollectFolderPickerSheet: View {
                     Button(cancelTitle) { dismiss() }
                         .foregroundStyle(.secondary)
                         .buttonStyle(CompactToolbarTextButtonStyle())
-                        .disabled(busyFolderID != nil || isCreatingFolder)
+                        .disabled(busyFolderID != nil || progressMessage != nil)
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button("新建收藏夹") {
@@ -43,7 +43,7 @@ struct CollectFolderPickerSheet: View {
                         showsCreateFolderAlert = true
                     }
                     .buttonStyle(CompactToolbarTextButtonStyle())
-                    .disabled(busyFolderID != nil || isCreatingFolder)
+                    .disabled(busyFolderID != nil || progressMessage != nil)
                 }
             }
             .task { await library.loadFolders(force: true) }
@@ -56,6 +56,7 @@ struct CollectFolderPickerSheet: View {
             ) {
                 Task { await createFolder() }
             }
+            .collectFolderBusyOverlay(progressMessage)
         }
         .presentationDetents([.fraction(0.75), .large])
         .presentationDragIndicator(.visible)
@@ -120,13 +121,13 @@ struct CollectFolderPickerSheet: View {
     private func createFolder() async {
         guard !trimmedNewFolderName.isEmpty else { return }
         errorMessage = nil
-        isCreatingFolder = true
-        defer { isCreatingFolder = false }
+        showsCreateFolderAlert = false
+        progressMessage = CollectFolderAlertCopy.creatingProgress
+        defer { progressMessage = nil }
 
         do {
             try await library.createCollectFolder(name: trimmedNewFolderName)
             newFolderName = ""
-            showsCreateFolderAlert = false
         } catch {
             errorMessage = error.localizedDescription
         }
