@@ -35,3 +35,17 @@ struct HomeDayBar: View {
         .background(Color(.systemBackground))
     }
 }
+
+#Preview("有 topText") {
+    NavigationStack {
+        HomeDayBar(day: .today, topText: "示例副标题文案")
+    }
+    .environment(\.openSearch) { _ in }
+}
+
+#Preview("无 topText") {
+    NavigationStack {
+        HomeDayBar(day: DayDate(year: 2026, month: 11, day: 20), topText: nil)
+    }
+    .environment(\.openSearch) { _ in }
+}

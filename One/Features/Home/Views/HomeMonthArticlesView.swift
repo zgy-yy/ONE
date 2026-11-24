@@ -93,6 +93,5 @@ struct HomeMonthArticlesView: View {
         else { return }
         homeSession.jumpToDay(target)
         dismiss()
-        Task { await homeSession.load(homeSession.selectedDay) }
     }
 }

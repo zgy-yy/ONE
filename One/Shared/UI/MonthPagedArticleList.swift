@@ -26,19 +26,25 @@ struct MonthPagedArticleList<SectionBody: View>: View {
                 }
             }
             .plainContentList()
+            .onAppear {
+                scrollToMonthIfPresent(publishedAt, proxy: proxy)
+            }
+            .onChange(of: sections.map(\.month)) { _, _ in
+                scrollToMonthIfPresent(publishedAt, proxy: proxy)
+            }
             .onChange(of: publishedAt) { _, month in
-                if sections.contains(where: { $0.month == month }) {
-                    scrollToMonth(month, proxy: proxy)
-                } else {
-                    onAnchorMonthMissing()
-                }
+                scrollToMonthIfPresent(month, proxy: proxy)
             }
         }
     }
 
-    private func scrollToMonth(_ month: String, proxy: ScrollViewProxy) {
-        guard sections.contains(where: { $0.month == month }) else { return }
+    private func scrollToMonthIfPresent(_ month: String, proxy: ScrollViewProxy) {
+        guard sections.contains(where: { $0.month == month }) else {
+            onAnchorMonthMissing()
+            return
+        }
         Task { @MainActor in
+            await Task.yield()
             proxy.scrollTo(month, anchor: .top)
         }
     }

@@ -11,11 +11,8 @@ struct HomeDayPage: View {
         session.cache(for: day)
     }
 
-    /// 尚未成功加载、也没有错误时，一律当 loading（避免先闪「暂无内容」）。
     private var showsLoading: Bool {
-        session.isDayPullRefreshing(day)
-            || cache.isLoading
-            || (!cache.loaded && cache.error == nil)
+        session.isDayLoading(day)
     }
 
     var body: some View {
@@ -26,7 +23,7 @@ struct HomeDayPage: View {
             loadingTitle: "加载中…",
             emptyIcon: "sun.max",
             emptyTitle: "这一天暂无内容",
-            retry: { Task { await session.load(day, force: true) } }
+            retry: { session.requestLoad(day, force: true) }
         ) {
             List {
                 ForEach(cache.articles) { article in
@@ -44,8 +41,7 @@ struct HomeDayPage: View {
             await session.pullToRefresh(day)
         }
         .task(id: day.apiString) {
-            session.prepareLoad(day)
-            await session.load(day)
+            session.requestLoad(day)
         }
     }
 }

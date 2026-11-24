@@ -5,9 +5,10 @@ import Observation
 struct HomeDayCache {
     var articles: [ArticleSummary] = []
     var topText: String?
-    var isLoading = false
     var error: String?
     var loaded = false
+    /// 正在请求 `article/day`（去重 + loading）。
+    var isLoading = false
 }
 
 /// 首页：按日缓存 `article/day`，支持左右翻页。
@@ -22,10 +23,6 @@ final class HomeSession {
     var selectedDay: DayDate = .today
 
     private var caches: [String: HomeDayCache] = [:]
-    /// 正在请求中的日期，避免翻页时 `onChange` 与 `.task` 重复打接口。
-    private var inFlight: Set<String> = []
-    /// 日列表下拉刷新（`refreshable` 取消后仍保持 loading）。
-    private var dayPullRefreshing: Set<String> = []
 
     private init() {}
 
@@ -33,15 +30,16 @@ final class HomeSession {
         caches[day.apiString] ?? HomeDayCache()
     }
 
-    func isDayPullRefreshing(_ day: DayDate) -> Bool {
-        dayPullRefreshing.contains(day.apiString)
+    /// 无缓存 / 请求中 / 未成功且无错误 → 显示 loading。
+    func isDayLoading(_ day: DayDate) -> Bool {
+        guard let cache = caches[day.apiString] else { return true }
+        if cache.isLoading { return true }
+        if cache.loaded { return false }
+        return cache.error == nil
     }
 
     func pullToRefresh(_ day: DayDate) async {
-        let key = day.apiString
-        dayPullRefreshing.insert(key)
         await Task.detached { @MainActor in
-            defer { HomeSession.shared.dayPullRefreshing.remove(key) }
             await HomeSession.shared.load(day, force: true)
         }.value
     }
@@ -49,7 +47,6 @@ final class HomeSession {
     /// 跳到指定日（月份列表点选后回到首页用）；超出滑动窗口时夹到最近可滑日期。
     func jumpToDay(_ day: DayDate) {
         selectedDay = selectableDay(matching: day)
-        prepareLoad(selectedDay)
     }
 
     private func selectableDay(matching day: DayDate) -> DayDate {
@@ -61,24 +58,18 @@ final class HomeSession {
         return days.last(where: { $0.apiString <= day.apiString }) ?? last
     }
 
-    /// 翻页时立刻标记 loading，保证「先切过去」就能看到加载态。
-    func prepareLoad(_ day: DayDate) {
-        var cache = caches[day.apiString] ?? HomeDayCache()
-        guard !cache.loaded else { return }
-        cache.isLoading = true
-        cache.error = nil
-        caches[day.apiString] = cache
+    /// 翻页、进 Tab、子页出现：异步拉取（loading 由 `isDayLoading` 推导）。
+    func requestLoad(_ day: DayDate, force: Bool = false) {
+        Task.detached { @MainActor in
+            await HomeSession.shared.load(day, force: force)
+        }
     }
 
     func load(_ day: DayDate, force: Bool = false) async {
         let key = day.apiString
         var cache = caches[key] ?? HomeDayCache()
 
-        if !force, cache.loaded { return }
-        if !force, inFlight.contains(key) {
-            prepareLoad(day)
-            return
-        }
+        if !force, cache.loaded || cache.isLoading { return }
 
         if force {
             cache.loaded = false
@@ -86,27 +77,24 @@ final class HomeSession {
             cache.topText = nil
         }
 
-        inFlight.insert(key)
         cache.isLoading = true
         cache.error = nil
         caches[key] = cache
-        defer { inFlight.remove(key) }
 
         do {
             let payload = try await OneClient.articleDay(publishedAt: day.apiString)
-            cache.articles = payload.articles
-            cache.topText = payload.topText
-            cache.loaded = true
-            cache.isLoading = false
-            cache.error = nil
-            caches[key] = cache
+            var latest = caches[key] ?? cache
+            latest.articles = payload.articles
+            latest.topText = payload.topText
+            latest.loaded = true
+            latest.error = nil
+            latest.isLoading = false
+            caches[key] = latest
         } catch {
             if error.isRequestCancellation {
-                if !dayPullRefreshing.contains(key) {
-                    var latest = caches[key] ?? cache
-                    latest.isLoading = false
-                    caches[key] = latest
-                }
+                var latest = caches[key] ?? cache
+                latest.isLoading = false
+                caches[key] = latest
                 return
             }
             var latest = caches[key] ?? cache

@@ -35,12 +35,10 @@ struct HomeTabContent: View {
             }
             .libraryDetailDestinations()
             .onChange(of: session.selectedDay) { _, day in
-                session.prepareLoad(day)
-                Task { await session.load(day) }
+                session.requestLoad(day)
             }
             .task {
-                session.prepareLoad(session.selectedDay)
-                await session.load(session.selectedDay)
+                session.requestLoad(session.selectedDay)
             }
         }
     }
