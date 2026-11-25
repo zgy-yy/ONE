@@ -1,18 +1,38 @@
 import SwiftUI
 
-/// 两列瀑布流：子视图顺序与列表一致（0 左、1 右、2 左…），各列独立向下叠放，不拉高行高留空。
-struct MasonryLayout: Layout {
+/// 瀑布流子项种类（由 `MasonryLayoutCell` 写入 `LayoutValue`）。
+enum MasonrySubviewKind: Hashable, Sendable {
+    case month
+    case article
+}
+
+private nonisolated struct MasonrySubviewKindKey: LayoutValueKey {
+    static let defaultValue: MasonrySubviewKind = .article
+}
+
+/// `MasonryLayout` 的直接子视图；声明种类供列分配。
+struct MasonryLayoutCell<Content: View>: View {
+    let kind: MasonrySubviewKind
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        content()
+            .layoutValue(key: MasonrySubviewKindKey.self, value: kind)
+    }
+}
+
+/// 两列瀑布流：同类与「文章→月」落在当前高度最低的列；仅「月→文章」沿用上一项所在列。
+nonisolated struct MasonryLayout: Layout {
     var columns: Int = 2
     var spacing: CGFloat = 10
 
     struct Cache {
-        var width: CGFloat = -1
         var totalHeight: CGFloat = 0
         var columnOfSubview: [Int] = []
         var frames: [CGRect] = []
     }
 
-    func makeCache(subviews: Subviews) -> Cache { Cache() }
+    func makeCache(subviews _: Subviews) -> Cache { Cache() }
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Cache) -> CGSize {
         let width = proposal.replacingUnspecifiedDimensions().width
@@ -20,7 +40,7 @@ struct MasonryLayout: Layout {
         return CGSize(width: width, height: cache.totalHeight)
     }
 
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Cache) {
+    func placeSubviews(in bounds: CGRect, proposal _: ProposedViewSize, subviews: Subviews, cache: inout Cache) {
         layout(width: bounds.width, subviews: subviews, cache: &cache)
         for (index, frame) in cache.frames.enumerated() where index < subviews.count {
             subviews[index].place(
@@ -35,17 +55,25 @@ struct MasonryLayout: Layout {
         let columnWidth = max((width - spacing * CGFloat(columnCount - 1)) / CGFloat(columnCount), 1)
         let itemProposal = ProposedViewSize(width: columnWidth, height: nil)
 
-        if widthDiffers(cache.width, from: width) || cache.columnOfSubview.count != subviews.count {
-            cache.columnOfSubview = (0 ..< subviews.count).map { column(forListIndex: $0, columnCount: columnCount) }
-        }
-        cache.width = width
-
         var columnTops = [CGFloat](repeating: 0, count: columnCount)
+        var assignedColumns: [Int] = []
+        assignedColumns.reserveCapacity(subviews.count)
         var frames: [CGRect] = []
         frames.reserveCapacity(subviews.count)
 
         for (index, subview) in subviews.enumerated() {
-            let column = cache.columnOfSubview[index]
+            let currentKind = subview[MasonrySubviewKindKey.self]
+            let previousKind = index > 0 ? subviews[index - 1][MasonrySubviewKindKey.self] : nil
+            let previousColumn = index > 0 ? assignedColumns[index - 1] : nil
+            let column = pickColumn(
+                columnCount: columnCount,
+                columnTops: columnTops,
+                previousKind: previousKind,
+                currentKind: currentKind,
+                previousColumn: previousColumn
+            )
+            assignedColumns.append(column)
+
             let height = subview.sizeThatFits(itemProposal).height
             let x = CGFloat(column) * (columnWidth + spacing)
             let y = columnTops[column]
@@ -53,18 +81,25 @@ struct MasonryLayout: Layout {
             columnTops[column] = y + height + spacing
         }
 
+        cache.columnOfSubview = assignedColumns
+
         cache.frames = frames
         cache.totalHeight = frames.isEmpty ? 0 : max((columnTops.max() ?? 0) - spacing, 0)
     }
 
-    /// 列表下标 0 在左列；与 `Layout` 子视图遍历方向对齐（两列时左右对调修正）。
-    private func column(forListIndex index: Int, columnCount: Int) -> Int {
-        let slot = index % columnCount
-        guard columnCount == 2 else { return slot }
-        return 1 - slot
-    }
-
-    private func widthDiffers(_ cached: CGFloat, from width: CGFloat) -> Bool {
-        cached < 0 || abs(cached - width) > 0.5
+    /// 同类选最低列；仅月→文章沿用上一列；其余（含文章→月、首项）选最低列。
+    private func pickColumn(
+        columnCount _: Int,
+        columnTops: [CGFloat],
+        previousKind: MasonrySubviewKind?,
+        currentKind: MasonrySubviewKind,
+        previousColumn: Int?
+    ) -> Int {
+        if let previousColumn,
+           case .month = previousKind,
+           case .article = currentKind {
+            return previousColumn
+        }
+        return columnTops.indices.min(by: { columnTops[$0] < columnTops[$1] }) ?? 0
     }
 }

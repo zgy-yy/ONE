@@ -23,15 +23,18 @@ struct MasonryMonthFeed<Footer: View, Card: View>: View {
             ZStack(alignment: .top) {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 20) {
-                        ForEach(sections) { section in
-                            // 锚点须在 `LazyVStack` 直子层；标题仍放在瀑布流里。
-                            Color.clear
-                                .frame(height: 0)
-                                .id(section.month)
-                            MasonryLayout(columns: columns, spacing: gridSpacing) {
-                                MasonryMonthLabel(monthAPIString: section.month)
-                                ForEach(section.articles) { article in
-                                    card(article)
+                        MasonryLayout(columns: columns, spacing: gridSpacing) {
+                            ForEach(masonryItems) { item in
+                                switch item {
+                                case .month(let month):
+                                    MasonryLayoutCell(kind: .month) {
+                                        MasonryMonthLabel(monthAPIString: month)
+                                    }
+                                    .id(month)
+                                case .article(let article):
+                                    MasonryLayoutCell(kind: .article) {
+                                        card(article)
+                                    }
                                 }
                             }
                         }
@@ -60,17 +63,21 @@ struct MasonryMonthFeed<Footer: View, Card: View>: View {
             }
             .onAppear {
                 publishVisibleMonth(floatingMonth ?? sections.first?.month)
-                scrollToAnchorMonth(anchorMonth, proxy: proxy)
             }
             .onChange(of: sections.map(\.month)) { _, _ in
                 if monthAnchors.isEmpty {
                     publishVisibleMonth(floatingMonth ?? sections.first?.month)
                 }
-                scrollToAnchorMonth(anchorMonth, proxy: proxy)
             }
             .onChange(of: anchorMonth) { _, month in
                 scrollToAnchorMonth(month, proxy: proxy)
             }
+        }
+    }
+
+    private var masonryItems: [MasonryFeedItem] {
+        sections.flatMap { section in
+            [MasonryFeedItem.month(section.month)] + section.articles.map(MasonryFeedItem.article)
         }
     }
 
@@ -83,7 +90,6 @@ struct MasonryMonthFeed<Footer: View, Card: View>: View {
         guard let month, !month.isEmpty else { return }
         if sections.contains(where: { $0.month == month }) {
             Task { @MainActor in
-                await Task.yield()
                 proxy.scrollTo(month, anchor: .top)
             }
         } else {
@@ -163,6 +169,18 @@ private enum MasonryMonthSticky {
     ) -> Bool {
         guard let y = anchors[month] else { return false }
         return y < threshold - floatHidePadding
+    }
+}
+
+private enum MasonryFeedItem: Identifiable {
+    case month(String)
+    case article(ArticleSummary)
+
+    var id: String {
+        switch self {
+        case .month(let month): "month-\(month)"
+        case .article(let article): "article-\(article.id)"
+        }
     }
 }
 
