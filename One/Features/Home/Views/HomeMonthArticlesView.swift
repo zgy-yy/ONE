@@ -31,10 +31,7 @@ struct HomeMonthArticlesView: View {
         ) {
             MasonryMonthFeed(
                 sections: session.sections,
-                gridSpacing: 10,
-                showsFloatingMonthBar: false,
                 onVisibleMonthChange: { monthAPI in
-                    guard let monthAPI else { return }
                     navigationMonthTitle = MonthYear.sectionTitle(forAPIString: monthAPI)
                 }
             ) {
@@ -82,7 +79,7 @@ struct HomeMonthArticlesView: View {
         Color.clear
             .frame(height: 1)
             .onAppear {
-                Task { await session.loadMoreFromSentinel() }
+                Task { await session.loadMore() }
             }
     }
 

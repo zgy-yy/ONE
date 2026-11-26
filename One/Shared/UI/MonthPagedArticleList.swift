@@ -26,7 +26,7 @@ struct MonthPagedArticleList<SectionBody: View>: View {
                 }
             }
             .plainContentList()
-            // 与 `MasonryMonthFeed`（8464730）一致：仅在顶栏切换月份时滚锚点，不在 onAppear / 数据追加时滚（避免详情返回、加载更多跳顶）。
+            // 仅在顶栏切换月份时滚锚点，不在 onAppear / 数据追加时滚（避免详情返回、加载更多跳顶）。
             .onChange(of: publishedAt) { _, month in
                 scrollToMonthIfPresent(month, proxy: proxy)
             }

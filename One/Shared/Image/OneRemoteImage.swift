@@ -86,7 +86,6 @@ enum OneRemoteImage {
             ?? UIImage(data: payload.data)
         if let image {
             listImageCache.setObject(image, forKey: cacheKey)
-            rememberAspectRatio(path: path, data: payload.data)
         }
         return image
     }

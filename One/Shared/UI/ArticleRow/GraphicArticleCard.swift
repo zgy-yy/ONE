@@ -24,8 +24,7 @@ struct GraphicArticleCard: View {
     private var cover: some View {
         OneCoverImage(
             path: article.thumb,
-            usesOriginalAspectRatio: true,
-            placeholderAspectRatio: CoverAspect.portrait,
+            aspectRatio: CoverAspect.portrait,
             cornerRadius: 0
         )
         .overlay(alignment: .bottom) {
@@ -71,8 +70,8 @@ struct GraphicArticleCard: View {
 }
 
 #Preview("发现图文") {
-    PreviewListChrome.list {
+    HStack(alignment: .top, spacing: 10) {
         GraphicArticleCard(article: PreviewSamples.Article.graphic, textAlignment: .leading)
-            .styledListRow()
-    }
+        GraphicArticleCard(article: PreviewSamples.Article.graphic, textAlignment: .leading)
+    }.styledListRow()
 }

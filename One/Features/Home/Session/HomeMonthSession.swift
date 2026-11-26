@@ -59,12 +59,4 @@ final class HomeMonthSession {
         }
     }
 
-    /// 触底时连续拉取，直到当月翻完或暂时没有下一页（避免误显「底线」后需再滑一下）。
-    func loadMoreFromSentinel(maxRounds: Int = 8) async {
-        var rounds = 0
-        while canLoadMore, rounds < maxRounds {
-            await loadMore()
-            rounds += 1
-        }
-    }
 }

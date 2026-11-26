@@ -30,7 +30,7 @@ enum PreviewSamples {
         static let graphic = ArticleSummary(
             id: 8101,
             title: "图文示例",
-            thumb: ImageURL.graphicPortrait,
+            thumb: ImageURL.landscape,
             author: "编辑部",
             publishedAt: "2024-06-18",
             modelID: ContentCategory.ModelID.graphic,
@@ -167,26 +167,26 @@ enum PreviewSamples {
 
         static var vodDetail: ArticleDetail {
             let json = """
-            {
-              "id": 8102,
-              "video_name": "点播详情预览",
-              "title": "点播详情预览",
-              "actor": "演员 A",
-              "author": "出品方",
-              "number": "ABC-001",
-              "coin": 6,
-              "original_coin": 12,
-              "length": "129分钟",
-              "size": "2.3G",
-              "quality": "1920x1080",
-              "like_number": 88,
-              "collection_number": 12,
-              "reply_counts": 5,
-              "download_count": 100,
-              "is_like": 0,
-              "is_collected": 1
-            }
-            """
+                {
+                  "id": 8102,
+                  "video_name": "点播详情预览",
+                  "title": "点播详情预览",
+                  "actor": "演员 A",
+                  "author": "出品方",
+                  "number": "ABC-001",
+                  "coin": 6,
+                  "original_coin": 12,
+                  "length": "129分钟",
+                  "size": "2.3G",
+                  "quality": "1920x1080",
+                  "like_number": 88,
+                  "collection_number": 12,
+                  "reply_counts": 5,
+                  "download_count": 100,
+                  "is_like": 0,
+                  "is_collected": 1
+                }
+                """
             return try! JSONDecoder().decode(ArticleDetail.self, from: Data(json.utf8))
         }
 
@@ -205,26 +205,26 @@ enum PreviewSamples {
 
         static let detail: ActorDetail = {
             let json = """
-            {
-              "id": 168,
-              "main_name": "预览演员",
-              "japanese_name": "瀬戸 環奈",
-              "nickname": "环神",
-              "alias_name": "别名 A",
-              "thumb": "\(coverURL)",
-              "thumbnail": "\(coverURL)",
-              "height": "165",
-              "bust_waist_hip": "88-58-86",
-              "cup_size": "D",
-              "birth_date": "1998-05-20",
-              "age": "27",
-              "article_num": 42,
-              "photo_num": 18,
-              "comment_num": 6,
-              "is_collected": 0,
-              "desc": "Preview 示例简介。"
-            }
-            """
+                {
+                  "id": 168,
+                  "main_name": "预览演员",
+                  "japanese_name": "瀬戸 環奈",
+                  "nickname": "环神",
+                  "alias_name": "别名 A",
+                  "thumb": "\(coverURL)",
+                  "thumbnail": "\(coverURL)",
+                  "height": "165",
+                  "bust_waist_hip": "88-58-86",
+                  "cup_size": "D",
+                  "birth_date": "1998-05-20",
+                  "age": "27",
+                  "article_num": 42,
+                  "photo_num": 18,
+                  "comment_num": 6,
+                  "is_collected": 0,
+                  "desc": "Preview 示例简介。"
+                }
+                """
             return try! JSONDecoder().decode(ActorDetail.self, from: Data(json.utf8))
         }()
 
