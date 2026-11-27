@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 首页图文竖卡：封面右上播放量、右下收藏·喜欢；文案见 `GraphicCardTextBlock`。
+/// 首页图文竖卡：封面右上播放量、左下收藏·喜欢；文案见 `GraphicCardTextBlock`。
 struct HomeGraphicArticleView: View {
     let article: ArticleSummary
     var showsDescription: Bool = true
@@ -36,7 +36,7 @@ struct HomeGraphicArticleView: View {
                 .padding(8)
             }
         }
-        .overlay(alignment: .bottomTrailing) {
+        .overlay(alignment: .bottomLeading) {
             ArticleCollectLikeMeta(article: article, onDarkOverlay: true, itemSpacing: 6)
                 .font(ArticleRowTypography.GraphicCard.reactions)
                 .padding(8)

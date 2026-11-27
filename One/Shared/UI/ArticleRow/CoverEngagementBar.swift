@@ -1,24 +1,32 @@
 import SwiftUI
 
-/// 横图封面底栏：左播放量，右收藏 / 喜欢（暗色渐变上）。
+/// 封面互动叠层：右上播放量，左下收藏 / 喜欢（底部暗色渐变）。
 struct CoverEngagementBar: View {
     let article: ArticleSummary
     var horizontalPadding: CGFloat = 12
     var verticalPadding: CGFloat = 8
 
     var body: some View {
-        HStack(spacing: 10) {
-            if let views = article.views {
-                CoverStatLabel(icon: "eye", text: ArticleFormat.shortCount(views))
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                Spacer(minLength: 0)
+                if let views = article.views {
+                    CoverStatLabel(icon: "eye", text: ArticleFormat.shortCount(views))
+                        .padding(.horizontal, horizontalPadding)
+                        .padding(.vertical, verticalPadding)
+                }
             }
             Spacer(minLength: 0)
-            ArticleCollectLikeMeta(article: article, onDarkOverlay: true, itemSpacing: 6)
-                .font(ArticleRowTypography.CoverBar.reactions)
+            HStack(spacing: 10) {
+                ArticleCollectLikeMeta(article: article, onDarkOverlay: true, itemSpacing: 6)
+                    .font(ArticleRowTypography.CoverBar.reactions)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, horizontalPadding)
+            .padding(.vertical, verticalPadding)
+            .frame(maxWidth: .infinity)
+            .background { CoverBottomFade() }
         }
-        .padding(.horizontal, horizontalPadding)
-        .padding(.vertical, verticalPadding)
-        .frame(maxWidth: .infinity)
-        .background { CoverBottomFade() }
     }
 }
 

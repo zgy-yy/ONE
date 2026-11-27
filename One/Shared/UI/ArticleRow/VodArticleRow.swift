@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 点播行：左上角期数；封面底标题与作者 / 时长 / 播放量；下为金额与互动。
+/// 点播行：左上角期数、右上播放量；封面底标题与作者 / 时长；下为金额与互动。
 struct VodArticleRow: View {
     let article: ArticleSummary
     var aspectRatio: CGFloat = CoverAspect.landscape
@@ -30,6 +30,17 @@ struct VodArticleRow: View {
         .overlay(alignment: .topLeading) {
             CoverCategoryVolumeBadge(systemImage: "play.rectangle", vol: article.vol)
         }
+        .overlay(alignment: .topTrailing) {
+            if let views = article.views {
+                CoverStatLabel(
+                    icon: "eye",
+                    text: ArticleFormat.shortCount(views),
+                    font: ArticleRowTypography.CoverBar.views
+                )
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+            }
+        }
         .overlay(alignment: .bottom) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(article.displayTitle)
@@ -51,7 +62,6 @@ struct VodArticleRow: View {
     private var showsSubtitleRow: Bool {
         article.author?.nonEmpty != nil
             || article.length?.nonEmpty != nil
-            || article.views != nil
     }
 
     private var coverSubtitleRow: some View {
@@ -64,15 +74,6 @@ struct VodArticleRow: View {
             if let length = article.length?.nonEmpty {
                 MetaIconText(systemImage: "clock", text: length, onDarkOverlay: true)
             }
-            Spacer(minLength: 0)
-            if let views = article.views {
-                HStack(spacing: 4) {
-                    Image(systemName: "eye")
-                    Text(ArticleFormat.shortCount(views))
-                }
-                .font(ArticleRowTypography.metaSmall)
-                .foregroundStyle(.white.opacity(0.9))
-            }
         }
         .font(ArticleRowTypography.summary)
     }
@@ -81,7 +82,8 @@ struct VodArticleRow: View {
         HStack(spacing: 14) {
             priceBlock
             Spacer(minLength: 0)
-            ArticleCollectLikeMeta(article: article)
+            ArticleCollectLikeMeta(article: article, itemSpacing: 6)
+                .font(ArticleRowTypography.metaSmall)
             ArticleDateText(publishedAt: article.publishedAt)
         }
         .font(ArticleRowTypography.meta)

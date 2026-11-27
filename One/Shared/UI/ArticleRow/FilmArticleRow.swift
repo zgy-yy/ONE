@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 发现「影视」：封面角标 + 底栏播放/互动；封面下标题、作者与日期。
+/// 发现「影视」：封面左上角标、右上播放量、左下收藏·喜欢；封面下标题、作者与日期。
 struct FilmArticleRow: View {
     let article: ArticleSummary
 
@@ -39,7 +39,7 @@ struct FilmArticleRow: View {
         .overlay(alignment: .topLeading) {
             CoverCategoryVolumeBadge(systemImage: "film", vol: article.vol)
         }
-        .overlay(alignment: .bottom) {
+        .overlay {
             CoverEngagementBar(article: article)
         }
     }

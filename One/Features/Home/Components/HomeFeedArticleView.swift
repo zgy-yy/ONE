@@ -53,7 +53,7 @@ struct HomeFeedArticleView: View {
                 vol: article.vol
             )
         }
-        .overlay(alignment: .bottom) {
+        .overlay {
             CoverEngagementBar(article: article)
         }
     }

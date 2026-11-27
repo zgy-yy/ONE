@@ -1,9 +1,10 @@
 import SwiftUI
 
-/// 图文竖卡：标题 / 作者 / 简介（首页与发现共用）。
+/// 图文竖卡：标题 / 作者（可选右侧日期）/ 简介（首页与发现共用）。
 struct GraphicCardTextBlock: View {
     let title: String
     var author: String?
+    var publishedAt: String? = nil
     var summary: String?
     var showsSummary = true
     var titleAlignment: TextAlignment = .center
@@ -24,12 +25,11 @@ struct GraphicCardTextBlock: View {
                 alignment: titleAlignment
             )
             if let author, !author.isEmpty {
-                graphicCardLine(
-                    author,
-                    font: ArticleRowTypography.GraphicCard.author,
-                    color: .secondary,
-                    lines: 1,
-                    alignment: titleAlignment
+                authorRow
+            } else {
+                ArticleDateText(
+                    publishedAt: publishedAt,
+                    font: ArticleRowTypography.GraphicCard.date
                 )
             }
             if showsSummary, let summary, !summary.isEmpty {
@@ -42,6 +42,29 @@ struct GraphicCardTextBlock: View {
                 )
             }
         }
+    }
+
+    private var authorRow: some View {
+        HStack(spacing: 6) {
+            if let author, !author.isEmpty {
+                Text(author)
+                    .font(ArticleRowTypography.GraphicCard.author)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            Spacer()
+            ArticleDateText(
+                publishedAt: publishedAt,
+                font: ArticleRowTypography.GraphicCard.date
+            )
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+        }
+        .frame(
+            maxWidth: .infinity,
+            alignment: stackAlignment == .center ? .center : .leading
+        )
     }
 }
 
