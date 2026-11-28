@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 文章详情入口：按 `model_id` 分发。
+/// 文章详情入口：每个内容类型使用自己的 Detail 文件。
 struct ArticleDetailView: View {
     let article: ArticleSummary
 
@@ -9,15 +9,17 @@ struct ArticleDetailView: View {
         case ContentCategory.ModelID.graphic:
             GraphicArticleDetailView(article: article)
         case ContentCategory.ModelID.reading:
-            StandardArticleDetailView(article: article, style: .reading)
+            ReadingArticleDetailView(article: article)
         case ContentCategory.ModelID.series:
-            StandardArticleDetailView(article: article, style: .content)
+            SeriesArticleDetailView(article: article)
         case ContentCategory.ModelID.radio:
-            StandardArticleDetailView(article: article, style: .radio)
+            RadioArticleDetailView(article: article)
         case ContentCategory.ModelID.film:
-            StandardArticleDetailView(article: article, style: .film)
+            FilmArticleDetailView(article: article)
+        case ContentCategory.ModelID.vod:
+            VodArticleDetailView(article: article)
         default:
-            StandardArticleDetailView(article: article, style: .media)
+            ReadingArticleDetailView(article: article)
         }
     }
 }

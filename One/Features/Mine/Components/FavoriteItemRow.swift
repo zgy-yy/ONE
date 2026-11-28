@@ -62,7 +62,7 @@ struct FavoriteItemRow: View {
         .overlay(alignment: .topLeading) {
             coverTopLeadingBadge
         }
-        .overlay(alignment: .bottomTrailing) {
+        .overlay(alignment: .bottomLeading) {
             ArticleCollectLikeMeta(
                 article: article,
                 onDarkOverlay: true,

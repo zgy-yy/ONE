@@ -1,9 +1,20 @@
 import SwiftUI
 
-/// 标准文章详情（阅读 / 写真漫画 / 电台 / 点播影视）。
-struct StandardArticleDetailView: View {
+/// 详情页共用动作：页面本身负责弹层与播放，正文只调用 UI 动作。
+struct ArticleDetailActions {
+    let comments: () -> Void
+    let collect: () -> Void
+    let like: () -> Void
+    let play: () -> Void
+    let download: (ArticlePlayURL.DownloadOption) -> Void
+}
+
+/// 非图文详情共用外壳：封面、加载、评论弹层、收藏夹与下载列表。
+/// 具体正文由阅读 / 写真漫画 / 电台 / 影视 / 点播各自 Detail 文件提供。
+struct ArticleDetailShell<Content: View>: View {
     let article: ArticleSummary
-    let style: ArticleDetailStyle
+    let placeholderAspect: CGFloat
+    @ViewBuilder var content: (ArticleDetailSession, ArticleDetailActions) -> Content
 
     @State private var session = ArticleDetailSession()
     @State private var showsComments = false
@@ -14,31 +25,11 @@ struct StandardArticleDetailView: View {
         ArticleDetailChrome(article: article, session: session) {
             ArticleDetailScrollLayout(
                 coverPath: session.detail?.thumb ?? article.thumb,
-                placeholderAspect: style.placeholderAspect
+                placeholderAspect: placeholderAspect
             ) {
-                ArticleDetailBodyView(
-                    detail: session.detail,
-                    summary: article,
-                    style: style,
-                    canPlay: session.playURL != nil,
-                    videoDownloadOptions: session.videoDownloadOptions,
-                    onPlay: style.showsPlay ? { startPlayback() } : nil,
-                    onPickDownload: style.showsPlay && !session.videoDownloadOptions.isEmpty
-                        ? { queueDownload($0) }
-                        : nil,
-                    onCommentsTap: { showsComments = true },
-                    onCollect: {
-                        Task {
-                            collectMoveContext = await ArticleCollectAction.handleInDetail(
-                                article: article,
-                                syncDetail: { session.syncReactionsFromStore() }
-                            )
-                        }
-                    },
-                    onLike: { Task { await session.toggleLike() } }
-                )
-                .padding(.horizontal)
-                .padding(.vertical, 16)
+                content(session, actions)
+                    .padding(.horizontal)
+                    .padding(.vertical, 16)
 
                 ArticlePlayURLFooter(entries: session.playURLEntries)
                     .padding(.horizontal)
@@ -63,9 +54,24 @@ struct StandardArticleDetailView: View {
         }
     }
 
-    private func startPlayback() {
-        guard let url = session.playURL else { return }
-        ArticleVideoPresenter.present(url: url)
+    private var actions: ArticleDetailActions {
+        ArticleDetailActions(
+            comments: { showsComments = true },
+            collect: {
+                Task {
+                    collectMoveContext = await ArticleCollectAction.handleInDetail(
+                        article: article,
+                        syncDetail: { session.syncReactionsFromStore() }
+                    )
+                }
+            },
+            like: { Task { await session.toggleLike() } },
+            play: {
+                guard let url = session.playURL else { return }
+                ArticleVideoPresenter.present(url: url)
+            },
+            download: queueDownload
+        )
     }
 
     private func queueDownload(_ option: ArticlePlayURL.DownloadOption) {
